@@ -1,16 +1,43 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
+  const { user, roles, signOut } = useAuth();
+
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="min-h-screen bg-muted/30">
+      <header className="border-b bg-card">
+        <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
+          <div>
+            <h1 className="text-xl font-semibold">JewelMaster OS</h1>
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={signOut}>Sign out</Button>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Your roles</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {roles.length === 0 ? (
+              <span className="text-sm text-muted-foreground">No roles assigned yet.</span>
+            ) : (
+              roles.map((r) => <Badge key={r} variant="secondary">{r}</Badge>)
+            )}
+          </CardContent>
+        </Card>
+
+        <p className="mt-6 text-sm text-muted-foreground">
+          Authentication and role-based access are wired up. Inventory, POS, and ERP modules come next.
+        </p>
+      </main>
     </div>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
