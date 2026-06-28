@@ -1,0 +1,111 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { AppLayout } from "@/components/AppLayout";
+import { supabase } from "@/integrations/supabase/client";
+import { npr } from "@/lib/format";
+import { Package, Receipt, Users, Coins, TrendingUp, AlertCircle } from "lucide-react";
+
+interface Stats {
+  itemsInStock: number;
+  itemsSoldToday: number;
+  salesToday: number;
+  pendingBalance: number;
+  customers: number;
+  oldGoldToday: number;
+  latestGoldRate: number | null;
+}
+
+export default function Dashboard() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayIso = today.toISOString();
+
+    const [itemsAgg, soldToday, invoicesToday, balance, customers, oldGold, rate, recent] = await Promise.all([
+      supabase.from("inventory_items").select("id", { count: "exact", head: true }).eq("status", "in_stock"),
+      supabase.from("inventory_items").select("id", { count: "exact", head: true }).eq("status", "sold").gte("updated_at", todayIso),
+      supabase.from("invoices").select("total").gte("issued_at", todayIso).neq("status", "cancelled"),
+      supabase.from("invoices").select("balance_due").gt("balance_due", 0),
+      supabase.from("customers").select("id", { count: "exact", head: true }),
+      supabase.from("old_gold_purchases").select("total_amount").gte("purchased_at", todayIso),
+      supabase.from("metal_rates").select("rate_per_gram, effective_date").eq("metal", "gold").eq("purity", "24K").order("effective_date", { ascending: false }).limit(1),
+      supabase.from("invoices").select("id, invoice_number, total, balance_due, issued_at, customers(full_name)").order("issued_at", { ascending: false }).limit(8),
+    ]);
+
+    setStats({
+      itemsInStock: itemsAgg.count ?? 0,
+      itemsSoldToday: soldToday.count ?? 0,
+      salesToday: (invoicesToday.data ?? []).reduce((a, b) => a + Number(b.total), 0),
+      pendingBalance: (balance.data ?? []).reduce((a, b) => a + Number(b.balance_due), 0),
+      customers: customers.count ?? 0,
+      oldGoldToday: (oldGold.data ?? []).reduce((a, b) => a + Number(b.total_amount), 0),
+      latestGoldRate: rate.data?.[0]?.rate_per_gram ?? null,
+    });
+    setRecentInvoices(recent.data ?? []);
+  }
+
+  const cards = [
+    { label: "Today's Sales", value: npr(stats?.salesToday ?? 0), icon: Receipt, hint: `${stats?.itemsSoldToday ?? 0} items sold` },
+    { label: "Items in Stock", value: stats?.itemsInStock ?? 0, icon: Package, hint: "Available across showcases", asLink: "/inventory" },
+    { label: "Outstanding Credit", value: npr(stats?.pendingBalance ?? 0), icon: AlertCircle, hint: "Across all unpaid invoices" },
+    { label: "Customers", value: stats?.customers ?? 0, icon: Users, hint: "Total in CRM", asLink: "/customers" },
+    { label: "Old Gold Today", value: npr(stats?.oldGoldToday ?? 0), icon: Coins, hint: "Purchased today" },
+    { label: "Gold Rate (24K)", value: stats?.latestGoldRate ? npr(stats.latestGoldRate) + "/g" : "—", icon: TrendingUp, hint: "Latest entry", asLink: "/rates" },
+  ];
+
+  return (
+    <AppLayout title="Dashboard">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {cards.map((c) => {
+          const Card_ = (
+            <Card key={c.label} className="transition hover:shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{c.label}</CardTitle>
+                <c.icon className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-semibold tracking-tight">{c.value}</div>
+                <p className="mt-1 text-xs text-muted-foreground">{c.hint}</p>
+              </CardContent>
+            </Card>
+          );
+          return c.asLink ? <Link key={c.label} to={c.asLink}>{Card_}</Link> : Card_;
+        })}
+      </div>
+
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Recent Invoices</CardTitle>
+          <Button asChild size="sm" variant="outline"><Link to="/invoices">View all</Link></Button>
+        </CardHeader>
+        <CardContent>
+          {recentInvoices.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No invoices yet. <Link to="/pos" className="text-primary underline">Create your first sale.</Link></p>
+          ) : (
+            <div className="divide-y">
+              {recentInvoices.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between py-2.5 text-sm">
+                  <div className="min-w-0">
+                    <div className="font-medium">{inv.invoice_number}</div>
+                    <div className="truncate text-xs text-muted-foreground">{inv.customers?.full_name ?? "Walk-in"} · {new Date(inv.issued_at).toLocaleString()}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium">{npr(inv.total)}</div>
+                    {Number(inv.balance_due) > 0 && <Badge variant="outline" className="mt-0.5 text-xs">Due {npr(inv.balance_due)}</Badge>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </AppLayout>
+  );
+}
