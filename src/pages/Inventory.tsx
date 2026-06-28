@@ -191,8 +191,6 @@ function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }: {
         if (error) throw error;
         toast.success("Item updated");
       } else {
-        // generate SKU & QR
-        const { data: seqRow } = await supabase.rpc("nextval" as any, {}).then(() => ({ data: null })).catch(() => ({ data: null }));
         const sku = `JM-${Date.now().toString().slice(-8)}`;
         const qr = `JM-QR-${crypto.randomUUID().slice(0, 12).toUpperCase()}`;
         const { error } = await supabase.from("inventory_items").insert({ ...payload, sku, qr_code: qr, barcode: sku });
