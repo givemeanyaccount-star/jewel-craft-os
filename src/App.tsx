@@ -29,6 +29,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/roles"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <RoleManagement />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
