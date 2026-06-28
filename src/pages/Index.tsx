@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const Index = () => {
-  const { user, roles, signOut } = useAuth();
+  const { user, roles, hasRole, signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-muted/30">
