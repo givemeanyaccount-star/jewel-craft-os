@@ -5,12 +5,25 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Index from "./pages/Index.tsx";
-import Auth from "./pages/Auth.tsx";
-import RoleManagement from "./pages/RoleManagement.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import Dashboard from "./pages/Dashboard";
+import Auth from "./pages/Auth";
+import RoleManagement from "./pages/RoleManagement";
+import Inventory from "./pages/Inventory";
+import ItemDetail from "./pages/ItemDetail";
+import ScanQR from "./pages/ScanQR";
+import Customers from "./pages/Customers";
+import Quotations from "./pages/Quotations";
+import POS from "./pages/POS";
+import Invoices from "./pages/Invoices";
+import InvoiceDetail from "./pages/InvoiceDetail";
+import OldGold from "./pages/OldGold";
+import MetalRates from "./pages/MetalRates";
+import Settings from "./pages/Settings";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+const SALES = ["admin", "manager", "sales"] as const;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -21,22 +34,19 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/roles"
-              element={
-                <ProtectedRoute roles={["admin"]}>
-                  <RoleManagement />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+            <Route path="/inventory/:id" element={<ProtectedRoute><ItemDetail /></ProtectedRoute>} />
+            <Route path="/scan" element={<ProtectedRoute roles={[...SALES]}><ScanQR /></ProtectedRoute>} />
+            <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+            <Route path="/quotations" element={<ProtectedRoute roles={[...SALES]}><Quotations /></ProtectedRoute>} />
+            <Route path="/pos" element={<ProtectedRoute roles={[...SALES]}><POS /></ProtectedRoute>} />
+            <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+            <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
+            <Route path="/old-gold" element={<ProtectedRoute roles={[...SALES]}><OldGold /></ProtectedRoute>} />
+            <Route path="/rates" element={<ProtectedRoute><MetalRates /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute roles={["admin", "manager"]}><Settings /></ProtectedRoute>} />
+            <Route path="/admin/roles" element={<ProtectedRoute roles={["admin"]}><RoleManagement /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
