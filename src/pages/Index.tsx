@@ -15,7 +15,12 @@ const Index = () => {
             <h1 className="text-xl font-semibold">JewelMaster OS</h1>
             <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={signOut}>Sign out</Button>
+          <div className="flex items-center gap-2">
+            {hasRole("admin") && (
+              <Button asChild variant="outline" size="sm"><Link to="/admin/roles">Manage roles</Link></Button>
+            )}
+            <Button variant="outline" size="sm" onClick={signOut}>Sign out</Button>
+          </div>
         </div>
       </header>
 
