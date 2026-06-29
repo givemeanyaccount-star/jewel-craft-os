@@ -80,8 +80,10 @@ export default function InvoiceDetail() {
             </Table>
             <div className="mt-4 ml-auto max-w-sm space-y-1.5 text-sm">
               <Row label="Subtotal" value={npr(inv.subtotal)} />
+              {Number(inv.stones_total) > 0 && <Row label="  Stones (VAT-able)" value={npr(inv.stones_total)} />}
               <Row label="Discount" value={`- ${npr(inv.discount)}`} />
-              <Row label={`VAT ${inv.vat_rate}%`} value={npr(inv.vat_amount)} />
+              <Row label={`VAT ${inv.vat_rate}% (stones only)`} value={npr(inv.vat_amount)} />
+              {Number(inv.luxury_tax) > 0 && <Row label={`Luxury tax ${inv.luxury_tax_rate}%`} value={npr(inv.luxury_tax)} />}
               <Row label="Old gold credit" value={`- ${npr(inv.old_gold_credit)}`} />
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(inv.total)}</span></div>
               <Row label="Paid" value={npr(inv.amount_paid)} />
