@@ -337,7 +337,7 @@ export default function POS() {
                 onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
             </div>
             <Row label={`VAT ${VAT_RATE}% (stones only)`} value={npr(tax.vat)} />
-            <Row label={`Luxury tax ${LUXURY_TAX_RATE}% (if > ${npr(LUXURY_TAX_THRESHOLD)})`} value={npr(tax.luxuryTax)} />
+            <Row label={`Luxury tax ${LUXURY_TAX_RATE}% (gold+making − old gold, if > ${npr(LUXURY_TAX_THRESHOLD)})`} value={npr(tax.luxuryTax)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Old gold credit</span>
               <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(e) => setOldGoldCredit(Number(e.target.value) || 0)} />
