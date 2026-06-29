@@ -10,8 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Trash2, Search, ShoppingCart } from "lucide-react";
-import { npr, computeLineTotal, VAT_RATE, nextNumber } from "@/lib/format";
+import { Plus, Trash2, Search, ShoppingCart, RefreshCw } from "lucide-react";
+import {
+  npr, computeLineTotal, VAT_RATE, LUXURY_TAX_RATE, LUXURY_TAX_THRESHOLD,
+  nextNumber, computeInvoiceTaxes, discountForTargetTotal,
+} from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
@@ -20,9 +23,32 @@ interface CartRow {
   inventory_item_id: string | null;
   description: string;
   metal?: string; purity?: string;
-  weight: number; rate: number; making_charge: number;
-  wastage_amount: number; stone_value: number;
-  quantity: number; line_total: number;
+  weight: number;
+  rate: number;
+  making_charge: number;       // computed money amount
+  wastage_amount: number;      // computed money amount
+  stone_value: number;
+  quantity: number;
+  line_total: number;
+  // raw rule fields (kept for live recompute)
+  making_input: number;
+  making_type: "per_gram" | "fixed" | "percentage";
+  wastage_input: number;
+  wastage_type: "percentage" | "weight" | "fixed";
+}
+
+function recompute(r: CartRow): CartRow {
+  const { making, wastageAmount, lineTotal } = computeLineTotal({
+    netWeight: r.weight,
+    ratePerGram: r.rate,
+    makingCharge: r.making_input,
+    makingChargeType: r.making_type,
+    wastageType: r.wastage_type,
+    wastageValue: r.wastage_input,
+    stoneValue: r.stone_value,
+    quantity: r.quantity,
+  });
+  return { ...r, making_charge: making, wastage_amount: wastageAmount, line_total: lineTotal };
 }
 
 export default function POS() {
@@ -35,6 +61,7 @@ export default function POS() {
   const [cart, setCart] = useState<CartRow[]>([]);
   const [discount, setDiscount] = useState(0);
   const [oldGoldCredit, setOldGoldCredit] = useState(0);
+  const [targetTotal, setTargetTotal] = useState<string>("");
   const [paid, setPaid] = useState(0);
   const [method, setMethod] = useState("cash");
   const [notes, setNotes] = useState("");
@@ -57,59 +84,105 @@ export default function POS() {
     return () => clearTimeout(t);
   }, [search]);
 
-  async function addToCart(item: any) {
-    // fetch latest rate for this metal/purity
-    const { data: rateRow } = await supabase.from("metal_rates")
-      .select("rate_per_gram").eq("metal", item.metal).eq("purity", item.purity)
+  async function fetchRate(metal: string, purity: string): Promise<number> {
+    const { data } = await supabase.from("metal_rates")
+      .select("rate_per_gram").eq("metal", metal as any).eq("purity", purity)
       .order("effective_date", { ascending: false }).limit(1).maybeSingle();
-    const rate = Number(rateRow?.rate_per_gram ?? 0);
-    const { making, wastageAmount, lineTotal } = computeLineTotal({
-      netWeight: Number(item.net_weight), ratePerGram: rate,
-      makingCharge: Number(item.making_charge), makingChargeType: item.making_charge_type as any,
-      wastageType: item.wastage_type as any, wastageValue: Number(item.wastage_value),
-      stoneValue: Number(item.stone_value), quantity: 1,
-    });
-    setCart((c) => [...c, {
+    return Number(data?.rate_per_gram ?? 0);
+  }
+
+  async function addToCart(item: any) {
+    const rate = await fetchRate(item.metal, item.purity);
+    if (!rate) toast.warning(`No ${item.metal} ${item.purity} rate set — enter rate on the line or update Metal Rates.`);
+    const row: CartRow = {
       inventory_item_id: item.id,
       description: `${item.name} (${item.sku})`,
       metal: item.metal, purity: item.purity,
-      weight: Number(item.net_weight), rate, making_charge: making,
-      wastage_amount: wastageAmount, stone_value: Number(item.stone_value),
-      quantity: 1, line_total: lineTotal,
-    }]);
+      weight: Number(item.net_weight),
+      rate,
+      making_charge: 0,
+      wastage_amount: 0,
+      stone_value: Number(item.stone_value ?? 0),
+      quantity: 1,
+      line_total: 0,
+      making_input: Number(item.making_charge ?? 0),
+      making_type: (item.making_charge_type ?? "per_gram") as any,
+      wastage_input: Number(item.wastage_value ?? 0),
+      wastage_type: (item.wastage_type ?? "percentage") as any,
+    };
+    setCart((c) => [...c, recompute(row)]);
     setSearch(""); setItems([]);
   }
 
+  function updateRow(idx: number, patch: Partial<CartRow>) {
+    setCart((c) => c.map((r, i) => i === idx ? recompute({ ...r, ...patch }) : r));
+  }
   function removeRow(idx: number) { setCart((c) => c.filter((_, i) => i !== idx)); }
 
+  async function refreshAllRates() {
+    const updated = await Promise.all(cart.map(async (r) => {
+      if (!r.metal || !r.purity) return r;
+      const rate = await fetchRate(r.metal, r.purity);
+      return recompute({ ...r, rate: rate || r.rate });
+    }));
+    setCart(updated);
+    toast.success("Rates refreshed");
+  }
+
   const subtotal = useMemo(() => cart.reduce((a, r) => a + r.line_total, 0), [cart]);
-  const taxable = Math.max(0, subtotal - discount);
-  const vat = taxable * VAT_RATE / 100;
-  const total = Math.max(0, taxable + vat - oldGoldCredit);
-  const balance = Math.max(0, total - paid);
+  const stonesTotal = useMemo(() => cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0), [cart]);
+
+  const tax = useMemo(() => computeInvoiceTaxes({
+    subtotal, stonesTotal, discount, oldGoldCredit,
+    vatRate: VAT_RATE, luxuryTaxRate: LUXURY_TAX_RATE, luxuryTaxThreshold: LUXURY_TAX_THRESHOLD,
+  }), [subtotal, stonesTotal, discount, oldGoldCredit]);
+
+  const balance = Math.max(0, tax.total - paid);
+
+  function applyTargetTotal() {
+    const t = Number(targetTotal);
+    if (!t || t <= 0) return toast.error("Enter target net amount");
+    const d = discountForTargetTotal({
+      subtotal, stonesTotal, oldGoldCredit, targetTotal: t,
+    });
+    setDiscount(d);
+    toast.success(`Discount set to ${npr(d)} to reach ${npr(t)}`);
+  }
 
   async function checkout() {
     if (cart.length === 0) return toast.error("Add at least one item");
+    if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
     setSaving(true);
     try {
-      const { data: seqVal, error: seqErr } = await supabase.rpc("nextval" as any, { sequence_name: "seq_invoice_no" } as any) as any;
-      // Fallback if RPC isn't available — use timestamp
-      const num = seqVal ? Number(seqVal) : Math.floor(Date.now() / 1000) % 100000;
+      const num = Math.floor(Date.now() / 1000) % 100000;
       const invNumber = nextNumber("INV", num, 5);
-
-      const status = paid >= total ? "paid" : paid > 0 ? "partial" : "issued";
+      const status = paid >= tax.total ? "paid" : paid > 0 ? "partial" : "issued";
 
       const { data: inv, error } = await supabase.from("invoices").insert({
         invoice_number: invNumber,
         customer_id: customerId,
-        subtotal, vat_rate: VAT_RATE, vat_amount: vat,
-        discount, old_gold_credit: oldGoldCredit, total,
+        subtotal,
+        stones_total: stonesTotal,
+        vat_rate: VAT_RATE, vat_amount: tax.vat,
+        luxury_tax_rate: LUXURY_TAX_RATE, luxury_tax: tax.luxuryTax,
+        discount, old_gold_credit: oldGoldCredit, total: tax.total,
         amount_paid: paid, balance_due: balance,
         notes: notes || null, status, created_by: user?.id,
-      }).select().single();
+      } as any).select().single();
       if (error) throw error;
 
-      const lines = cart.map((r) => ({ invoice_id: inv.id, ...r }));
+      const lines = cart.map((r) => ({
+        invoice_id: inv.id,
+        inventory_item_id: r.inventory_item_id,
+        description: r.description,
+        metal: r.metal, purity: r.purity,
+        weight: r.weight, rate: r.rate,
+        making_charge: r.making_charge,
+        wastage_amount: r.wastage_amount,
+        stone_value: r.stone_value,
+        quantity: r.quantity,
+        line_total: r.line_total,
+      }));
       const { error: lErr } = await supabase.from("invoice_items").insert(lines as any);
       if (lErr) throw lErr;
 
@@ -120,13 +193,11 @@ export default function POS() {
         });
       }
 
-      // mark inventory items as sold
       const itemIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
       if (itemIds.length) {
         await supabase.from("inventory_items").update({ status: "sold" }).in("id", itemIds);
       }
 
-      // adjust customer balance if credit
       if (balance > 0 && customerId) {
         const { data: cust } = await supabase.from("customers").select("balance").eq("id", customerId).single();
         await supabase.from("customers").update({ balance: Number(cust?.balance ?? 0) + balance }).eq("id", customerId);
@@ -155,7 +226,14 @@ export default function POS() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Add items</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Add items</CardTitle>
+              {cart.length > 0 && (
+                <Button size="sm" variant="outline" onClick={refreshAllRates}>
+                  <RefreshCw className="mr-1 h-4 w-4" /> Refresh rates
+                </Button>
+              )}
+            </CardHeader>
             <CardContent>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -178,17 +256,36 @@ export default function POS() {
 
               <Table className="mt-3">
                 <TableHeader><TableRow>
-                  <TableHead>Item</TableHead><TableHead className="text-right">Wt</TableHead>
-                  <TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Line</TableHead><TableHead />
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Wt (g)</TableHead>
+                  <TableHead className="text-right">Rate/g</TableHead>
+                  <TableHead className="text-right">Stone</TableHead>
+                  <TableHead className="text-right">Line</TableHead>
+                  <TableHead />
                 </TableRow></TableHeader>
                 <TableBody>
-                  {cart.length === 0 ? <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Cart is empty</TableCell></TableRow>
+                  {cart.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Cart is empty</TableCell></TableRow>
                     : cart.map((r, i) => (
                       <TableRow key={i}>
-                        <TableCell><div className="font-medium">{r.description}</div>
-                          <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div></TableCell>
-                        <TableCell className="text-right">{r.weight.toFixed(3)}g</TableCell>
-                        <TableCell className="text-right">{npr(r.rate)}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{r.description}</div>
+                          <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div>
+                          <div className="mt-1 text-[11px] text-muted-foreground">
+                            Making: {npr(r.making_charge)} · Wastage: {npr(r.wastage_amount)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input type="number" className="h-8 w-20 text-right" value={r.weight}
+                            onChange={(e) => updateRow(i, { weight: Number(e.target.value) || 0 })} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input type="number" className={`h-8 w-28 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
+                            value={r.rate} onChange={(e) => updateRow(i, { rate: Number(e.target.value) || 0 })} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input type="number" className="h-8 w-24 text-right" value={r.stone_value}
+                            onChange={(e) => updateRow(i, { stone_value: Number(e.target.value) || 0 })} />
+                        </TableCell>
                         <TableCell className="text-right font-medium">{npr(r.line_total)}</TableCell>
                         <TableCell><Button size="icon" variant="ghost" onClick={() => removeRow(i)}><Trash2 className="h-4 w-4" /></Button></TableCell>
                       </TableRow>
@@ -203,16 +300,29 @@ export default function POS() {
           <CardHeader><CardTitle className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Summary</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Row label="Subtotal" value={npr(subtotal)} />
+            <Row label="  Stones (VAT-able)" value={npr(stonesTotal)} />
+            <Row label="  Gold + Making + Wastage" value={npr(tax.nonStoneTotal)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Discount</span>
-              <Input type="number" className="h-8 w-28 text-right" value={discount} onChange={(e) => setDiscount(Number(e.target.value) || 0)} />
+              <Input type="number" className="h-8 w-28 text-right" value={discount}
+                onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
             </div>
-            <Row label={`VAT (${VAT_RATE}%)`} value={npr(vat)} />
+            <Row label={`VAT ${VAT_RATE}% (stones only)`} value={npr(tax.vat)} />
+            <Row label={`Luxury tax ${LUXURY_TAX_RATE}% (if > ${npr(LUXURY_TAX_THRESHOLD)})`} value={npr(tax.luxuryTax)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Old gold credit</span>
               <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(e) => setOldGoldCredit(Number(e.target.value) || 0)} />
             </div>
-            <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{npr(total)}</span></div>
+            <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>
+
+            <div className="rounded-md border bg-muted/40 p-2">
+              <Label className="text-xs">Set net amount (auto-discount)</Label>
+              <div className="mt-1 flex gap-2">
+                <Input type="number" placeholder="e.g. 150000" value={targetTotal} onChange={(e) => setTargetTotal(e.target.value)} />
+                <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
+              </div>
+            </div>
+
             <div>
               <Label>Payment method</Label>
               <Select value={method} onValueChange={setMethod}>

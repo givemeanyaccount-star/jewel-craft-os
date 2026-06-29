@@ -271,10 +271,13 @@ export type Database = {
           id: string
           invoice_number: string
           issued_at: string
+          luxury_tax: number
+          luxury_tax_rate: number
           notes: string | null
           old_gold_credit: number
           quotation_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
+          stones_total: number
           subtotal: number
           total: number
           updated_at: string
@@ -291,10 +294,13 @@ export type Database = {
           id?: string
           invoice_number: string
           issued_at?: string
+          luxury_tax?: number
+          luxury_tax_rate?: number
           notes?: string | null
           old_gold_credit?: number
           quotation_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          stones_total?: number
           subtotal?: number
           total?: number
           updated_at?: string
@@ -311,10 +317,13 @@ export type Database = {
           id?: string
           invoice_number?: string
           issued_at?: string
+          luxury_tax?: number
+          luxury_tax_rate?: number
           notes?: string | null
           old_gold_credit?: number
           quotation_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          stones_total?: number
           subtotal?: number
           total?: number
           updated_at?: string
