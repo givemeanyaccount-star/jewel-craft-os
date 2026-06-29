@@ -243,10 +243,31 @@ export default function POS() {
               )}
             </CardHeader>
             <CardContent>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-8" placeholder="Scan QR or search name / SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
+              {todayRates.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2 rounded-md border bg-muted/40 p-2 text-xs">
+                  <span className="font-medium">Today's rate:</span>
+                  {todayRates.map((r, i) => (
+                    <span key={i} className="rounded bg-background px-2 py-0.5">
+                      <span className="capitalize">{r.metal}</span> {r.purity}: <strong>{npr(r.rate_per_gram)}</strong>/g
+                    </span>
+                  ))}
+                  {todayRates[0]?.source && <span className="text-muted-foreground">· src: {todayRates[0].source}</span>}
+                </div>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  <SelectTrigger className="sm:w-48"><SelectValue placeholder="All categories" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input className="pl-8" placeholder="Scan QR or search name / SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                </div>
               </div>
+
               {items.length > 0 && (
                 <div className="mt-2 max-h-64 overflow-y-auto rounded border">
                   {items.map((i) => (
