@@ -380,6 +380,7 @@ export type Database = {
           metal: Database["public"]["Enums"]["metal_type"]
           purity: string
           rate_per_gram: number
+          source: string | null
         }
         Insert: {
           created_at?: string
@@ -389,6 +390,7 @@ export type Database = {
           metal: Database["public"]["Enums"]["metal_type"]
           purity: string
           rate_per_gram: number
+          source?: string | null
         }
         Update: {
           created_at?: string
@@ -398,6 +400,7 @@ export type Database = {
           metal?: Database["public"]["Enums"]["metal_type"]
           purity?: string
           rate_per_gram?: number
+          source?: string | null
         }
         Relationships: []
       }

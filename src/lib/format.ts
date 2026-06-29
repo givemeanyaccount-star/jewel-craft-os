@@ -39,8 +39,13 @@ export function computeInvoiceTaxes(opts: {
   const stonesShare = subtotal > 0 ? stonesTotal / subtotal : 0;
   const taxableStones = Math.max(0, postDiscount * stonesShare);
   const vat = (taxableStones * vatRate) / 100;
-  const luxuryTax = postDiscount > luxThreshold ? (postDiscount * luxRate) / 100 : 0;
+  // Luxury tax: applies on (gold + making + wastage) AFTER deducting old gold credit.
+  // If old gold credit >= non-stone amount → no luxury tax. Threshold check uses the same base.
+  const nonStonePostDiscount = Math.max(0, postDiscount - taxableStones);
+  const luxBase = Math.max(0, nonStonePostDiscount - oldGoldCredit);
+  const luxuryTax = luxBase > luxThreshold ? (luxBase * luxRate) / 100 : 0;
   const total = Math.max(0, postDiscount + vat + luxuryTax - oldGoldCredit);
+
 
   return { subtotal, stonesTotal, nonStoneTotal, discount, taxableStones, vat, luxuryTax, oldGoldCredit, total };
 }

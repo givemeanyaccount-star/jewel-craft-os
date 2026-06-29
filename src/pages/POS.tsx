@@ -56,6 +56,9 @@ export default function POS() {
   const nav = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [categoryId, setCategoryId] = useState<string>("all");
+  const [todayRates, setTodayRates] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<any[]>([]);
   const [cart, setCart] = useState<CartRow[]>([]);
@@ -69,20 +72,25 @@ export default function POS() {
 
   useEffect(() => {
     supabase.from("customers").select("id, full_name, phone").order("full_name").then(({ data }) => setCustomers(data ?? []));
+    supabase.from("categories").select("id, name").order("name").then(({ data }) => setCategories(data ?? []));
+    const today = new Date().toISOString().slice(0, 10);
+    supabase.from("metal_rates").select("metal, purity, rate_per_gram, effective_date, source")
+      .eq("effective_date", today).order("metal").then(({ data }) => setTodayRates(data ?? []));
   }, []);
 
   useEffect(() => {
     const t = setTimeout(async () => {
-      if (!search.trim()) { setItems([]); return; }
       const s = search.trim();
-      const { data } = await supabase.from("inventory_items")
-        .select("*").eq("status", "in_stock")
-        .or(`name.ilike.%${s}%,sku.ilike.%${s}%,qr_code.eq.${s},barcode.eq.${s}`)
-        .limit(20);
+      if (!s && categoryId === "all") { setItems([]); return; }
+      let q = supabase.from("inventory_items").select("*").eq("status", "in_stock");
+      if (categoryId !== "all") q = q.eq("category_id", categoryId);
+      if (s) q = q.or(`name.ilike.%${s}%,sku.ilike.%${s}%,qr_code.eq.${s},barcode.eq.${s}`);
+      const { data } = await q.limit(30);
       setItems(data ?? []);
     }, 200);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, categoryId]);
+
 
   async function fetchRate(metal: string, purity: string): Promise<number> {
     const { data } = await supabase.from("metal_rates")
@@ -235,10 +243,31 @@ export default function POS() {
               )}
             </CardHeader>
             <CardContent>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-8" placeholder="Scan QR or search name / SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
+              {todayRates.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2 rounded-md border bg-muted/40 p-2 text-xs">
+                  <span className="font-medium">Today's rate:</span>
+                  {todayRates.map((r, i) => (
+                    <span key={i} className="rounded bg-background px-2 py-0.5">
+                      <span className="capitalize">{r.metal}</span> {r.purity}: <strong>{npr(r.rate_per_gram)}</strong>/g
+                    </span>
+                  ))}
+                  {todayRates[0]?.source && <span className="text-muted-foreground">· src: {todayRates[0].source}</span>}
+                </div>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  <SelectTrigger className="sm:w-48"><SelectValue placeholder="All categories" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input className="pl-8" placeholder="Scan QR or search name / SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                </div>
               </div>
+
               {items.length > 0 && (
                 <div className="mt-2 max-h-64 overflow-y-auto rounded border">
                   {items.map((i) => (
@@ -308,7 +337,7 @@ export default function POS() {
                 onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
             </div>
             <Row label={`VAT ${VAT_RATE}% (stones only)`} value={npr(tax.vat)} />
-            <Row label={`Luxury tax ${LUXURY_TAX_RATE}% (if > ${npr(LUXURY_TAX_THRESHOLD)})`} value={npr(tax.luxuryTax)} />
+            <Row label={`Luxury tax ${LUXURY_TAX_RATE}% (gold+making − old gold, if > ${npr(LUXURY_TAX_THRESHOLD)})`} value={npr(tax.luxuryTax)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Old gold credit</span>
               <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(e) => setOldGoldCredit(Number(e.target.value) || 0)} />
