@@ -86,7 +86,7 @@ export default function POS() {
 
   async function fetchRate(metal: string, purity: string): Promise<number> {
     const { data } = await supabase.from("metal_rates")
-      .select("rate_per_gram").eq("metal", metal).eq("purity", purity)
+      .select("rate_per_gram").eq("metal", metal as any).eq("purity", purity)
       .order("effective_date", { ascending: false }).limit(1).maybeSingle();
     return Number(data?.rate_per_gram ?? 0);
   }
