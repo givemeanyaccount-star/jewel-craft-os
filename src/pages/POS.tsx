@@ -56,6 +56,9 @@ export default function POS() {
   const nav = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [categoryId, setCategoryId] = useState<string>("all");
+  const [todayRates, setTodayRates] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<any[]>([]);
   const [cart, setCart] = useState<CartRow[]>([]);
@@ -69,20 +72,25 @@ export default function POS() {
 
   useEffect(() => {
     supabase.from("customers").select("id, full_name, phone").order("full_name").then(({ data }) => setCustomers(data ?? []));
+    supabase.from("categories").select("id, name").order("name").then(({ data }) => setCategories(data ?? []));
+    const today = new Date().toISOString().slice(0, 10);
+    supabase.from("metal_rates").select("metal, purity, rate_per_gram, effective_date, source")
+      .eq("effective_date", today).order("metal").then(({ data }) => setTodayRates(data ?? []));
   }, []);
 
   useEffect(() => {
     const t = setTimeout(async () => {
-      if (!search.trim()) { setItems([]); return; }
       const s = search.trim();
-      const { data } = await supabase.from("inventory_items")
-        .select("*").eq("status", "in_stock")
-        .or(`name.ilike.%${s}%,sku.ilike.%${s}%,qr_code.eq.${s},barcode.eq.${s}`)
-        .limit(20);
+      if (!s && categoryId === "all") { setItems([]); return; }
+      let q = supabase.from("inventory_items").select("*").eq("status", "in_stock");
+      if (categoryId !== "all") q = q.eq("category_id", categoryId);
+      if (s) q = q.or(`name.ilike.%${s}%,sku.ilike.%${s}%,qr_code.eq.${s},barcode.eq.${s}`);
+      const { data } = await q.limit(30);
       setItems(data ?? []);
     }, 200);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, categoryId]);
+
 
   async function fetchRate(metal: string, purity: string): Promise<number> {
     const { data } = await supabase.from("metal_rates")
