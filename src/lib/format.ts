@@ -1,8 +1,8 @@
 export const VAT_RATE = 13;
-// Nepal Luxury Tax (Luxury Tax Act 2081/2024): 2% on pre-VAT amount for gold jewellery
-// (including diamonds, pearls, gemstones) when a single transaction exceeds NPR 1,000,000.
+// Nepal Luxury Tax: 2% on (gold + making + wastage − old gold credit). Applies to all
+// qualifying gold-jewellery transactions (no minimum threshold).
 export const LUXURY_TAX_RATE = 2;
-export const LUXURY_TAX_THRESHOLD = 1_000_000;
+export const LUXURY_TAX_THRESHOLD = 0;
 
 export interface TaxBreakdown {
   subtotal: number;        // sum of all line totals (metal + making + wastage + stones)
@@ -43,7 +43,7 @@ export function computeInvoiceTaxes(opts: {
   // If old gold credit >= non-stone amount → no luxury tax. Threshold check uses the same base.
   const nonStonePostDiscount = Math.max(0, postDiscount - taxableStones);
   const luxBase = Math.max(0, nonStonePostDiscount - oldGoldCredit);
-  const luxuryTax = luxBase > luxThreshold ? (luxBase * luxRate) / 100 : 0;
+  const luxuryTax = luxBase > 0 && luxBase >= luxThreshold ? (luxBase * luxRate) / 100 : 0;
   const total = Math.max(0, postDiscount + vat + luxuryTax - oldGoldCredit);
 
 

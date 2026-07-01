@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, Package, ScanLine, Users, FileText, Receipt,
+  LayoutDashboard, Package, Users, FileText, Receipt,
   Coins, Settings, LogOut, Menu, ShieldCheck, Gem, TrendingUp
 } from "lucide-react";
 import { useAuth, AppRole } from "@/hooks/useAuth";
@@ -19,7 +19,6 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/pos", label: "POS / New Sale", icon: Receipt, roles: ["admin", "manager", "sales"] },
-  { to: "/scan", label: "Scan QR", icon: ScanLine, roles: ["admin", "manager", "sales"] },
   { to: "/inventory", label: "Inventory", icon: Package },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/quotations", label: "Quotations", icon: FileText, roles: ["admin", "manager", "sales"] },
