@@ -203,12 +203,16 @@ export type Database = {
           invoice_id: string
           line_total: number
           making_charge: number
+          making_input: number | null
+          making_type: string | null
           metal: Database["public"]["Enums"]["metal_type"] | null
           purity: string | null
           quantity: number
           rate: number | null
           stone_value: number
           wastage_amount: number
+          wastage_input: number | null
+          wastage_type: string | null
           weight: number | null
         }
         Insert: {
@@ -219,12 +223,16 @@ export type Database = {
           invoice_id: string
           line_total?: number
           making_charge?: number
+          making_input?: number | null
+          making_type?: string | null
           metal?: Database["public"]["Enums"]["metal_type"] | null
           purity?: string | null
           quantity?: number
           rate?: number | null
           stone_value?: number
           wastage_amount?: number
+          wastage_input?: number | null
+          wastage_type?: string | null
           weight?: number | null
         }
         Update: {
@@ -235,12 +243,16 @@ export type Database = {
           invoice_id?: string
           line_total?: number
           making_charge?: number
+          making_input?: number | null
+          making_type?: string | null
           metal?: Database["public"]["Enums"]["metal_type"] | null
           purity?: string | null
           quantity?: number
           rate?: number | null
           stone_value?: number
           wastage_amount?: number
+          wastage_input?: number | null
+          wastage_type?: string | null
           weight?: number | null
         }
         Relationships: [
