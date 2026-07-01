@@ -61,8 +61,10 @@ export default function InvoiceDetail() {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Item</TableHead><TableHead className="text-right">Wt</TableHead>
-                <TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Making</TableHead>
-                <TableHead className="text-right">Wastage</TableHead><TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Rate</TableHead>
+                <TableHead className="text-right">Wastage</TableHead>
+                <TableHead className="text-right">Making</TableHead>
+                <TableHead className="text-right">Total</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {items.map((r) => (
@@ -71,8 +73,18 @@ export default function InvoiceDetail() {
                       <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div></TableCell>
                     <TableCell className="text-right">{r.weight}g</TableCell>
                     <TableCell className="text-right">{npr(r.rate)}</TableCell>
-                    <TableCell className="text-right">{npr(r.making_charge)}</TableCell>
-                    <TableCell className="text-right">{npr(r.wastage_amount)}</TableCell>
+                    <TableCell className="text-right">
+                      <div>{npr(r.wastage_amount)}</div>
+                      {r.wastage_type && (
+                        <div className="text-[10px] text-muted-foreground">({formatBasis(r.wastage_type, r.wastage_input)})</div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div>{npr(r.making_charge)}</div>
+                      {r.making_type && (
+                        <div className="text-[10px] text-muted-foreground">({formatMaking(r.making_type, r.making_input)})</div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right font-medium">{npr(r.line_total)}</TableCell>
                   </TableRow>
                 ))}
@@ -122,6 +134,19 @@ export default function InvoiceDetail() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return <div className="flex justify-between"><span className="text-muted-foreground">{label}</span><span>{value}</span></div>;
+}
+
+function formatMaking(type: string, input: number | null | undefined) {
+  const v = Number(input ?? 0);
+  if (type === "per_gram") return `${v}/g`;
+  if (type === "percentage") return `${v}% of metal`;
+  return `fixed ${v}`;
+}
+function formatBasis(type: string, input: number | null | undefined) {
+  const v = Number(input ?? 0);
+  if (type === "percentage") return `${v}% of metal`;
+  if (type === "weight") return `${v}g × rate`;
+  return `fixed ${v}`;
 }
 
 function PaymentDialog({ open, onOpenChange, invoice, userId, onSaved }: any) {
