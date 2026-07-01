@@ -139,6 +139,17 @@ export default function POS() {
   }
   function removeRow(idx: number) { setCart((c) => c.filter((_, i) => i !== idx)); }
 
+  async function handleScan(code: string) {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    const { data } = await supabase.from("inventory_items")
+      .select("*").eq("status", "in_stock")
+      .or(`qr_code.eq.${trimmed},sku.eq.${trimmed},barcode.eq.${trimmed}`)
+      .maybeSingle();
+    if (!data) return toast.error("No in-stock item for: " + trimmed);
+    addToCart(data);
+  }
+
   async function refreshAllRates() {
     const updated = await Promise.all(cart.map(async (r) => {
       if (!r.metal || !r.purity) return r;
@@ -198,7 +209,9 @@ export default function POS() {
         metal: r.metal, purity: r.purity,
         weight: r.weight, rate: r.rate,
         making_charge: r.making_charge,
+        making_input: r.making_input, making_type: r.making_type,
         wastage_amount: r.wastage_amount,
+        wastage_input: r.wastage_input, wastage_type: r.wastage_type,
         stone_value: r.stone_value,
         quantity: r.quantity,
         line_total: r.line_total,
