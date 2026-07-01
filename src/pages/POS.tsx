@@ -75,8 +75,15 @@ export default function POS() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [newCustOpen, setNewCustOpen] = useState(false);
+  const [ogOpen, setOgOpen] = useState(false);
+
+  useEffect(() => { loadCustomers(); }, []);
+  async function loadCustomers() {
+    const { data } = await supabase.from("customers").select("id, full_name, phone").order("full_name");
+    setCustomers(data ?? []);
+  }
   useEffect(() => {
-    supabase.from("customers").select("id, full_name, phone").order("full_name").then(({ data }) => setCustomers(data ?? []));
     supabase.from("categories").select("id, name").order("name").then(({ data }) => setCategories(data ?? []));
     const today = new Date().toISOString().slice(0, 10);
     supabase.from("metal_rates").select("metal, purity, rate_per_gram, effective_date, source")
