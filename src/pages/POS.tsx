@@ -9,15 +9,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Search, ShoppingCart, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins } from "lucide-react";
 import {
   npr, computeLineTotal, VAT_RATE, LUXURY_TAX_RATE, LUXURY_TAX_THRESHOLD,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
+  computeNetWeight, computeFineWeight,
 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
+import { QRScanButton } from "@/components/QRScanButton";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
+const OG_METALS = ["gold", "silver", "platinum"];
+const OG_PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
 
 interface CartRow {
   inventory_item_id: string | null;
