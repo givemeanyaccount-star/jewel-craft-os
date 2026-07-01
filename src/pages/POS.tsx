@@ -248,13 +248,18 @@ export default function POS() {
           <Card>
             <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
             <CardContent>
-              <Select value={customerId ?? "walkin"} onValueChange={(v) => setCustomerId(v === "walkin" ? null : v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="walkin">Walk-in customer</SelectItem>
-                  {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} {c.phone && `· ${c.phone}`}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={customerId ?? "walkin"} onValueChange={(v) => setCustomerId(v === "walkin" ? null : v)}>
+                  <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="walkin">Walk-in customer</SelectItem>
+                    {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} {c.phone && `· ${c.phone}`}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={() => setNewCustOpen(true)}>
+                  <UserPlus className="mr-1 h-4 w-4" /> New
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -291,6 +296,7 @@ export default function POS() {
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input className="pl-8" placeholder="Scan QR or search name / SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
+                <QRScanButton onScan={handleScan} />
               </div>
 
               {items.length > 0 && (
@@ -362,10 +368,15 @@ export default function POS() {
                 onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
             </div>
             <Row label={`VAT ${VAT_RATE}% (stones only)`} value={npr(tax.vat)} />
-            <Row label={`Luxury tax ${LUXURY_TAX_RATE}% (gold+making − old gold, if > ${npr(LUXURY_TAX_THRESHOLD)})`} value={npr(tax.luxuryTax)} />
+            <Row label={`Luxury tax ${LUXURY_TAX_RATE}% (gold+making − old gold)`} value={npr(tax.luxuryTax)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Old gold credit</span>
-              <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(e) => setOldGoldCredit(Number(e.target.value) || 0)} />
+              <div className="flex gap-1">
+                <Button size="sm" variant="outline" onClick={() => setOgOpen(true)} title="New old gold purchase">
+                  <Coins className="h-3.5 w-3.5" />
+                </Button>
+                <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(e) => setOldGoldCredit(Number(e.target.value) || 0)} />
+              </div>
             </div>
             <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>
 
