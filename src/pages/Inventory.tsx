@@ -15,6 +15,7 @@ import { Plus, Search, Package, QrCode } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { computeNetWeight, computeFineWeight, npr, gms } from "@/lib/format";
 import { uploadImage } from "@/lib/storage";
+import { QRScanButton } from "@/components/QRScanButton";
 
 interface Category { id: string; name: string; }
 interface Location_ { id: string; name: string; }
@@ -73,6 +74,7 @@ export default function Inventory() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-8" placeholder="Search by name, SKU, QR..." value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        <QRScanButton onScan={(code) => setQ(code)} />
         <Select value={filterCat} onValueChange={setFilterCat}>
           <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
           <SelectContent>
