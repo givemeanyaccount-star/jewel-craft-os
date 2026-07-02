@@ -78,6 +78,8 @@ export default function POS() {
 
   const [newCustOpen, setNewCustOpen] = useState(false);
   const [ogOpen, setOgOpen] = useState(false);
+  const [newItemOpen, setNewItemOpen] = useState(false);
+  const [locations, setLocations] = useState<any[]>([]);
 
   useEffect(() => { loadCustomers(); }, []);
   async function loadCustomers() {
@@ -86,6 +88,7 @@ export default function POS() {
   }
   useEffect(() => {
     supabase.from("categories").select("id, name").order("name").then(({ data }) => setCategories(data ?? []));
+    supabase.from("locations").select("id, name").order("name").then(({ data }) => setLocations(data ?? []));
     const today = new Date().toISOString().slice(0, 10);
     supabase.from("metal_rates").select("metal, purity, rate_per_gram, effective_date, source")
       .eq("effective_date", today).order("metal").then(({ data }) => setTodayRates(data ?? []));
