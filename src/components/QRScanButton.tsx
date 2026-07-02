@@ -83,17 +83,27 @@ export function QRScanButton({
 
   return (
     <>
-      <Button type="button" size={size} variant={variant} onClick={() => setOpen(true)} title="Scan QR / barcode">
+      <Button type="button" size={size} variant={variant} onClick={() => { setCamError(null); setManual(""); setOpen(true); }} title="Scan QR / barcode">
         <ScanLine className={label ? "mr-1 h-4 w-4" : "h-4 w-4"} />
         {label}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Scan QR / Barcode</DialogTitle></DialogHeader>
-          <div id={SCANNER_ID} className="aspect-square w-full overflow-hidden rounded border bg-muted" />
+          {!camError && (
+            <div id={SCANNER_ID} className="aspect-square w-full overflow-hidden rounded border bg-muted" />
+          )}
           <p className="text-center text-xs text-muted-foreground">
-            {starting ? "Starting camera…" : "Point camera at the QR / barcode"}
+            {camError ? camError : starting ? "Starting camera…" : "Point camera at the QR / barcode"}
           </p>
+          <div className="mt-2 border-t pt-3">
+            <p className="mb-2 text-xs font-medium">Or enter code manually</p>
+            <div className="flex gap-2">
+              <Input value={manual} onChange={(e) => setManual(e.target.value)} placeholder="SKU / QR / barcode"
+                onKeyDown={(e) => { if (e.key === "Enter" && manual.trim()) { const v = manual.trim(); setOpen(false); onScan(v); } }} autoFocus={!!camError} />
+              <Button onClick={() => { if (manual.trim()) { const v = manual.trim(); setOpen(false); onScan(v); } }}>Use</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>
