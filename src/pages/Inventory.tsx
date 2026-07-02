@@ -136,9 +136,9 @@ export default function Inventory() {
   );
 }
 
-function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }: {
+export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }: {
   open: boolean; onOpenChange: (v: boolean) => void;
-  editing: Item | null; cats: Category[]; locs: Location_[]; onSaved: () => void;
+  editing: Item | null; cats: Category[]; locs: Location_[]; onSaved: (created?: any) => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
