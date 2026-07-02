@@ -2,12 +2,13 @@ import { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Users, FileText, Receipt,
-  Coins, Settings, LogOut, Menu, ShieldCheck, Gem, TrendingUp
+  Coins, Settings, LogOut, Menu, ShieldCheck, TrendingUp
 } from "lucide-react";
 import { useAuth, AppRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import logoUrl from "@/assets/logo.png";
 
 interface NavItem {
   to: string;
