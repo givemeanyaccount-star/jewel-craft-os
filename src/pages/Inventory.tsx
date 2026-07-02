@@ -192,18 +192,24 @@ function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }: {
         const { error } = await supabase.from("inventory_items").update(payload).eq("id", editing.id);
         if (error) throw error;
         toast.success("Item updated");
+        onSaved();
       } else {
-        const sku = `JM-${Date.now().toString().slice(-8)}`;
+        // Auto-generate SKU using category prefix + sequence
+        let sku = `JM-${Date.now().toString().slice(-8)}`;
+        if (form.category_id) {
+          const { data: skuData } = await supabase.rpc("next_category_sku", { _category_id: form.category_id });
+          if (skuData) sku = skuData as string;
+        }
         const qr = `JM-QR-${crypto.randomUUID().slice(0, 12).toUpperCase()}`;
-        const { error } = await supabase.from("inventory_items").insert({ ...payload, sku, qr_code: qr, barcode: sku });
+        const { data: created, error } = await supabase
+          .from("inventory_items")
+          .insert({ ...payload, sku, qr_code: qr, barcode: sku })
+          .select()
+          .single();
         if (error) throw error;
-        toast.success("Item created");
+        toast.success(`Item created (${sku})`);
+        onSaved(created as any);
       }
-      onSaved();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to save");
-    } finally { setSaving(false); }
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
