@@ -423,6 +423,12 @@ export default function POS() {
       <OldGoldQuickDialog open={ogOpen} onOpenChange={setOgOpen} userId={user?.id ?? null}
         customerId={customerId} customers={customers}
         onSaved={(amount) => { setOgOpen(false); setOldGoldCredit(amount); toast.success(`Old gold credit set to ${npr(amount)}`); }} />
+      <ItemDialog open={newItemOpen} onOpenChange={setNewItemOpen}
+        editing={null} cats={categories as any} locs={locations as any}
+        onSaved={(created) => {
+          setNewItemOpen(false);
+          if (created) { addToCart(created); toast.success(`${created.sku} added to sale`); }
+        }} />
     </AppLayout>
   );
 }
