@@ -5,6 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScanLine } from "lucide-react";
 import { toast } from "sonner";
 
+const SCANNER_ID = "qr-reader-region";
+
 export function QRScanButton({
   onScan,
   size = "icon",
@@ -17,40 +19,60 @@ export function QRScanButton({
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    (async () => {
-      if (!ref.current) return;
-      const id = "qr-scan-btn-" + Math.random().toString(36).slice(2, 8);
-      ref.current.id = id;
-      const scanner = new Html5Qrcode(id);
-      scannerRef.current = scanner;
-      try {
-        await scanner.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: 220 },
-          async (text) => {
-            if (cancelled) return;
-            cancelled = true;
-            try { await scanner.stop(); await scanner.clear(); } catch {}
-            setOpen(false);
-            onScan(text.trim());
-          },
-          () => {}
-        );
-      } catch {
-        toast.error("Camera unavailable");
-        setOpen(false);
+
+    const start = async () => {
+      // wait for the region to be in the DOM (Dialog uses a portal)
+      let el: HTMLElement | null = null;
+      for (let i = 0; i < 20 && !el; i++) {
+        el = document.getElementById(SCANNER_ID);
+        if (!el) await new Promise((r) => setTimeout(r, 50));
       }
-    })();
+      if (!el || cancelled) return;
+      setStarting(true);
+      try {
+        const scanner = new Html5Qrcode(SCANNER_ID, { verbose: false } as any);
+        scannerRef.current = scanner;
+        // Prefer back camera; fall back to any
+        const config = { fps: 10, qrbox: { width: 240, height: 240 } };
+        try {
+          await scanner.start({ facingMode: { exact: "environment" } as any }, config, onFound, () => {});
+        } catch {
+          await scanner.start({ facingMode: "environment" }, config, onFound, () => {});
+        }
+      } catch (e: any) {
+        toast.error(e?.message || "Camera unavailable — check permissions");
+        setOpen(false);
+      } finally {
+        setStarting(false);
+      }
+    };
+
+    const onFound = async (text: string) => {
+      if (cancelled) return;
+      cancelled = true;
+      const s = scannerRef.current;
+      try { await s?.stop(); } catch {}
+      try { await s?.clear(); } catch {}
+      scannerRef.current = null;
+      setOpen(false);
+      onScan(text.trim());
+    };
+
+    start();
+
     return () => {
       cancelled = true;
+      const s = scannerRef.current;
+      scannerRef.current = null;
       (async () => {
-        try { await scannerRef.current?.stop(); await scannerRef.current?.clear(); } catch {}
+        try { if (s && (s as any).isScanning) await s.stop(); } catch {}
+        try { await s?.clear(); } catch {}
       })();
     };
   }, [open, onScan]);
@@ -64,7 +86,10 @@ export function QRScanButton({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Scan QR / Barcode</DialogTitle></DialogHeader>
-          <div ref={ref} className="aspect-square w-full overflow-hidden rounded border bg-muted" />
+          <div id={SCANNER_ID} className="aspect-square w-full overflow-hidden rounded border bg-muted" />
+          <p className="text-center text-xs text-muted-foreground">
+            {starting ? "Starting camera…" : "Point camera at the QR / barcode"}
+          </p>
         </DialogContent>
       </Dialog>
     </>
