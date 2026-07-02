@@ -20,6 +20,8 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          next_sequence: number
+          sku_prefix: string | null
           updated_at: string
         }
         Insert: {
@@ -27,6 +29,8 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          next_sequence?: number
+          sku_prefix?: string | null
           updated_at?: string
         }
         Update: {
@@ -34,6 +38,8 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          next_sequence?: number
+          sku_prefix?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -752,6 +758,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_category_sku: { Args: { _category_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "manager" | "sales" | "karigar" | "accountant"

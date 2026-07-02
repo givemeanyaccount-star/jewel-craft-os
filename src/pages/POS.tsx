@@ -19,6 +19,7 @@ import {
 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { QRScanButton } from "@/components/QRScanButton";
+import { ItemDialog } from "@/pages/Inventory";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
 const OG_METALS = ["gold", "silver", "platinum"];
@@ -77,6 +78,8 @@ export default function POS() {
 
   const [newCustOpen, setNewCustOpen] = useState(false);
   const [ogOpen, setOgOpen] = useState(false);
+  const [newItemOpen, setNewItemOpen] = useState(false);
+  const [locations, setLocations] = useState<any[]>([]);
 
   useEffect(() => { loadCustomers(); }, []);
   async function loadCustomers() {
@@ -85,6 +88,7 @@ export default function POS() {
   }
   useEffect(() => {
     supabase.from("categories").select("id, name").order("name").then(({ data }) => setCategories(data ?? []));
+    supabase.from("locations").select("id, name").order("name").then(({ data }) => setLocations(data ?? []));
     const today = new Date().toISOString().slice(0, 10);
     supabase.from("metal_rates").select("metal, purity, rate_per_gram, effective_date, source")
       .eq("effective_date", today).order("metal").then(({ data }) => setTodayRates(data ?? []));
@@ -297,6 +301,9 @@ export default function POS() {
                   <Input className="pl-8" placeholder="Scan QR or search name / SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
                 <QRScanButton onScan={handleScan} />
+                <Button size="sm" variant="secondary" onClick={() => setNewItemOpen(true)} title="Create new item and add to sale">
+                  <Plus className="mr-1 h-4 w-4" /> New item
+                </Button>
               </div>
 
               {items.length > 0 && (
@@ -416,6 +423,12 @@ export default function POS() {
       <OldGoldQuickDialog open={ogOpen} onOpenChange={setOgOpen} userId={user?.id ?? null}
         customerId={customerId} customers={customers}
         onSaved={(amount) => { setOgOpen(false); setOldGoldCredit(amount); toast.success(`Old gold credit set to ${npr(amount)}`); }} />
+      <ItemDialog open={newItemOpen} onOpenChange={setNewItemOpen}
+        editing={null} cats={categories as any} locs={locations as any}
+        onSaved={(created) => {
+          setNewItemOpen(false);
+          if (created) { addToCart(created); toast.success(`${created.sku} added to sale`); }
+        }} />
     </AppLayout>
   );
 }

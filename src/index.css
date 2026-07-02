@@ -89,3 +89,16 @@
   .text-gold { color: hsl(var(--accent)); }
   .bg-gold { background-color: hsl(var(--accent)); }
 }
+
+/* Print styling for invoices/receipts */
+@media print {
+  body { background: white !important; }
+  .no-print, aside, header, nav, [data-sidebar], .print-hide { display: none !important; }
+  main { padding: 0 !important; }
+  .print-only { display: block !important; }
+  .print-shell { max-width: 190mm; margin: 0 auto; padding: 8mm; }
+  .print-shell .rounded-lg, .print-shell .border, .print-shell [class*="shadow"] { box-shadow: none !important; }
+  @page { size: A4; margin: 10mm; }
+}
+.print-only { display: none; }
+

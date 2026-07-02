@@ -44,16 +44,33 @@ export default function ItemDetail() {
     const canvas = qrRef.current; if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
     const w = window.open("", "_blank"); if (!w) return;
-    w.document.write(`<html><head><title>${item.sku}</title>
-      <style>body{font-family:system-ui;padding:16px;text-align:center}
-      .tag{display:inline-block;border:1px solid #999;padding:10px;border-radius:6px;width:240px}
-      h3{margin:6px 0 2px;font-size:14px}p{margin:2px 0;font-size:11px;color:#555}</style>
+    const logo = `${window.location.origin}/logo.png`;
+    const priceLine = `${item.metal.toUpperCase()} · ${item.purity} · ${Number(item.net_weight).toFixed(3)}g net`;
+    w.document.write(`<html><head><title>Tag ${item.sku}</title>
+      <style>
+        @page { size: 55mm 85mm; margin: 3mm; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', system-ui, sans-serif; margin: 0; color: #111; }
+        .tag { width: 49mm; padding: 3mm; border: 0.4mm solid #111; border-radius: 2mm; text-align: center; }
+        .brand { display:flex; align-items:center; justify-content:center; gap:2mm; border-bottom: 0.2mm solid #ddd; padding-bottom:2mm; }
+        .brand img { width: 8mm; height: 8mm; object-fit: contain; }
+        .brand span { font-size: 8pt; letter-spacing: 0.15em; font-weight: 600; }
+        .name { font-size: 9pt; font-weight: 600; margin: 2mm 0 0.5mm; line-height: 1.2; }
+        .meta { font-size: 7pt; color: #555; margin: 0 0 2mm; }
+        .qr { margin: 1mm auto; }
+        .sku { font-family: 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.05em; margin-top: 1mm; }
+        .foot { font-size: 6pt; color: #888; margin-top: 1mm; letter-spacing: 0.1em; text-transform: uppercase; }
+      </style>
       </head><body><div class="tag">
-      <img src="${dataUrl}" width="200" />
-      <h3>${item.name}</h3>
-      <p>${item.sku}</p>
-      <p>${item.metal} ${item.purity} · ${item.net_weight}g net</p>
-      </div><script>window.print();<\/script></body></html>`);
+        <div class="brand"><img src="${logo}"/><span>JEWELMASTER</span></div>
+        <div class="name">${item.name}</div>
+        <div class="meta">${priceLine}</div>
+        <img class="qr" src="${dataUrl}" width="120" />
+        <div class="sku">${item.sku}</div>
+        <div class="foot">Scan · Verify · Trust</div>
+      </div>
+      <script>window.onload=()=>{setTimeout(()=>window.print(),100);};<\/script>
+      </body></html>`);
     w.document.close();
   }
 
