@@ -14,6 +14,7 @@ import { ArrowLeft, Printer, Plus } from "lucide-react";
 import { npr } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import logoUrl from "@/assets/logo.png";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
 
