@@ -301,6 +301,9 @@ export default function POS() {
                   <Input className="pl-8" placeholder="Scan QR or search name / SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
                 <QRScanButton onScan={handleScan} />
+                <Button size="sm" variant="secondary" onClick={() => setNewItemOpen(true)} title="Create new item and add to sale">
+                  <Plus className="mr-1 h-4 w-4" /> New item
+                </Button>
               </div>
 
               {items.length > 0 && (
