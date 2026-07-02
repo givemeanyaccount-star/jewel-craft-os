@@ -19,6 +19,7 @@ import {
 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { QRScanButton } from "@/components/QRScanButton";
+import { ItemDialog } from "@/pages/Inventory";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
 const OG_METALS = ["gold", "silver", "platinum"];
