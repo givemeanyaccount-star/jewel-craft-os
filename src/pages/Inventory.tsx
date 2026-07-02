@@ -209,7 +209,11 @@ function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }: {
         if (error) throw error;
         toast.success(`Item created (${sku})`);
         onSaved(created as any);
-      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save");
+    } finally { setSaving(false); }
+  }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
