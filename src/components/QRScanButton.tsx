@@ -49,8 +49,9 @@ export function QRScanButton({
           await scanner.start({ facingMode: "environment" }, config, onFound, () => {});
         }
       } catch (e: any) {
-        toast.error(e?.message || "Camera unavailable — check permissions");
-        setOpen(false);
+        const msg = e?.message || "Camera unavailable — check permissions";
+        setCamError(msg);
+        toast.error(msg);
       } finally {
         setStarting(false);
       }
