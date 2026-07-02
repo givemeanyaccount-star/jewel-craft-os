@@ -22,6 +22,8 @@ export function QRScanButton({
   const [open, setOpen] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [starting, setStarting] = useState(false);
+  const [manual, setManual] = useState("");
+  const [camError, setCamError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
