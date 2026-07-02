@@ -35,8 +35,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const visible = NAV.filter((n) => !n.roles || n.roles.some((r) => roles.includes(r)));
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <Link to="/" onClick={onNavigate} className="flex items-center gap-2 border-b border-sidebar-border px-5 py-4">
-        <Gem className="h-6 w-6 text-sidebar-primary" />
+      <Link to="/" onClick={onNavigate} className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
+        <img src={logoUrl} alt="JewelMaster OS" className="h-9 w-9 rounded-md bg-white/95 object-contain p-0.5" />
         <div>
           <div className="text-base font-semibold tracking-tight">JewelMaster</div>
           <div className="text-[10px] uppercase tracking-widest text-sidebar-primary">OS · Kathmandu</div>
