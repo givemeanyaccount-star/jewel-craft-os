@@ -73,10 +73,10 @@ export default function POS() {
   const [discount, setDiscount] = useState(0);
   const [oldGoldCredit, setOldGoldCredit] = useState(0);
   const [targetTotal, setTargetTotal] = useState<string>("");
-  const [paid, setPaid] = useState(0);
-  const [method, setMethod] = useState("cash");
+  const [payments, setPayments] = useState<PayLine[]>([{ method: "cash", amount: 0 }]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editItem, setEditItem] = useState<{ row: number; item: any } | null>(null);
 
   const [newCustOpen, setNewCustOpen] = useState(false);
   const [ogOpen, setOgOpen] = useState(false);
