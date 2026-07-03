@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins } from "lucide-react";
+import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil } from "lucide-react";
 import {
   npr, computeLineTotal, VAT_RATE, LUXURY_TAX_RATE, LUXURY_TAX_THRESHOLD,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
