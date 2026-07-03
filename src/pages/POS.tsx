@@ -227,11 +227,12 @@ export default function POS() {
       const { error: lErr } = await supabase.from("invoice_items").insert(lines as any);
       if (lErr) throw lErr;
 
-      if (paid > 0) {
-        await supabase.from("payments").insert({
-          invoice_id: inv.id, customer_id: customerId, amount: paid,
-          method: method as any, created_by: user?.id,
-        });
+      const validPays = payments.filter((p) => Number(p.amount) > 0);
+      if (validPays.length) {
+        await supabase.from("payments").insert(validPays.map((p) => ({
+          invoice_id: inv.id, customer_id: customerId, amount: Number(p.amount),
+          method: p.method as any, created_by: user?.id,
+        })));
       }
 
       const itemIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
