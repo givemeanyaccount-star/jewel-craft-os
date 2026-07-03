@@ -154,8 +154,18 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
       making_charge: 0, making_charge_type: "per_gram",
       wastage_type: "percentage", wastage_value: 0, stone_value: 0, status: "in_stock",
     });
-    setImageFile(null);
+    setImageFiles([]);
+    setPreviews([]);
   }, [editing, open]);
+
+  function addFile(f: File) {
+    setImageFiles((a) => [...a, f]);
+    setPreviews((a) => [...a, URL.createObjectURL(f)]);
+  }
+  function removePending(i: number) {
+    setImageFiles((a) => a.filter((_, idx) => idx !== i));
+    setPreviews((a) => a.filter((_, idx) => idx !== i));
+  }
 
   const netWeight = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
   const fineWeight = computeFineWeight(netWeight, form.purity || "");
@@ -165,8 +175,8 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
     setSaving(true);
     try {
       let imagePaths = editing?.image_urls ?? [];
-      if (imageFile) {
-        const path = await uploadImage("product-images", imageFile, "items/");
+      for (const f of imageFiles) {
+        const path = await uploadImage("product-images", f, "items/");
         imagePaths = [...imagePaths, path];
       }
 
