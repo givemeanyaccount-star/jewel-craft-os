@@ -36,12 +36,14 @@ interface CartRow {
   stone_value: number;
   quantity: number;
   line_total: number;
-  // raw rule fields (kept for live recompute)
   making_input: number;
   making_type: "per_gram" | "fixed" | "percentage";
   wastage_input: number;
   wastage_type: "percentage" | "weight" | "fixed";
+  raw_item?: any; // full inventory row for editing
 }
+
+interface PayLine { method: string; amount: number; }
 
 function recompute(r: CartRow): CartRow {
   const { making, wastageAmount, lineTotal } = computeLineTotal({
