@@ -328,8 +328,17 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
             <Textarea rows={2} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
           <div className="md:col-span-2">
-            <Label>Image (optional)</Label>
-            <Input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] ?? null)} />
+            <Label>Photos</Label>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {previews.map((p, i) => (
+                <div key={i} className="relative h-16 w-16 overflow-hidden rounded border">
+                  <img src={p} alt="" className="h-full w-full object-cover" />
+                  <button type="button" onClick={() => removePending(i)}
+                    className="absolute right-0 top-0 rounded-bl bg-destructive px-1 text-[10px] text-destructive-foreground">×</button>
+                </div>
+              ))}
+              <ImageCaptureButton onCapture={addFile} label={previews.length ? "Add another" : "Take / upload photo"} />
+            </div>
           </div>
         </div>
         <DialogFooter>
