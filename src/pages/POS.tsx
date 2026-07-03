@@ -401,16 +401,35 @@ export default function POS() {
             </div>
 
             <div>
-              <Label>Payment method</Label>
-              <Select value={method} onValueChange={setMethod}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Amount received</Label>
-              <Input type="number" value={paid} onChange={(e) => setPaid(Number(e.target.value) || 0)} />
-              <div className="mt-1 text-right text-xs text-muted-foreground">Balance: {npr(balance)}</div>
+              <div className="flex items-center justify-between">
+                <Label>Payments</Label>
+                <Button size="sm" variant="ghost"
+                  onClick={() => setPayments((p) => [...p, { method: "cash", amount: Math.max(0, tax.total - paid) }])}>
+                  <Plus className="mr-1 h-3 w-3" /> Add
+                </Button>
+              </div>
+              <div className="mt-1 space-y-2">
+                {payments.map((p, i) => (
+                  <div key={i} className="flex gap-1">
+                    <Select value={p.method} onValueChange={(v) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, method: v } : x))}>
+                      <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Input type="number" className="h-9 w-28 text-right" value={p.amount}
+                      onChange={(e) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, amount: Number(e.target.value) || 0 } : x))} />
+                    {payments.length > 1 && (
+                      <Button size="icon" variant="ghost" className="h-9 w-9"
+                        onClick={() => setPayments((arr) => arr.filter((_, j) => j !== i))}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                <span>Paid: {npr(paid)}</span>
+                <span>Balance: {npr(balance)}</span>
+              </div>
             </div>
             <div>
               <Label>Notes</Label>
