@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { computeNetWeight, computeFineWeight, npr, gms } from "@/lib/format";
 import { uploadImage } from "@/lib/storage";
 import { QRScanButton } from "@/components/QRScanButton";
+import { ImageCaptureButton } from "@/components/ImageCapture";
 
 interface Category { id: string; name: string; }
 interface Location_ { id: string; name: string; }
@@ -142,7 +143,8 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
 }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   useEffect(() => {
     if (editing) setForm({ ...editing });
@@ -152,8 +154,18 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
       making_charge: 0, making_charge_type: "per_gram",
       wastage_type: "percentage", wastage_value: 0, stone_value: 0, status: "in_stock",
     });
-    setImageFile(null);
+    setImageFiles([]);
+    setPreviews([]);
   }, [editing, open]);
+
+  function addFile(f: File) {
+    setImageFiles((a) => [...a, f]);
+    setPreviews((a) => [...a, URL.createObjectURL(f)]);
+  }
+  function removePending(i: number) {
+    setImageFiles((a) => a.filter((_, idx) => idx !== i));
+    setPreviews((a) => a.filter((_, idx) => idx !== i));
+  }
 
   const netWeight = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
   const fineWeight = computeFineWeight(netWeight, form.purity || "");
@@ -163,8 +175,8 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
     setSaving(true);
     try {
       let imagePaths = editing?.image_urls ?? [];
-      if (imageFile) {
-        const path = await uploadImage("product-images", imageFile, "items/");
+      for (const f of imageFiles) {
+        const path = await uploadImage("product-images", f, "items/");
         imagePaths = [...imagePaths, path];
       }
 
@@ -316,8 +328,17 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
             <Textarea rows={2} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
           <div className="md:col-span-2">
-            <Label>Image (optional)</Label>
-            <Input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] ?? null)} />
+            <Label>Photos</Label>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {previews.map((p, i) => (
+                <div key={i} className="relative h-16 w-16 overflow-hidden rounded border">
+                  <img src={p} alt="" className="h-full w-full object-cover" />
+                  <button type="button" onClick={() => removePending(i)}
+                    className="absolute right-0 top-0 rounded-bl bg-destructive px-1 text-[10px] text-destructive-foreground">×</button>
+                </div>
+              ))}
+              <ImageCaptureButton onCapture={addFile} label={previews.length ? "Add another" : "Take / upload photo"} />
+            </div>
           </div>
         </div>
         <DialogFooter>

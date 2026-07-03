@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins } from "lucide-react";
+import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil } from "lucide-react";
 import {
   npr, computeLineTotal, VAT_RATE, LUXURY_TAX_RATE, LUXURY_TAX_THRESHOLD,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
@@ -36,12 +36,14 @@ interface CartRow {
   stone_value: number;
   quantity: number;
   line_total: number;
-  // raw rule fields (kept for live recompute)
   making_input: number;
   making_type: "per_gram" | "fixed" | "percentage";
   wastage_input: number;
   wastage_type: "percentage" | "weight" | "fixed";
+  raw_item?: any; // full inventory row for editing
 }
+
+interface PayLine { method: string; amount: number; }
 
 function recompute(r: CartRow): CartRow {
   const { making, wastageAmount, lineTotal } = computeLineTotal({
@@ -71,10 +73,10 @@ export default function POS() {
   const [discount, setDiscount] = useState(0);
   const [oldGoldCredit, setOldGoldCredit] = useState(0);
   const [targetTotal, setTargetTotal] = useState<string>("");
-  const [paid, setPaid] = useState(0);
-  const [method, setMethod] = useState("cash");
+  const [payments, setPayments] = useState<PayLine[]>([{ method: "cash", amount: 0 }]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editItem, setEditItem] = useState<{ row: number; item: any } | null>(null);
 
   const [newCustOpen, setNewCustOpen] = useState(false);
   const [ogOpen, setOgOpen] = useState(false);
@@ -133,6 +135,7 @@ export default function POS() {
       making_type: (item.making_charge_type ?? "per_gram") as any,
       wastage_input: Number(item.wastage_value ?? 0),
       wastage_type: (item.wastage_type ?? "percentage") as any,
+      raw_item: item,
     };
     setCart((c) => [...c, recompute(row)]);
     setSearch(""); setItems([]);
@@ -172,6 +175,7 @@ export default function POS() {
     vatRate: VAT_RATE, luxuryTaxRate: LUXURY_TAX_RATE, luxuryTaxThreshold: LUXURY_TAX_THRESHOLD,
   }), [subtotal, stonesTotal, discount, oldGoldCredit]);
 
+  const paid = useMemo(() => payments.reduce((a, p) => a + (Number(p.amount) || 0), 0), [payments]);
   const balance = Math.max(0, tax.total - paid);
 
   function applyTargetTotal() {
@@ -223,11 +227,12 @@ export default function POS() {
       const { error: lErr } = await supabase.from("invoice_items").insert(lines as any);
       if (lErr) throw lErr;
 
-      if (paid > 0) {
-        await supabase.from("payments").insert({
-          invoice_id: inv.id, customer_id: customerId, amount: paid,
-          method: method as any, created_by: user?.id,
-        });
+      const validPays = payments.filter((p) => Number(p.amount) > 0);
+      if (validPays.length) {
+        await supabase.from("payments").insert(validPays.map((p) => ({
+          invoice_id: inv.id, customer_id: customerId, amount: Number(p.amount),
+          method: p.method as any, created_by: user?.id,
+        })));
       }
 
       const itemIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
@@ -354,7 +359,15 @@ export default function POS() {
                             onChange={(e) => updateRow(i, { stone_value: Number(e.target.value) || 0 })} />
                         </TableCell>
                         <TableCell className="text-right font-medium">{npr(r.line_total)}</TableCell>
-                        <TableCell><Button size="icon" variant="ghost" onClick={() => removeRow(i)}><Trash2 className="h-4 w-4" /></Button></TableCell>
+                        <TableCell className="flex gap-0.5">
+                          {r.raw_item && (
+                            <Button size="icon" variant="ghost" title="Edit inventory details"
+                              onClick={() => setEditItem({ row: i, item: r.raw_item })}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" onClick={() => removeRow(i)}><Trash2 className="h-4 w-4" /></Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                 </TableBody>
@@ -396,16 +409,35 @@ export default function POS() {
             </div>
 
             <div>
-              <Label>Payment method</Label>
-              <Select value={method} onValueChange={setMethod}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Amount received</Label>
-              <Input type="number" value={paid} onChange={(e) => setPaid(Number(e.target.value) || 0)} />
-              <div className="mt-1 text-right text-xs text-muted-foreground">Balance: {npr(balance)}</div>
+              <div className="flex items-center justify-between">
+                <Label>Payments</Label>
+                <Button size="sm" variant="ghost"
+                  onClick={() => setPayments((p) => [...p, { method: "cash", amount: Math.max(0, tax.total - paid) }])}>
+                  <Plus className="mr-1 h-3 w-3" /> Add
+                </Button>
+              </div>
+              <div className="mt-1 space-y-2">
+                {payments.map((p, i) => (
+                  <div key={i} className="flex gap-1">
+                    <Select value={p.method} onValueChange={(v) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, method: v } : x))}>
+                      <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <Input type="number" className="h-9 w-28 text-right" value={p.amount}
+                      onChange={(e) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, amount: Number(e.target.value) || 0 } : x))} />
+                    {payments.length > 1 && (
+                      <Button size="icon" variant="ghost" className="h-9 w-9"
+                        onClick={() => setPayments((arr) => arr.filter((_, j) => j !== i))}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                <span>Paid: {npr(paid)}</span>
+                <span>Balance: {npr(balance)}</span>
+              </div>
             </div>
             <div>
               <Label>Notes</Label>
@@ -428,6 +460,28 @@ export default function POS() {
         onSaved={(created) => {
           setNewItemOpen(false);
           if (created) { addToCart(created); toast.success(`${created.sku} added to sale`); }
+        }} />
+      <ItemDialog open={!!editItem} onOpenChange={(v) => !v && setEditItem(null)}
+        editing={editItem?.item ?? null} cats={categories as any} locs={locations as any}
+        onSaved={async () => {
+          if (!editItem) return;
+          const { data } = await supabase.from("inventory_items").select("*").eq("id", editItem.item.id).maybeSingle();
+          if (data) {
+            setCart((c) => c.map((r, i) => i === editItem.row ? recompute({
+              ...r,
+              description: `${data.name} (${data.sku})`,
+              metal: data.metal, purity: data.purity,
+              weight: Number(data.net_weight),
+              stone_value: Number(data.stone_value ?? 0),
+              making_input: Number(data.making_charge ?? 0),
+              making_type: (data.making_charge_type ?? "per_gram") as any,
+              wastage_input: Number(data.wastage_value ?? 0),
+              wastage_type: (data.wastage_type ?? "percentage") as any,
+              raw_item: data,
+            }) : r));
+            toast.success("Item updated");
+          }
+          setEditItem(null);
         }} />
     </AppLayout>
   );
