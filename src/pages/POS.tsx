@@ -461,6 +461,28 @@ export default function POS() {
           setNewItemOpen(false);
           if (created) { addToCart(created); toast.success(`${created.sku} added to sale`); }
         }} />
+      <ItemDialog open={!!editItem} onOpenChange={(v) => !v && setEditItem(null)}
+        editing={editItem?.item ?? null} cats={categories as any} locs={locations as any}
+        onSaved={async () => {
+          if (!editItem) return;
+          const { data } = await supabase.from("inventory_items").select("*").eq("id", editItem.item.id).maybeSingle();
+          if (data) {
+            setCart((c) => c.map((r, i) => i === editItem.row ? recompute({
+              ...r,
+              description: `${data.name} (${data.sku})`,
+              metal: data.metal, purity: data.purity,
+              weight: Number(data.net_weight),
+              stone_value: Number(data.stone_value ?? 0),
+              making_input: Number(data.making_charge ?? 0),
+              making_type: (data.making_charge_type ?? "per_gram") as any,
+              wastage_input: Number(data.wastage_value ?? 0),
+              wastage_type: (data.wastage_type ?? "percentage") as any,
+              raw_item: data,
+            }) : r));
+            toast.success("Item updated");
+          }
+          setEditItem(null);
+        }} />
     </AppLayout>
   );
 }
