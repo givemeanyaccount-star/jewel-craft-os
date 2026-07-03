@@ -143,7 +143,8 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
 }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   useEffect(() => {
     if (editing) setForm({ ...editing });
