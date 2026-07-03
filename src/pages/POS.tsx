@@ -175,6 +175,7 @@ export default function POS() {
     vatRate: VAT_RATE, luxuryTaxRate: LUXURY_TAX_RATE, luxuryTaxThreshold: LUXURY_TAX_THRESHOLD,
   }), [subtotal, stonesTotal, discount, oldGoldCredit]);
 
+  const paid = useMemo(() => payments.reduce((a, p) => a + (Number(p.amount) || 0), 0), [payments]);
   const balance = Math.max(0, tax.total - paid);
 
   function applyTargetTotal() {
