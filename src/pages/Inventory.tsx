@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { computeNetWeight, computeFineWeight, npr, gms } from "@/lib/format";
 import { uploadImage } from "@/lib/storage";
 import { QRScanButton } from "@/components/QRScanButton";
+import { ImageCaptureButton } from "@/components/ImageCapture";
 
 interface Category { id: string; name: string; }
 interface Location_ { id: string; name: string; }
