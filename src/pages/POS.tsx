@@ -359,7 +359,15 @@ export default function POS() {
                             onChange={(e) => updateRow(i, { stone_value: Number(e.target.value) || 0 })} />
                         </TableCell>
                         <TableCell className="text-right font-medium">{npr(r.line_total)}</TableCell>
-                        <TableCell><Button size="icon" variant="ghost" onClick={() => removeRow(i)}><Trash2 className="h-4 w-4" /></Button></TableCell>
+                        <TableCell className="flex gap-0.5">
+                          {r.raw_item && (
+                            <Button size="icon" variant="ghost" title="Edit inventory details"
+                              onClick={() => setEditItem({ row: i, item: r.raw_item })}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" onClick={() => removeRow(i)}><Trash2 className="h-4 w-4" /></Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                 </TableBody>
