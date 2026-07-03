@@ -135,6 +135,7 @@ export default function POS() {
       making_type: (item.making_charge_type ?? "per_gram") as any,
       wastage_input: Number(item.wastage_value ?? 0),
       wastage_type: (item.wastage_type ?? "percentage") as any,
+      raw_item: item,
     };
     setCart((c) => [...c, recompute(row)]);
     setSearch(""); setItems([]);
