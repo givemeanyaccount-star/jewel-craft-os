@@ -77,34 +77,58 @@ export default function InvoiceDetail() {
           <CardContent>
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Item</TableHead><TableHead className="text-right">Wt</TableHead>
-                <TableHead className="text-right">Rate</TableHead>
-                <TableHead className="text-right">Wastage</TableHead>
+                <TableHead>Item</TableHead>
+                <TableHead className="text-right">Purity</TableHead>
+                <TableHead className="text-right">Net Wt</TableHead>
+                <TableHead className="text-right">Wastage Wt</TableHead>
+                <TableHead className="text-right">Total Wt</TableHead>
+                <TableHead className="text-right">Rate/g</TableHead>
+                <TableHead className="text-right">Gold Amt</TableHead>
+                <TableHead className="text-right">Stone Amt</TableHead>
                 <TableHead className="text-right">Making</TableHead>
                 <TableHead className="text-right">Total</TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {items.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell><div className="font-medium">{r.description}</div>
-                      <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div></TableCell>
-                    <TableCell className="text-right">{r.weight}g</TableCell>
-                    <TableCell className="text-right">{npr(r.rate)}</TableCell>
-                    <TableCell className="text-right">
-                      <div>{npr(r.wastage_amount)}</div>
-                      {r.wastage_type && (
-                        <div className="text-[10px] text-muted-foreground">({formatBasis(r.wastage_type, r.wastage_input)})</div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div>{npr(r.making_charge)}</div>
-                      {r.making_type && (
-                        <div className="text-[10px] text-muted-foreground">({formatMaking(r.making_type, r.making_input)})</div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">{npr(r.line_total)}</TableCell>
-                  </TableRow>
-                ))}
+                {items.map((r) => {
+                  const netWt = Number(r.weight ?? 0);
+                  const rate = Number(r.rate ?? 0);
+                  const wastageWt = r.wastage_type === "weight"
+                    ? Number(r.wastage_input ?? 0)
+                    : (rate > 0 ? Number(r.wastage_amount ?? 0) / rate : 0);
+                  const totalWt = netWt + wastageWt;
+                  const goldAmt = totalWt * rate;
+                  const stoneAmt = Number(r.stone_value ?? 0);
+                  const making = Number(r.making_charge ?? 0);
+                  const qty = Number(r.quantity ?? 1);
+                  const rowTotal = (goldAmt + stoneAmt + making) * qty;
+                  return (
+                    <TableRow key={r.id}>
+                      <TableCell>
+                        <div className="font-medium">{r.description}</div>
+                        <div className="text-xs text-muted-foreground">{r.metal}{qty > 1 ? ` · ×${qty}` : ""}</div>
+                      </TableCell>
+                      <TableCell className="text-right">{r.purity ?? "-"}</TableCell>
+                      <TableCell className="text-right">{netWt.toFixed(3)} g</TableCell>
+                      <TableCell className="text-right">
+                        <div>{wastageWt.toFixed(3)} g</div>
+                        {r.wastage_type && (
+                          <div className="text-[10px] text-muted-foreground">({formatBasis(r.wastage_type, r.wastage_input)})</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">{totalWt.toFixed(3)} g</TableCell>
+                      <TableCell className="text-right">{npr(rate)}</TableCell>
+                      <TableCell className="text-right">{npr(goldAmt)}</TableCell>
+                      <TableCell className="text-right">{npr(stoneAmt)}</TableCell>
+                      <TableCell className="text-right">
+                        <div>{npr(making)}</div>
+                        {r.making_type && (
+                          <div className="text-[10px] text-muted-foreground">({formatMaking(r.making_type, r.making_input)})</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{npr(rowTotal)}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             <div className="mt-4 ml-auto max-w-sm space-y-1.5 text-sm">
