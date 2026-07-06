@@ -655,6 +655,15 @@ function OldGoldQuickDialog({ open, onOpenChange, userId, customerId, customers,
   );
 }
 
+export function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-2 border-b border-border/50 pb-0.5 sm:justify-start sm:gap-1 sm:border-0">
+      <span className="text-muted-foreground">{label}:</span>
+      <span className="font-medium">{value}</span>
+    </div>
+  );
+}
+
 function Row({ label, value }: { label: string; value: string }) {
   return <div className="flex justify-between text-sm"><span className="text-muted-foreground">{label}</span><span>{value}</span></div>;
 }
