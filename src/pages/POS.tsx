@@ -25,11 +25,13 @@ const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fo
 const OG_METALS = ["gold", "silver", "platinum"];
 const OG_PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
 
-interface CartRow {
+export interface CartRow {
   inventory_item_id: string | null;
   description: string;
   metal?: string; purity?: string;
-  weight: number;
+  gross_weight: number;
+  stone_weight: number;
+  weight: number;              // net weight
   rate: number;
   making_charge: number;       // computed money amount
   wastage_amount: number;      // computed money amount
@@ -45,7 +47,7 @@ interface CartRow {
 
 interface PayLine { method: string; amount: number; }
 
-function recompute(r: CartRow): CartRow {
+export function recompute(r: CartRow): CartRow {
   const { making, wastageAmount, lineTotal } = computeLineTotal({
     netWeight: r.weight,
     ratePerGram: r.rate,
@@ -57,6 +59,27 @@ function recompute(r: CartRow): CartRow {
     quantity: r.quantity,
   });
   return { ...r, making_charge: making, wastage_amount: wastageAmount, line_total: lineTotal };
+}
+
+// Derive display values matching the sales invoice columns.
+export function lineDisplay(r: {
+  weight?: number; rate?: number; wastage_type?: string; wastage_input?: number; wastage_amount?: number;
+  stone_value?: number; making_charge?: number; quantity?: number; gross_weight?: number; stone_weight?: number;
+}) {
+  const netWt = Number(r.weight ?? 0);
+  const rate = Number(r.rate ?? 0);
+  const wastageWt = r.wastage_type === "weight"
+    ? Number(r.wastage_input ?? 0)
+    : (rate > 0 ? Number(r.wastage_amount ?? 0) / rate : 0);
+  const totalWt = netWt + wastageWt;
+  const goldAmt = totalWt * rate;
+  const stoneAmt = Number(r.stone_value ?? 0);
+  const making = Number(r.making_charge ?? 0);
+  const qty = Number(r.quantity ?? 1);
+  const rowTotal = (goldAmt + stoneAmt + making) * qty;
+  const grossWt = Number(r.gross_weight ?? 0);
+  const stoneWt = Number(r.stone_weight ?? 0);
+  return { netWt, rate, wastageWt, totalWt, goldAmt, stoneAmt, making, qty, rowTotal, grossWt, stoneWt };
 }
 
 export default function POS() {
@@ -124,6 +147,8 @@ export default function POS() {
       inventory_item_id: item.id,
       description: `${item.name} (${item.sku})`,
       metal: item.metal, purity: item.purity,
+      gross_weight: Number(item.gross_weight ?? item.net_weight ?? 0),
+      stone_weight: Number(item.stone_weight ?? 0),
       weight: Number(item.net_weight),
       rate,
       making_charge: 0,
