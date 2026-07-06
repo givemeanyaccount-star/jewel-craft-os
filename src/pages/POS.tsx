@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -367,7 +367,7 @@ export default function POS() {
                     : cart.map((r, i) => {
                       const d = lineDisplay(r);
                       return (
-                      <>
+                      <Fragment key={i}>
                       <TableRow key={i}>
                         <TableCell>
                           <div className="font-medium">{r.description}</div>
