@@ -412,7 +412,7 @@ export default function POS() {
                           </div>
                         </TableCell>
                       </TableRow>
-                      </>
+                      </Fragment>
                       );
                     })}
                 </TableBody>
