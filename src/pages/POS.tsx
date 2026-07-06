@@ -354,7 +354,7 @@ export default function POS() {
               <Table className="mt-3">
                 <TableHeader><TableRow>
                   <TableHead>Item</TableHead>
-                  <TableHead className="text-right">Wt (g)</TableHead>
+                  <TableHead className="text-right">Net Wt (g)</TableHead>
                   <TableHead className="text-right">Rate/g</TableHead>
                   <TableHead className="text-right">Stone</TableHead>
                   <TableHead className="text-right">Line</TableHead>
@@ -362,14 +362,14 @@ export default function POS() {
                 </TableRow></TableHeader>
                 <TableBody>
                   {cart.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Cart is empty</TableCell></TableRow>
-                    : cart.map((r, i) => (
+                    : cart.map((r, i) => {
+                      const d = lineDisplay(r);
+                      return (
+                      <>
                       <TableRow key={i}>
                         <TableCell>
                           <div className="font-medium">{r.description}</div>
                           <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div>
-                          <div className="mt-1 text-[11px] text-muted-foreground">
-                            Making: {npr(r.making_charge)} · Wastage: {npr(r.wastage_amount)}
-                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Input type="number" className="h-8 w-20 text-right" value={r.weight}
@@ -394,7 +394,25 @@ export default function POS() {
                           <Button size="icon" variant="ghost" onClick={() => removeRow(i)}><Trash2 className="h-4 w-4" /></Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      <TableRow key={`${i}-d`} className="border-b bg-muted/30 hover:bg-muted/30">
+                        <TableCell colSpan={6} className="py-2">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] sm:grid-cols-4 lg:grid-cols-6">
+                            <Detail label="Purity" value={r.purity ?? "-"} />
+                            <Detail label="Gross wt" value={`${d.grossWt.toFixed(3)} g`} />
+                            <Detail label="Stone wt" value={`${d.stoneWt.toFixed(3)} g`} />
+                            <Detail label="Net wt" value={`${d.netWt.toFixed(3)} g`} />
+                            <Detail label="Wastage wt" value={`${d.wastageWt.toFixed(3)} g`} />
+                            <Detail label="Total wt" value={`${d.totalWt.toFixed(3)} g`} />
+                            <Detail label="Gold amt" value={npr(d.goldAmt)} />
+                            <Detail label="Stone amt" value={npr(d.stoneAmt)} />
+                            <Detail label="Making" value={npr(d.making)} />
+                            <Detail label="Qty" value={String(d.qty)} />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      </>
+                      );
+                    })}
                 </TableBody>
               </Table>
             </CardContent>
