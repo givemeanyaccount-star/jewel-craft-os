@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,11 +25,13 @@ const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fo
 const OG_METALS = ["gold", "silver", "platinum"];
 const OG_PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
 
-interface CartRow {
+export interface CartRow {
   inventory_item_id: string | null;
   description: string;
   metal?: string; purity?: string;
-  weight: number;
+  gross_weight: number;
+  stone_weight: number;
+  weight: number;              // net weight
   rate: number;
   making_charge: number;       // computed money amount
   wastage_amount: number;      // computed money amount
@@ -45,7 +47,7 @@ interface CartRow {
 
 interface PayLine { method: string; amount: number; }
 
-function recompute(r: CartRow): CartRow {
+export function recompute(r: CartRow): CartRow {
   const { making, wastageAmount, lineTotal } = computeLineTotal({
     netWeight: r.weight,
     ratePerGram: r.rate,
@@ -57,6 +59,27 @@ function recompute(r: CartRow): CartRow {
     quantity: r.quantity,
   });
   return { ...r, making_charge: making, wastage_amount: wastageAmount, line_total: lineTotal };
+}
+
+// Derive display values matching the sales invoice columns.
+export function lineDisplay(r: {
+  weight?: number; rate?: number; wastage_type?: string; wastage_input?: number; wastage_amount?: number;
+  stone_value?: number; making_charge?: number; quantity?: number; gross_weight?: number; stone_weight?: number;
+}) {
+  const netWt = Number(r.weight ?? 0);
+  const rate = Number(r.rate ?? 0);
+  const wastageWt = r.wastage_type === "weight"
+    ? Number(r.wastage_input ?? 0)
+    : (rate > 0 ? Number(r.wastage_amount ?? 0) / rate : 0);
+  const totalWt = netWt + wastageWt;
+  const goldAmt = totalWt * rate;
+  const stoneAmt = Number(r.stone_value ?? 0);
+  const making = Number(r.making_charge ?? 0);
+  const qty = Number(r.quantity ?? 1);
+  const rowTotal = (goldAmt + stoneAmt + making) * qty;
+  const grossWt = Number(r.gross_weight ?? 0);
+  const stoneWt = Number(r.stone_weight ?? 0);
+  return { netWt, rate, wastageWt, totalWt, goldAmt, stoneAmt, making, qty, rowTotal, grossWt, stoneWt };
 }
 
 export default function POS() {
@@ -124,6 +147,8 @@ export default function POS() {
       inventory_item_id: item.id,
       description: `${item.name} (${item.sku})`,
       metal: item.metal, purity: item.purity,
+      gross_weight: Number(item.gross_weight ?? item.net_weight ?? 0),
+      stone_weight: Number(item.stone_weight ?? 0),
       weight: Number(item.net_weight),
       rate,
       making_charge: 0,
@@ -215,6 +240,8 @@ export default function POS() {
         inventory_item_id: r.inventory_item_id,
         description: r.description,
         metal: r.metal, purity: r.purity,
+        gross_weight: r.gross_weight,
+        stone_weight: r.stone_weight,
         weight: r.weight, rate: r.rate,
         making_charge: r.making_charge,
         making_input: r.making_input, making_type: r.making_type,
@@ -329,7 +356,7 @@ export default function POS() {
               <Table className="mt-3">
                 <TableHeader><TableRow>
                   <TableHead>Item</TableHead>
-                  <TableHead className="text-right">Wt (g)</TableHead>
+                  <TableHead className="text-right">Net Wt (g)</TableHead>
                   <TableHead className="text-right">Rate/g</TableHead>
                   <TableHead className="text-right">Stone</TableHead>
                   <TableHead className="text-right">Line</TableHead>
@@ -337,14 +364,14 @@ export default function POS() {
                 </TableRow></TableHeader>
                 <TableBody>
                   {cart.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Cart is empty</TableCell></TableRow>
-                    : cart.map((r, i) => (
+                    : cart.map((r, i) => {
+                      const d = lineDisplay(r);
+                      return (
+                      <Fragment key={i}>
                       <TableRow key={i}>
                         <TableCell>
                           <div className="font-medium">{r.description}</div>
                           <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div>
-                          <div className="mt-1 text-[11px] text-muted-foreground">
-                            Making: {npr(r.making_charge)} · Wastage: {npr(r.wastage_amount)}
-                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Input type="number" className="h-8 w-20 text-right" value={r.weight}
@@ -369,7 +396,25 @@ export default function POS() {
                           <Button size="icon" variant="ghost" onClick={() => removeRow(i)}><Trash2 className="h-4 w-4" /></Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      <TableRow key={`${i}-d`} className="border-b bg-muted/30 hover:bg-muted/30">
+                        <TableCell colSpan={6} className="py-2">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] sm:grid-cols-4 lg:grid-cols-6">
+                            <Detail label="Purity" value={r.purity ?? "-"} />
+                            <Detail label="Gross wt" value={`${d.grossWt.toFixed(3)} g`} />
+                            <Detail label="Stone wt" value={`${d.stoneWt.toFixed(3)} g`} />
+                            <Detail label="Net wt" value={`${d.netWt.toFixed(3)} g`} />
+                            <Detail label="Wastage wt" value={`${d.wastageWt.toFixed(3)} g`} />
+                            <Detail label="Total wt" value={`${d.totalWt.toFixed(3)} g`} />
+                            <Detail label="Gold amt" value={npr(d.goldAmt)} />
+                            <Detail label="Stone amt" value={npr(d.stoneAmt)} />
+                            <Detail label="Making" value={npr(d.making)} />
+                            <Detail label="Qty" value={String(d.qty)} />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      </Fragment>
+                      );
+                    })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -471,6 +516,8 @@ export default function POS() {
               ...r,
               description: `${data.name} (${data.sku})`,
               metal: data.metal, purity: data.purity,
+              gross_weight: Number(data.gross_weight ?? data.net_weight ?? 0),
+              stone_weight: Number(data.stone_weight ?? 0),
               weight: Number(data.net_weight),
               stone_value: Number(data.stone_value ?? 0),
               making_input: Number(data.making_charge ?? 0),
@@ -605,6 +652,15 @@ function OldGoldQuickDialog({ open, onOpenChange, userId, customerId, customers,
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-2 border-b border-border/50 pb-0.5 sm:justify-start sm:gap-1 sm:border-0">
+      <span className="text-muted-foreground">{label}:</span>
+      <span className="font-medium">{value}</span>
+    </div>
   );
 }
 
