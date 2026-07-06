@@ -204,6 +204,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          gross_weight: number | null
           id: string
           inventory_item_id: string | null
           invoice_id: string
@@ -216,6 +217,7 @@ export type Database = {
           quantity: number
           rate: number | null
           stone_value: number
+          stone_weight: number | null
           wastage_amount: number
           wastage_input: number | null
           wastage_type: string | null
@@ -224,6 +226,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          gross_weight?: number | null
           id?: string
           inventory_item_id?: string | null
           invoice_id: string
@@ -236,6 +239,7 @@ export type Database = {
           quantity?: number
           rate?: number | null
           stone_value?: number
+          stone_weight?: number | null
           wastage_amount?: number
           wastage_input?: number | null
           wastage_type?: string | null
@@ -244,6 +248,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          gross_weight?: number | null
           id?: string
           inventory_item_id?: string | null
           invoice_id?: string
@@ -256,6 +261,7 @@ export type Database = {
           quantity?: number
           rate?: number | null
           stone_value?: number
+          stone_weight?: number | null
           wastage_amount?: number
           wastage_input?: number | null
           wastage_type?: string | null
@@ -603,49 +609,67 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          gross_weight: number | null
           id: string
           inventory_item_id: string | null
           line_total: number
           making_charge: number
+          making_input: number | null
+          making_type: string | null
           metal: Database["public"]["Enums"]["metal_type"] | null
           purity: string | null
           quantity: number
           quotation_id: string
           rate: number | null
           stone_value: number
+          stone_weight: number | null
           wastage_amount: number
+          wastage_input: number | null
+          wastage_type: string | null
           weight: number | null
         }
         Insert: {
           created_at?: string
           description: string
+          gross_weight?: number | null
           id?: string
           inventory_item_id?: string | null
           line_total?: number
           making_charge?: number
+          making_input?: number | null
+          making_type?: string | null
           metal?: Database["public"]["Enums"]["metal_type"] | null
           purity?: string | null
           quantity?: number
           quotation_id: string
           rate?: number | null
           stone_value?: number
+          stone_weight?: number | null
           wastage_amount?: number
+          wastage_input?: number | null
+          wastage_type?: string | null
           weight?: number | null
         }
         Update: {
           created_at?: string
           description?: string
+          gross_weight?: number | null
           id?: string
           inventory_item_id?: string | null
           line_total?: number
           making_charge?: number
+          making_input?: number | null
+          making_type?: string | null
           metal?: Database["public"]["Enums"]["metal_type"] | null
           purity?: string | null
           quantity?: number
           quotation_id?: string
           rate?: number | null
           stone_value?: number
+          stone_weight?: number | null
           wastage_amount?: number
+          wastage_input?: number | null
+          wastage_type?: string | null
           weight?: number | null
         }
         Relationships: [
@@ -672,14 +696,20 @@ export type Database = {
           customer_id: string | null
           discount: number
           id: string
+          issued_at: string
+          luxury_tax: number
+          luxury_tax_rate: number
           notes: string | null
+          old_gold_credit: number
           quote_number: string
           status: Database["public"]["Enums"]["quotation_status"]
+          stones_total: number
           subtotal: number
           total: number
           updated_at: string
           valid_until: string | null
           vat_amount: number
+          vat_rate: number
         }
         Insert: {
           created_at?: string
@@ -687,14 +717,20 @@ export type Database = {
           customer_id?: string | null
           discount?: number
           id?: string
+          issued_at?: string
+          luxury_tax?: number
+          luxury_tax_rate?: number
           notes?: string | null
+          old_gold_credit?: number
           quote_number: string
           status?: Database["public"]["Enums"]["quotation_status"]
+          stones_total?: number
           subtotal?: number
           total?: number
           updated_at?: string
           valid_until?: string | null
           vat_amount?: number
+          vat_rate?: number
         }
         Update: {
           created_at?: string
@@ -702,14 +738,20 @@ export type Database = {
           customer_id?: string | null
           discount?: number
           id?: string
+          issued_at?: string
+          luxury_tax?: number
+          luxury_tax_rate?: number
           notes?: string | null
+          old_gold_credit?: number
           quote_number?: string
           status?: Database["public"]["Enums"]["quotation_status"]
+          stones_total?: number
           subtotal?: number
           total?: number
           updated_at?: string
           valid_until?: string | null
           vat_amount?: number
+          vat_rate?: number
         }
         Relationships: [
           {
