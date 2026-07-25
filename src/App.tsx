@@ -20,6 +20,11 @@ import InvoiceDetail from "./pages/InvoiceDetail";
 import OldGold from "./pages/OldGold";
 import MetalRates from "./pages/MetalRates";
 import Settings from "./pages/Settings";
+import Repairs from "./pages/Repairs";
+import RepairDetail from "./pages/RepairDetail";
+import Purchases from "./pages/Purchases";
+import PurchaseDetail from "./pages/PurchaseDetail";
+import Suppliers from "./pages/Suppliers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +52,11 @@ const App = () => (
             <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
             <Route path="/old-gold" element={<ProtectedRoute roles={[...SALES]}><OldGold /></ProtectedRoute>} />
             <Route path="/rates" element={<ProtectedRoute><MetalRates /></ProtectedRoute>} />
+            <Route path="/repairs" element={<ProtectedRoute><Repairs /></ProtectedRoute>} />
+            <Route path="/repairs/:id" element={<ProtectedRoute><RepairDetail /></ProtectedRoute>} />
+            <Route path="/purchases" element={<ProtectedRoute roles={["admin", "manager"]}><Purchases /></ProtectedRoute>} />
+            <Route path="/purchases/suppliers" element={<ProtectedRoute roles={["admin", "manager"]}><Suppliers /></ProtectedRoute>} />
+            <Route path="/purchases/:id" element={<ProtectedRoute roles={["admin", "manager"]}><PurchaseDetail /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute roles={["admin", "manager"]}><Settings /></ProtectedRoute>} />
             <Route path="/admin/roles" element={<ProtectedRoute roles={["admin"]}><RoleManagement /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
