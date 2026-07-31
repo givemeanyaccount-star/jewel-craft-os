@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash2, ShoppingCart, Users } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, Users, Coins } from "lucide-react";
 import { npr, gms, computeNetWeight, nextNumber } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -36,7 +36,8 @@ export default function Purchases() {
   return (
     <AppLayout title="Purchase Documentation" actions={
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" asChild><Link to="/purchases/suppliers"><Users className="mr-1 h-4 w-4" /> Suppliers</Link></Button>
+        <Button size="sm" variant="outline" asChild><Link to="/suppliers"><Users className="mr-1 h-4 w-4" /> Suppliers</Link></Button>
+        <Button size="sm" variant="outline" asChild><Link to="/purchases/old-gold"><Coins className="mr-1 h-4 w-4" /> Old Gold Purchase</Link></Button>
         <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" /> New Purchase</Button>
       </div>
     }>

@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Users, FileText, Receipt,
   Coins, Settings, LogOut, Menu, ShieldCheck, TrendingUp,
-  Wrench, ShoppingCart
+  Wrench, ShoppingCart, Truck
 } from "lucide-react";
 import { useAuth, AppRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ const NAV: NavItem[] = [
   { to: "/old-gold", label: "Old Gold", icon: Coins, roles: ["admin", "manager", "sales"] },
   { to: "/rates", label: "Metal Rates", icon: TrendingUp },
   { to: "/repairs", label: "Repairs", icon: Wrench },
+  { to: "/suppliers", label: "Suppliers", icon: Truck, roles: ["admin", "manager"] },
   { to: "/purchases", label: "Purchases", icon: ShoppingCart, roles: ["admin", "manager"] },
   { to: "/settings", label: "Settings", icon: Settings, roles: ["admin", "manager"] },
   { to: "/admin/roles", label: "Role Management", icon: ShieldCheck, roles: ["admin"] },
