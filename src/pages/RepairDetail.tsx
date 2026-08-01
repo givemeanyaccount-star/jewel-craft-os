@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Printer, Eye, ImageIcon } from "lucide-react";
+import { ArrowLeft, Printer, Eye, ReceiptText } from "lucide-react";
 import { npr, gms, computeNetWeight } from "@/lib/format";
 import { toast } from "sonner";
 import logoUrl from "@/assets/logo.png";
@@ -24,7 +24,7 @@ export default function RepairDetail() {
   const [items, setItems] = useState<any[]>([]);
   const [karigarNames, setKarigarNames] = useState<Record<string, string>>({});
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [docType, setDocType] = useState<"estimate" | "final" | null>(null);
 
   useEffect(() => { load(); }, [id]);
 
@@ -62,11 +62,16 @@ export default function RepairDetail() {
 
   if (!repair) return <AppLayout><p>Loading...</p></AppLayout>;
 
+  const allDelivered = items.length > 0 && items.every((i) => i.status === "delivered");
+
   return (
     <AppLayout title={repair.repair_no} actions={
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
-        <Button size="sm" variant="outline" onClick={() => setPreviewOpen(true)}><Eye className="mr-1 h-4 w-4" /> Preview Receipt</Button>
+        <Button size="sm" variant="outline" onClick={() => setDocType("estimate")}><Eye className="mr-1 h-4 w-4" /> Preview Estimate</Button>
+        <Button size="sm" variant={allDelivered ? "default" : "outline"} disabled={!allDelivered} onClick={() => setDocType("final")}>
+          <ReceiptText className="mr-1 h-4 w-4" /> Final Receipt {!allDelivered && "(after delivery)"}
+        </Button>
       </>
     }>
       <div className="grid gap-4 lg:grid-cols-3">
@@ -99,11 +104,14 @@ export default function RepairDetail() {
             <div className="flex justify-between"><span className="text-muted-foreground">Items</span><span>{items.length}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Estimated total</span><span>{npr(items.reduce((s, i) => s + Number(i.estimated_cost || 0), 0))}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Delivered</span><span>{items.filter((i) => i.status === "delivered").length} / {items.length}</span></div>
+            {allDelivered && (
+              <div className="flex justify-between border-t pt-2 font-medium"><span>Final total (actual)</span><span>{npr(items.reduce((s, i) => s + Number(i.final_cost ?? i.estimated_cost ?? 0), 0))}</span></div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      <ReceiptPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} repair={repair} items={items} karigarNames={karigarNames} />
+      <ReceiptDialog docType={docType} onOpenChange={(v: boolean) => !v && setDocType(null)} repair={repair} items={items} />
     </AppLayout>
   );
 }
@@ -164,15 +172,25 @@ function RepairItemCard({ item, karigarName, photoUrls, onAdvance }: any) {
   );
 }
 
-function ReceiptPreviewDialog({ open, onOpenChange, repair, items, karigarNames }: any) {
-  if (!repair) return null;
-  const total = items.reduce((s: number, i: any) => s + Number(i.estimated_cost || 0), 0);
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader><DialogTitle>Receipt Preview</DialogTitle></DialogHeader>
+function ReceiptDialog({ docType, onOpenChange, repair, items }: any) {
+  if (!repair || !docType) return null;
+  const isFinal = docType === "final";
+  const costOf = (it: any) => (isFinal ? Number(it.final_cost ?? it.estimated_cost ?? 0) : Number(it.estimated_cost ?? 0));
+  const total = items.reduce((s: number, i: any) => s + costOf(i), 0);
+  const printId = `repair-print-${docType}`;
 
-        <div id="repair-print-area" className="rounded border bg-white p-6 text-black">
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogHeader><DialogTitle>{isFinal ? "Final Receipt (Actual Cost)" : "Estimate — Internal Preview"}</DialogTitle></DialogHeader>
+
+        {!isFinal && (
+          <div className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+            This is an internal estimate for staff reference — not the official receipt. The official receipt is generated once all items are delivered.
+          </div>
+        )}
+
+        <div id={printId} className="rounded border bg-white p-6 text-black">
           <div className="mb-4 flex items-center justify-between border-b-2 border-black pb-4">
             <div className="flex items-center gap-3">
               <img src={logoUrl} alt="JewelMaster" className="h-14 w-14 object-contain" />
@@ -182,9 +200,9 @@ function ReceiptPreviewDialog({ open, onOpenChange, repair, items, karigarNames 
               </div>
             </div>
             <div className="text-right">
-              <div className="text-[10px] uppercase tracking-widest text-gray-500">Repair Receipt</div>
+              <div className="text-[10px] uppercase tracking-widest text-gray-500">{isFinal ? "Repair Receipt (Delivered)" : "Repair Estimate (Not Official)"}</div>
               <div className="text-lg font-semibold">{repair.repair_no}</div>
-              <div className="text-[10px] text-gray-600">{new Date(repair.received_at).toLocaleString()}</div>
+              <div className="text-[10px] text-gray-600">{isFinal ? new Date().toLocaleString() : new Date(repair.received_at).toLocaleString()}</div>
             </div>
           </div>
 
@@ -196,17 +214,16 @@ function ReceiptPreviewDialog({ open, onOpenChange, repair, items, karigarNames 
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-black text-left">
-                <th className="py-1">Item</th><th>Issue</th><th>Metal</th><th className="text-right">Net wt</th><th className="text-right">Est. Cost</th>
+                <th className="py-1">Item</th><th>Metal</th><th className="text-right">Net wt</th><th className="text-right">{isFinal ? "Cost" : "Est. Cost"}</th>
               </tr>
             </thead>
             <tbody>
               {items.map((it: any) => (
                 <tr key={it.id} className="border-b">
                   <td className="py-1">{it.item_description}</td>
-                  <td>{it.issue_description}</td>
                   <td className="capitalize">{it.metal} {it.purity}</td>
-                  <td className="text-right">{gms(it.net_weight_in)}</td>
-                  <td className="text-right">{npr(it.estimated_cost)}</td>
+                  <td className="text-right">{gms(isFinal ? (it.net_weight_out ?? it.net_weight_in) : it.net_weight_in)}</td>
+                  <td className="text-right">{npr(costOf(it))}</td>
                 </tr>
               ))}
             </tbody>
@@ -218,15 +235,15 @@ function ReceiptPreviewDialog({ open, onOpenChange, repair, items, karigarNames 
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-          <Button onClick={() => printArea()}><Printer className="mr-1 h-4 w-4" /> Print</Button>
+          <Button onClick={() => printArea(printId)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function printArea() {
-  const el = document.getElementById("repair-print-area");
+function printArea(elementId: string) {
+  const el = document.getElementById(elementId);
   if (!el) return;
   const w = window.open("", "_blank", "width=800,height=900");
   if (!w) return;

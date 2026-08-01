@@ -18,6 +18,19 @@ import logoUrl from "@/assets/logo.png";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
 
+function rowMath(r: any) {
+  const netWt = Number(r.weight ?? 0);
+  const rate = Number(r.rate ?? 0);
+  const wastageWt = r.wastage_type === "weight" ? Number(r.wastage_input ?? 0) : (rate > 0 ? Number(r.wastage_amount ?? 0) / rate : 0);
+  const totalWt = netWt + wastageWt;
+  const goldAmt = totalWt * rate;
+  const stoneAmt = Number(r.stone_value ?? 0);
+  const making = Number(r.making_charge ?? 0);
+  const qty = Number(r.quantity ?? 1);
+  const rowTotal = (goldAmt + stoneAmt + making) * qty;
+  return { netWt, rate, wastageWt, totalWt, goldAmt, stoneAmt, making, qty, rowTotal };
+}
+
 export default function InvoiceDetail() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -43,27 +56,11 @@ export default function InvoiceDetail() {
   return (
     <AppLayout title={inv.invoice_number} actions={
       <>
-        <Button size="sm" variant="outline" onClick={() => nav(-1)} className="no-print"><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
-        <Button size="sm" variant="outline" onClick={() => window.print()} className="no-print"><Printer className="mr-1 h-4 w-4" /> Print</Button>
+        <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
+        <Button size="sm" variant="outline" onClick={() => printInvoice(inv.id)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
       </>
     }>
-      {/* Print-only branded header */}
-      <div className="print-only mb-6 flex items-center justify-between border-b-2 border-black pb-4">
-        <div className="flex items-center gap-3">
-          <img src={logoUrl} alt="JewelMaster" className="h-14 w-14 object-contain" />
-          <div>
-            <div className="text-xl font-bold tracking-tight">JewelMaster</div>
-            <div className="text-[10px] uppercase tracking-[0.25em] text-gray-600">Fine Jewellery · Kathmandu, Nepal</div>
-            <div className="mt-1 text-[10px] text-gray-500">VAT Reg. · PAN 000000000 · +977 01-0000000</div>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] uppercase tracking-widest text-gray-500">Tax Invoice</div>
-          <div className="text-lg font-semibold">{inv.invoice_number}</div>
-          <div className="text-[10px] text-gray-600">{new Date(inv.issued_at).toLocaleString()}</div>
-        </div>
-      </div>
-      <div className="print-shell grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
@@ -90,42 +87,28 @@ export default function InvoiceDetail() {
               </TableRow></TableHeader>
               <TableBody>
                 {items.map((r) => {
-                  const netWt = Number(r.weight ?? 0);
-                  const rate = Number(r.rate ?? 0);
-                  const wastageWt = r.wastage_type === "weight"
-                    ? Number(r.wastage_input ?? 0)
-                    : (rate > 0 ? Number(r.wastage_amount ?? 0) / rate : 0);
-                  const totalWt = netWt + wastageWt;
-                  const goldAmt = totalWt * rate;
-                  const stoneAmt = Number(r.stone_value ?? 0);
-                  const making = Number(r.making_charge ?? 0);
-                  const qty = Number(r.quantity ?? 1);
-                  const rowTotal = (goldAmt + stoneAmt + making) * qty;
+                  const m = rowMath(r);
                   return (
                     <TableRow key={r.id}>
                       <TableCell>
                         <div className="font-medium">{r.description}</div>
-                        <div className="text-xs text-muted-foreground">{r.metal}{qty > 1 ? ` · ×${qty}` : ""}</div>
+                        <div className="text-xs text-muted-foreground">{r.metal}{m.qty > 1 ? ` · ×${m.qty}` : ""}</div>
                       </TableCell>
                       <TableCell className="text-right">{r.purity ?? "-"}</TableCell>
-                      <TableCell className="text-right">{netWt.toFixed(3)} g</TableCell>
+                      <TableCell className="text-right">{m.netWt.toFixed(3)} g</TableCell>
                       <TableCell className="text-right">
-                        <div>{wastageWt.toFixed(3)} g</div>
-                        {r.wastage_type && (
-                          <div className="text-[10px] text-muted-foreground">({formatBasis(r.wastage_type, r.wastage_input)})</div>
-                        )}
+                        <div>{m.wastageWt.toFixed(3)} g</div>
+                        {r.wastage_type && <div className="text-[10px] text-muted-foreground">({formatBasis(r.wastage_type, r.wastage_input)})</div>}
                       </TableCell>
-                      <TableCell className="text-right">{totalWt.toFixed(3)} g</TableCell>
-                      <TableCell className="text-right">{npr(rate)}</TableCell>
-                      <TableCell className="text-right">{npr(goldAmt)}</TableCell>
-                      <TableCell className="text-right">{npr(stoneAmt)}</TableCell>
+                      <TableCell className="text-right">{m.totalWt.toFixed(3)} g</TableCell>
+                      <TableCell className="text-right">{npr(m.rate)}</TableCell>
+                      <TableCell className="text-right">{npr(m.goldAmt)}</TableCell>
+                      <TableCell className="text-right">{npr(m.stoneAmt)}</TableCell>
                       <TableCell className="text-right">
-                        <div>{npr(making)}</div>
-                        {r.making_type && (
-                          <div className="text-[10px] text-muted-foreground">({formatMaking(r.making_type, r.making_input)})</div>
-                        )}
+                        <div>{npr(m.making)}</div>
+                        {r.making_type && <div className="text-[10px] text-muted-foreground">({formatMaking(r.making_type, r.making_input)})</div>}
                       </TableCell>
-                      <TableCell className="text-right font-medium">{npr(rowTotal)}</TableCell>
+                      <TableCell className="text-right font-medium">{npr(m.rowTotal)}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -168,9 +151,118 @@ export default function InvoiceDetail() {
         </Card>
       </div>
 
+      {/* Hidden, print-only, isolated layout — guaranteed to fit A4 regardless of app CSS */}
+      <div id={`invoice-print-${inv.id}`} className="hidden">
+        <InvoicePrintLayout inv={inv} items={items} />
+      </div>
+
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} invoice={inv} userId={user?.id ?? null} onSaved={() => { setPayOpen(false); load(); }} />
     </AppLayout>
   );
+}
+
+function InvoicePrintLayout({ inv, items }: { inv: any; items: any[] }) {
+  return (
+    <div style={{ fontFamily: "Arial, sans-serif", color: "#000", fontSize: "10.5px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #000", paddingBottom: "10px", marginBottom: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <img src={logoUrl} alt="JewelMaster" style={{ height: "48px", width: "48px", objectFit: "contain" }} />
+          <div>
+            <div style={{ fontSize: "16px", fontWeight: 700 }}>JewelMaster</div>
+            <div style={{ fontSize: "8px", letterSpacing: "2px", textTransform: "uppercase", color: "#555" }}>Fine Jewellery · Kathmandu, Nepal</div>
+            <div style={{ fontSize: "8px", color: "#777", marginTop: "2px" }}>VAT Reg. · PAN 000000000 · +977 01-0000000</div>
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: "8px", letterSpacing: "1.5px", textTransform: "uppercase", color: "#777" }}>Tax Invoice</div>
+          <div style={{ fontSize: "14px", fontWeight: 600 }}>{inv.invoice_number}</div>
+          <div style={{ fontSize: "8px", color: "#555" }}>{new Date(inv.issued_at).toLocaleString()}</div>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: "10px" }}>
+        <strong>Bill to:</strong> {inv.customers?.full_name ?? "Walk-in"} {inv.customers?.phone && `· ${inv.customers.phone}`}
+      </div>
+
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px", tableLayout: "fixed" }}>
+        <colgroup>
+          <col style={{ width: "22%" }} /><col style={{ width: "8%" }} /><col style={{ width: "12%" }} />
+          <col style={{ width: "10%" }} /><col style={{ width: "12%" }} /><col style={{ width: "12%" }} /><col style={{ width: "12%" }} />
+        </colgroup>
+        <thead>
+          <tr style={{ borderBottom: "1.5px solid #000", textAlign: "right" }}>
+            <th style={{ textAlign: "left", padding: "3px 2px" }}>Item</th>
+            <th style={{ padding: "3px 2px" }}>Purity</th>
+            <th style={{ padding: "3px 2px" }}>Total Wt</th>
+            <th style={{ padding: "3px 2px" }}>Rate/g</th>
+            <th style={{ padding: "3px 2px" }}>Gold+Stone</th>
+            <th style={{ padding: "3px 2px" }}>Making</th>
+            <th style={{ padding: "3px 2px" }}>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((r) => {
+            const m = rowMath(r);
+            return (
+              <tr key={r.id} style={{ borderBottom: "1px solid #ddd", pageBreakInside: "avoid" }}>
+                <td style={{ padding: "3px 2px", textAlign: "left", wordBreak: "break-word" }}>
+                  {r.description}<br /><span style={{ fontSize: "8px", color: "#777" }}>{r.metal}{m.qty > 1 ? ` ×${m.qty}` : ""}</span>
+                </td>
+                <td style={{ padding: "3px 2px", textAlign: "right" }}>{r.purity ?? "-"}</td>
+                <td style={{ padding: "3px 2px", textAlign: "right" }}>{m.totalWt.toFixed(3)}g</td>
+                <td style={{ padding: "3px 2px", textAlign: "right" }}>{npr(m.rate)}</td>
+                <td style={{ padding: "3px 2px", textAlign: "right" }}>{npr(m.goldAmt + m.stoneAmt)}</td>
+                <td style={{ padding: "3px 2px", textAlign: "right" }}>{npr(m.making)}</td>
+                <td style={{ padding: "3px 2px", textAlign: "right", fontWeight: 600 }}>{npr(m.rowTotal)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <div style={{ marginTop: "12px", marginLeft: "auto", width: "260px", fontSize: "10px" }}>
+        <PrintRow label="Subtotal" value={npr(inv.subtotal)} />
+        {Number(inv.stones_total) > 0 && <PrintRow label="Stones (VAT-able)" value={npr(inv.stones_total)} />}
+        <PrintRow label="Discount" value={`- ${npr(inv.discount)}`} />
+        <PrintRow label={`VAT ${inv.vat_rate}%`} value={npr(inv.vat_amount)} />
+        {Number(inv.luxury_tax) > 0 && <PrintRow label={`Luxury tax ${inv.luxury_tax_rate}%`} value={npr(inv.luxury_tax)} />}
+        <PrintRow label="Old gold credit" value={`- ${npr(inv.old_gold_credit)}`} />
+        <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1.5px solid #000", paddingTop: "4px", marginTop: "4px", fontWeight: 700, fontSize: "12px" }}>
+          <span>Total</span><span>{npr(inv.total)}</span>
+        </div>
+        <PrintRow label="Paid" value={npr(inv.amount_paid)} />
+        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+          <span>Balance due</span><span>{npr(inv.balance_due)}</span>
+        </div>
+      </div>
+
+      <div style={{ marginTop: "24px", fontSize: "8px", color: "#777", borderTop: "1px solid #ddd", paddingTop: "6px" }}>
+        Thank you for your business. This is a computer-generated invoice.
+      </div>
+    </div>
+  );
+}
+
+function PrintRow({ label, value }: { label: string; value: string }) {
+  return <div style={{ display: "flex", justifyContent: "space-between", padding: "1px 0" }}><span style={{ color: "#555" }}>{label}</span><span>{value}</span></div>;
+}
+
+function printInvoice(id: string) {
+  const el = document.getElementById(`invoice-print-${id}`);
+  if (!el) return;
+  const w = window.open("", "_blank", "width=850,height=1000");
+  if (!w) return;
+  w.document.write(`<html><head><title>Invoice</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 16mm 12mm; }
+      table { width: 100%; }
+      @page { size: A4; margin: 10mm; }
+    </style>
+  </head><body>${el.innerHTML}</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); w.close(); }, 300);
 }
 
 function Row({ label, value }: { label: string; value: string }) {

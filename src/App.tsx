@@ -22,11 +22,9 @@ import MetalRates from "./pages/MetalRates";
 import Settings from "./pages/Settings";
 import Repairs from "./pages/Repairs";
 import RepairDetail from "./pages/RepairDetail";
-import Purchases from "./pages/Purchases";
 import PurchaseDetail from "./pages/PurchaseDetail";
 import Suppliers from "./pages/Suppliers";
 import Karigars from "./pages/Karigars";
-import OldGoldPurchase from "./pages/OldGoldPurchase";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,8 +56,6 @@ const App = () => (
             <Route path="/repairs/karigars" element={<ProtectedRoute><Karigars /></ProtectedRoute>} />
             <Route path="/repairs/:id" element={<ProtectedRoute><RepairDetail /></ProtectedRoute>} />
             <Route path="/suppliers" element={<ProtectedRoute roles={["admin", "manager"]}><Suppliers /></ProtectedRoute>} />
-            <Route path="/purchases" element={<ProtectedRoute roles={["admin", "manager"]}><Purchases /></ProtectedRoute>} />
-            <Route path="/purchases/old-gold" element={<ProtectedRoute roles={["admin", "manager"]}><OldGoldPurchase /></ProtectedRoute>} />
             <Route path="/purchases/:id" element={<ProtectedRoute roles={["admin", "manager"]}><PurchaseDetail /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute roles={["admin", "manager"]}><Settings /></ProtectedRoute>} />
             <Route path="/admin/roles" element={<ProtectedRoute roles={["admin"]}><RoleManagement /></ProtectedRoute>} />
