@@ -40,6 +40,7 @@ export default function InvoiceDetail() {
   const [items, setItems] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [payOpen, setPayOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   useEffect(() => { load(); }, [id]);
   async function load() {
