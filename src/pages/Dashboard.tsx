@@ -30,6 +30,8 @@ interface Stats {
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
+  const [repairCounts, setRepairCounts] = useState<Record<string, number>>({});
+  const [rateDialog, setRateDialog] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -37,15 +39,17 @@ export default function Dashboard() {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const todayIso = today.toISOString();
 
-    const [itemsAgg, soldToday, invoicesToday, balance, customers, oldGold, rate, recent] = await Promise.all([
+    const [itemsAgg, soldToday, invoicesToday, balance, customers, oldGold, rate, recent, repairs, todayRate] = await Promise.all([
       supabase.from("inventory_items").select("id", { count: "exact", head: true }).eq("status", "in_stock"),
       supabase.from("inventory_items").select("id", { count: "exact", head: true }).eq("status", "sold").gte("updated_at", todayIso),
       supabase.from("invoices").select("total").gte("issued_at", todayIso).neq("status", "cancelled"),
-      supabase.from("invoices").select("balance_due").gt("balance_due", 0),
+      supabase.from("invoices").select("balance_due, customer_id").gt("balance_due", 0),
       supabase.from("customers").select("id", { count: "exact", head: true }),
       supabase.from("old_gold_purchases").select("total_amount").gte("purchased_at", todayIso),
       supabase.from("metal_rates").select("rate_per_gram, effective_date").eq("metal", "gold").eq("purity", "24K").order("effective_date", { ascending: false }).limit(1),
       supabase.from("invoices").select("id, invoice_number, total, balance_due, issued_at, customers(full_name)").order("issued_at", { ascending: false }).limit(8),
+      supabase.from("repair_items").select("status"),
+      supabase.from("metal_rates").select("id").eq("effective_date", todayIsoDate()).limit(1),
     ]);
 
     setStats({
@@ -56,9 +60,15 @@ export default function Dashboard() {
       customers: customers.count ?? 0,
       oldGoldToday: (oldGold.data ?? []).reduce((a, b) => a + Number(b.total_amount), 0),
       latestGoldRate: rate.data?.[0]?.rate_per_gram ?? null,
+      creditCustomers: new Set((balance.data ?? []).map((b: any) => b.customer_id ?? "walkin")).size,
     });
     setRecentInvoices(recent.data ?? []);
+    const rc: Record<string, number> = {};
+    for (const r of repairs.data ?? []) rc[r.status] = (rc[r.status] ?? 0) + 1;
+    setRepairCounts(rc);
+    if ((todayRate.data ?? []).length === 0) setRateDialog(true);
   }
+
 
   const cards = [
     { label: "Today's Sales", value: npr(stats?.salesToday ?? 0), icon: Receipt, hint: `${stats?.itemsSoldToday ?? 0} items sold` },
