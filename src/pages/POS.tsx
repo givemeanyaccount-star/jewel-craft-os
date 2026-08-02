@@ -13,12 +13,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil } from "lucide-react";
 import {
-  npr, computeLineTotal, VAT_RATE, LUXURY_TAX_RATE, LUXURY_TAX_THRESHOLD,
+  npr, computeLineTotal, SD_TAX_RATE,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
-  computeNetWeight, computeFineWeight,
+  computeNetWeight, computeFineWeight, purityFactor,
 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { QRScanButton } from "@/components/QRScanButton";
+import { PuritySelect } from "@/components/PuritySelect";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { ItemDialog } from "@/pages/Inventory";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
