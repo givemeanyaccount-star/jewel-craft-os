@@ -20,6 +20,7 @@ import InvoiceDetail from "./pages/InvoiceDetail";
 import OldGold from "./pages/OldGold";
 import MetalRates from "./pages/MetalRates";
 import Settings from "./pages/Settings";
+import CreditLedger from "./pages/CreditLedger";
 import Repairs from "./pages/Repairs";
 import RepairDetail from "./pages/RepairDetail";
 import PurchaseDetail from "./pages/PurchaseDetail";
