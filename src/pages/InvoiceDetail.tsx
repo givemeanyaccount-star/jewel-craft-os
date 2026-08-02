@@ -235,7 +235,8 @@ function InvoicePrintLayout({ inv, items }: { inv: any; items: any[] }) {
         <PrintRow label="Subtotal" value={npr(inv.subtotal)} />
         {Number(inv.stones_total) > 0 && <PrintRow label="Stones (VAT-able)" value={npr(inv.stones_total)} />}
         <PrintRow label="Discount" value={`- ${npr(inv.discount)}`} />
-        <PrintRow label={`VAT ${inv.vat_rate}%`} value={npr(inv.vat_amount)} />
+        {Number(inv.vat_amount) > 0 && <PrintRow label={`VAT ${inv.vat_rate}%`} value={npr(inv.vat_amount)} />}
+        {Number(inv.sd_tax) > 0 && <PrintRow label={`SD tax ${inv.sd_tax_rate}%`} value={npr(inv.sd_tax)} />}
         {Number(inv.luxury_tax) > 0 && <PrintRow label={`Luxury tax ${inv.luxury_tax_rate}%`} value={npr(inv.luxury_tax)} />}
         <PrintRow label="Old gold credit" value={`- ${npr(inv.old_gold_credit)}`} />
         <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1.5px solid #000", paddingTop: "4px", marginTop: "4px", fontWeight: 700, fontSize: "12px" }}>
