@@ -162,13 +162,14 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
   const stonesTotal = useMemo(() => cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0), [cart]);
   const tax = useMemo(() => computeInvoiceTaxes({
     subtotal, stonesTotal, discount, oldGoldCredit,
-    vatRate: VAT_RATE, luxuryTaxRate: LUXURY_TAX_RATE, luxuryTaxThreshold: LUXURY_TAX_THRESHOLD,
-  }), [subtotal, stonesTotal, discount, oldGoldCredit]);
+    vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
+  }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
 
   function applyTargetTotal() {
     const t = Number(targetTotal);
     if (!t || t <= 0) return toast.error("Enter target net amount");
-    const d = discountForTargetTotal({ subtotal, stonesTotal, oldGoldCredit, targetTotal: t });
+    const d = discountForTargetTotal({ subtotal, stonesTotal, oldGoldCredit, targetTotal: t,
+      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate });
     setDiscount(d);
     toast.success(`Discount set to ${npr(d)}`);
   }
