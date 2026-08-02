@@ -55,13 +55,21 @@ export default function InvoiceDetail() {
 
   if (!inv) return <AppLayout><p>Loading...</p></AppLayout>;
 
+  const cancellable = inv.status === "issued" || inv.status === "partial";
+
   return (
     <AppLayout title={inv.invoice_number} actions={
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
         <Button size="sm" variant="outline" onClick={() => printInvoice(inv.id)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
+        {cancellable && (
+          <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}>
+            <Ban className="mr-1 h-4 w-4" /> Cancel invoice
+          </Button>
+        )}
       </>
     }>
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-start justify-between">
