@@ -371,6 +371,39 @@ export type Database = {
           },
         ]
       }
+      karigars: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          payment_terms: string | null
+          phone: string | null
+          specialty: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          specialty?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          specialty?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       locations: {
         Row: {
           created_at: string
@@ -605,6 +638,112 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_items: {
+        Row: {
+          created_at: string
+          gross_weight: number
+          id: string
+          item_name: string
+          making_charge: number
+          metal: Database["public"]["Enums"]["metal_type"]
+          net_weight: number
+          purchase_id: string
+          purity: string | null
+          quantity: number
+          rate_per_gram: number
+          stone_weight: number
+          total_cost: number
+        }
+        Insert: {
+          created_at?: string
+          gross_weight?: number
+          id?: string
+          item_name: string
+          making_charge?: number
+          metal?: Database["public"]["Enums"]["metal_type"]
+          net_weight?: number
+          purchase_id: string
+          purity?: string | null
+          quantity?: number
+          rate_per_gram?: number
+          stone_weight?: number
+          total_cost?: number
+        }
+        Update: {
+          created_at?: string
+          gross_weight?: number
+          id?: string
+          item_name?: string
+          making_charge?: number
+          metal?: Database["public"]["Enums"]["metal_type"]
+          net_weight?: number
+          purchase_id?: string
+          purity?: string | null
+          quantity?: number
+          rate_per_gram?: number
+          stone_weight?: number
+          total_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchases: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_no: string | null
+          notes: string | null
+          payment_status: string
+          purchase_date: string
+          purchase_no: string
+          supplier_id: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_no?: string | null
+          notes?: string | null
+          payment_status?: string
+          purchase_date?: string
+          purchase_no: string
+          supplier_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_no?: string | null
+          notes?: string | null
+          payment_status?: string
+          purchase_date?: string
+          purchase_no?: string
+          supplier_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotation_items: {
         Row: {
           created_at: string
@@ -763,6 +902,176 @@ export type Database = {
           },
         ]
       }
+      repair_items: {
+        Row: {
+          created_at: string
+          estimated_cost: number
+          final_cost: number | null
+          gross_weight_in: number
+          gross_weight_out: number | null
+          id: string
+          issue_description: string
+          item_description: string
+          karigar_id: string | null
+          karigar_name: string | null
+          metal: Database["public"]["Enums"]["metal_type"]
+          net_weight_in: number
+          net_weight_out: number | null
+          photos: string[]
+          purity: string | null
+          repair_id: string
+          status: Database["public"]["Enums"]["repair_status"]
+          stone_weight_in: number
+          stone_weight_out: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_cost?: number
+          final_cost?: number | null
+          gross_weight_in?: number
+          gross_weight_out?: number | null
+          id?: string
+          issue_description: string
+          item_description: string
+          karigar_id?: string | null
+          karigar_name?: string | null
+          metal?: Database["public"]["Enums"]["metal_type"]
+          net_weight_in?: number
+          net_weight_out?: number | null
+          photos?: string[]
+          purity?: string | null
+          repair_id: string
+          status?: Database["public"]["Enums"]["repair_status"]
+          stone_weight_in?: number
+          stone_weight_out?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          estimated_cost?: number
+          final_cost?: number | null
+          gross_weight_in?: number
+          gross_weight_out?: number | null
+          id?: string
+          issue_description?: string
+          item_description?: string
+          karigar_id?: string | null
+          karigar_name?: string | null
+          metal?: Database["public"]["Enums"]["metal_type"]
+          net_weight_in?: number
+          net_weight_out?: number | null
+          photos?: string[]
+          purity?: string | null
+          repair_id?: string
+          status?: Database["public"]["Enums"]["repair_status"]
+          stone_weight_in?: number
+          stone_weight_out?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_items_karigar_id_fkey"
+            columns: ["karigar_id"]
+            isOneToOne: false
+            referencedRelation: "karigars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_items_repair_id_fkey"
+            columns: ["repair_id"]
+            isOneToOne: false
+            referencedRelation: "repairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repairs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          delivered_at: string | null
+          expected_delivery: string | null
+          id: string
+          received_at: string
+          repair_no: string
+          special_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          delivered_at?: string | null
+          expected_delivery?: string | null
+          id?: string
+          received_at?: string
+          repair_no: string
+          special_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          delivered_at?: string | null
+          expected_delivery?: string | null
+          id?: string
+          received_at?: string
+          repair_no?: string
+          special_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repairs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          city: string | null
+          contact_person: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          pan_vat_number: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          pan_vat_number?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          pan_vat_number?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -842,6 +1151,12 @@ export type Database = {
         | "rejected"
         | "expired"
         | "converted"
+      repair_status:
+        | "received"
+        | "in_progress"
+        | "quality_check"
+        | "ready"
+        | "delivered"
       wastage_type: "percentage" | "weight" | "fixed"
     }
     CompositeTypes: {
@@ -1013,6 +1328,13 @@ export const Constants = {
         "rejected",
         "expired",
         "converted",
+      ],
+      repair_status: [
+        "received",
+        "in_progress",
+        "quality_check",
+        "ready",
+        "delivered",
       ],
       wastage_type: ["percentage", "weight", "fixed"],
     },
