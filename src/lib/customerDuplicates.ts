@@ -45,7 +45,7 @@ export async function checkCustomerDuplicate(params: {
 
   if (id_doc_type && id_doc_number?.trim()) {
     let q = supabase.from("customers").select("id, full_name")
-      .eq("id_doc_type", id_doc_type).eq("id_doc_number", id_doc_number.trim()).limit(1);
+      .eq("id_doc_type", id_doc_type as any).eq("id_doc_number", id_doc_number.trim()).limit(1);
     if (excludeId) q = q.neq("id", excludeId);
     const { data } = await q;
     if (data && data.length > 0) {
