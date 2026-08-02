@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string
+          id: string
+          purities: string[]
+          sd_tax_rate: number
+          singleton: boolean
+          updated_at: string
+          vat_enabled: boolean
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          purities?: string[]
+          sd_tax_rate?: number
+          singleton?: boolean
+          updated_at?: string
+          vat_enabled?: boolean
+          vat_rate?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          purities?: string[]
+          sd_tax_rate?: number
+          singleton?: boolean
+          updated_at?: string
+          vat_enabled?: boolean
+          vat_rate?: number
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -288,6 +321,8 @@ export type Database = {
         Row: {
           amount_paid: number
           balance_due: number
+          cancel_reason: string | null
+          cancelled_at: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
@@ -300,6 +335,9 @@ export type Database = {
           notes: string | null
           old_gold_credit: number
           quotation_id: string | null
+          restocked: boolean
+          sd_tax: number
+          sd_tax_rate: number
           status: Database["public"]["Enums"]["invoice_status"]
           stones_total: number
           subtotal: number
@@ -311,6 +349,8 @@ export type Database = {
         Insert: {
           amount_paid?: number
           balance_due?: number
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -323,6 +363,9 @@ export type Database = {
           notes?: string | null
           old_gold_credit?: number
           quotation_id?: string | null
+          restocked?: boolean
+          sd_tax?: number
+          sd_tax_rate?: number
           status?: Database["public"]["Enums"]["invoice_status"]
           stones_total?: number
           subtotal?: number
@@ -334,6 +377,8 @@ export type Database = {
         Update: {
           amount_paid?: number
           balance_due?: number
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
@@ -346,6 +391,9 @@ export type Database = {
           notes?: string | null
           old_gold_credit?: number
           quotation_id?: string | null
+          restocked?: boolean
+          sd_tax?: number
+          sd_tax_rate?: number
           status?: Database["public"]["Enums"]["invoice_status"]
           stones_total?: number
           subtotal?: number
@@ -841,6 +889,8 @@ export type Database = {
           notes: string | null
           old_gold_credit: number
           quote_number: string
+          sd_tax: number
+          sd_tax_rate: number
           status: Database["public"]["Enums"]["quotation_status"]
           stones_total: number
           subtotal: number
@@ -862,6 +912,8 @@ export type Database = {
           notes?: string | null
           old_gold_credit?: number
           quote_number: string
+          sd_tax?: number
+          sd_tax_rate?: number
           status?: Database["public"]["Enums"]["quotation_status"]
           stones_total?: number
           subtotal?: number
@@ -883,6 +935,8 @@ export type Database = {
           notes?: string | null
           old_gold_credit?: number
           quote_number?: string
+          sd_tax?: number
+          sd_tax_rate?: number
           status?: Database["public"]["Enums"]["quotation_status"]
           stones_total?: number
           subtotal?: number
