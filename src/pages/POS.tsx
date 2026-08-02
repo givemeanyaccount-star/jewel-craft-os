@@ -86,6 +86,7 @@ export function lineDisplay(r: {
 
 export default function POS() {
   const { user } = useAuth();
+  const { settings } = useAppSettings();
   const nav = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
