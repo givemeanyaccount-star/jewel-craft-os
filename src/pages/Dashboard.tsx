@@ -125,6 +125,33 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /> Repair Jobs</CardTitle>
+          <Button asChild size="sm" variant="outline"><Link to="/repairs">View all</Link></Button>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {REPAIR_STAGES.map((s) => (
+            <Link key={s.key} to="/repairs" className="rounded-md border p-3 transition hover:bg-muted/50">
+              <div className="text-2xl font-semibold">{repairCounts[s.key] ?? 0}</div>
+              <div className="text-xs text-muted-foreground">{s.label}</div>
+            </Link>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2"><CircleDollarSign className="h-4 w-4 text-primary" /> Pending Credit</CardTitle>
+          <Button asChild size="sm" variant="outline"><Link to="/credit">Open credit ledger</Link></Button>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          {npr(stats?.pendingBalance ?? 0)} outstanding across {stats?.creditCustomers ?? 0} customer(s), including partially paid invoices.
+        </CardContent>
+      </Card>
+
+      <DailyRateDialog open={rateDialog} onOpenChange={setRateDialog} onSaved={load} />
     </AppLayout>
   );
 }
