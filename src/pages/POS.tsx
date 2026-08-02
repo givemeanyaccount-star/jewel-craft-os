@@ -199,8 +199,8 @@ export default function POS() {
 
   const tax = useMemo(() => computeInvoiceTaxes({
     subtotal, stonesTotal, discount, oldGoldCredit,
-    vatRate: VAT_RATE, luxuryTaxRate: LUXURY_TAX_RATE, luxuryTaxThreshold: LUXURY_TAX_THRESHOLD,
-  }), [subtotal, stonesTotal, discount, oldGoldCredit]);
+    vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
+  }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
 
   const paid = useMemo(() => payments.reduce((a, p) => a + (Number(p.amount) || 0), 0), [payments]);
   const balance = Math.max(0, tax.total - paid);
@@ -210,6 +210,7 @@ export default function POS() {
     if (!t || t <= 0) return toast.error("Enter target net amount");
     const d = discountForTargetTotal({
       subtotal, stonesTotal, oldGoldCredit, targetTotal: t,
+      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
     });
     setDiscount(d);
     toast.success(`Discount set to ${npr(d)} to reach ${npr(t)}`);
