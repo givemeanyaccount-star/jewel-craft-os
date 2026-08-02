@@ -1,8 +1,7 @@
 export const VAT_RATE = 13;
-// Nepal Luxury Tax: 2% on (gold + making + wastage − old gold credit). Applies to all
-// qualifying gold-jewellery transactions (no minimum threshold).
-export const LUXURY_TAX_RATE = 2;
-export const LUXURY_TAX_THRESHOLD = 0;
+// Nepal SD tax: 0.5% on (gold + making + wastage − old gold credit).
+// No minimum threshold; skipped when old gold credit covers the base.
+export const SD_TAX_RATE = 0.5;
 
 export interface TaxBreakdown {
   subtotal: number;        // sum of all line totals (metal + making + wastage + stones)
@@ -10,8 +9,8 @@ export interface TaxBreakdown {
   nonStoneTotal: number;   // gold + making + wastage (no VAT)
   discount: number;
   taxableStones: number;   // stones portion after proportional discount
-  vat: number;             // VAT on stones only
-  luxuryTax: number;       // 2% of pre-VAT (post-discount) subtotal if > threshold
+  vat: number;             // VAT on stones only (0 when VAT is disabled in settings)
+  sdTax: number;           // 0.5% of (gold + making + wastage − old gold credit)
   oldGoldCredit: number;
   total: number;
 }
@@ -22,32 +21,30 @@ export function computeInvoiceTaxes(opts: {
   discount?: number;
   oldGoldCredit?: number;
   vatRate?: number;
-  luxuryTaxRate?: number;
-  luxuryTaxThreshold?: number;
+  vatEnabled?: boolean;
+  sdTaxRate?: number;
 }): TaxBreakdown {
   const subtotal = Math.max(0, opts.subtotal || 0);
   const stonesTotal = Math.max(0, Math.min(opts.stonesTotal || 0, subtotal));
   const nonStoneTotal = subtotal - stonesTotal;
   const discount = Math.max(0, Math.min(opts.discount || 0, subtotal));
   const oldGoldCredit = Math.max(0, opts.oldGoldCredit || 0);
-  const vatRate = opts.vatRate ?? VAT_RATE;
-  const luxRate = opts.luxuryTaxRate ?? LUXURY_TAX_RATE;
-  const luxThreshold = opts.luxuryTaxThreshold ?? LUXURY_TAX_THRESHOLD;
+  const vatEnabled = opts.vatEnabled ?? true;
+  const vatRate = vatEnabled ? (opts.vatRate ?? VAT_RATE) : 0;
+  const sdRate = opts.sdTaxRate ?? SD_TAX_RATE;
 
   const postDiscount = Math.max(0, subtotal - discount);
   // proportionally allocate the discount to the stones portion for VAT base
   const stonesShare = subtotal > 0 ? stonesTotal / subtotal : 0;
   const taxableStones = Math.max(0, postDiscount * stonesShare);
   const vat = (taxableStones * vatRate) / 100;
-  // Luxury tax: applies on (gold + making + wastage) AFTER deducting old gold credit.
-  // If old gold credit >= non-stone amount → no luxury tax. Threshold check uses the same base.
+  // SD tax: applies on (gold + making + wastage) AFTER deducting old gold credit.
   const nonStonePostDiscount = Math.max(0, postDiscount - taxableStones);
-  const luxBase = Math.max(0, nonStonePostDiscount - oldGoldCredit);
-  const luxuryTax = luxBase > 0 && luxBase >= luxThreshold ? (luxBase * luxRate) / 100 : 0;
-  const total = Math.max(0, postDiscount + vat + luxuryTax - oldGoldCredit);
+  const sdBase = Math.max(0, nonStonePostDiscount - oldGoldCredit);
+  const sdTax = sdBase > 0 ? (sdBase * sdRate) / 100 : 0;
+  const total = Math.max(0, postDiscount + vat + sdTax - oldGoldCredit);
 
-
-  return { subtotal, stonesTotal, nonStoneTotal, discount, taxableStones, vat, luxuryTax, oldGoldCredit, total };
+  return { subtotal, stonesTotal, nonStoneTotal, discount, taxableStones, vat, sdTax, oldGoldCredit, total };
 }
 
 // Back-solve the discount so the final total equals a desired net amount.
@@ -57,8 +54,8 @@ export function discountForTargetTotal(opts: {
   oldGoldCredit?: number;
   targetTotal: number;
   vatRate?: number;
-  luxuryTaxRate?: number;
-  luxuryTaxThreshold?: number;
+  vatEnabled?: boolean;
+  sdTaxRate?: number;
 }): number {
   const subtotal = Math.max(0, opts.subtotal || 0);
   const target = Math.max(0, opts.targetTotal || 0);
@@ -73,6 +70,7 @@ export function discountForTargetTotal(opts: {
   }
   return Math.round(best * 100) / 100;
 }
+
 
 export function npr(n: number | null | undefined, opts: { withSymbol?: boolean } = { withSymbol: true }) {
   const v = Number(n ?? 0);
