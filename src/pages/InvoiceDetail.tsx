@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Printer, Plus } from "lucide-react";
+import { ArrowLeft, Printer, Plus, Ban } from "lucide-react";
 import { npr } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { CancelInvoiceDialog } from "@/components/CancelInvoiceDialog";
 import logoUrl from "@/assets/logo.png";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
@@ -39,6 +40,7 @@ export default function InvoiceDetail() {
   const [items, setItems] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [payOpen, setPayOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   useEffect(() => { load(); }, [id]);
   async function load() {
@@ -53,13 +55,21 @@ export default function InvoiceDetail() {
 
   if (!inv) return <AppLayout><p>Loading...</p></AppLayout>;
 
+  const cancellable = inv.status === "issued" || inv.status === "partial";
+
   return (
     <AppLayout title={inv.invoice_number} actions={
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
         <Button size="sm" variant="outline" onClick={() => printInvoice(inv.id)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
+        {cancellable && (
+          <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}>
+            <Ban className="mr-1 h-4 w-4" /> Cancel invoice
+          </Button>
+        )}
       </>
     }>
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-start justify-between">
@@ -118,7 +128,8 @@ export default function InvoiceDetail() {
               <Row label="Subtotal" value={npr(inv.subtotal)} />
               {Number(inv.stones_total) > 0 && <Row label="  Stones (VAT-able)" value={npr(inv.stones_total)} />}
               <Row label="Discount" value={`- ${npr(inv.discount)}`} />
-              <Row label={`VAT ${inv.vat_rate}% (stones only)`} value={npr(inv.vat_amount)} />
+              {Number(inv.vat_amount) > 0 && <Row label={`VAT ${inv.vat_rate}% (stones only)`} value={npr(inv.vat_amount)} />}
+              {Number(inv.sd_tax) > 0 && <Row label={`SD tax ${inv.sd_tax_rate}% (gold + making − old gold)`} value={npr(inv.sd_tax)} />}
               {Number(inv.luxury_tax) > 0 && <Row label={`Luxury tax ${inv.luxury_tax_rate}% (gold + making − old gold)`} value={npr(inv.luxury_tax)} />}
               <Row label="Old gold credit" value={`- ${npr(inv.old_gold_credit)}`} />
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(inv.total)}</span></div>
@@ -157,6 +168,8 @@ export default function InvoiceDetail() {
       </div>
 
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} invoice={inv} userId={user?.id ?? null} onSaved={() => { setPayOpen(false); load(); }} />
+      <CancelInvoiceDialog open={cancelOpen} onOpenChange={setCancelOpen} invoice={inv} items={items}
+        userId={user?.id ?? null} onDone={load} />
     </AppLayout>
   );
 }
@@ -224,7 +237,8 @@ function InvoicePrintLayout({ inv, items }: { inv: any; items: any[] }) {
         <PrintRow label="Subtotal" value={npr(inv.subtotal)} />
         {Number(inv.stones_total) > 0 && <PrintRow label="Stones (VAT-able)" value={npr(inv.stones_total)} />}
         <PrintRow label="Discount" value={`- ${npr(inv.discount)}`} />
-        <PrintRow label={`VAT ${inv.vat_rate}%`} value={npr(inv.vat_amount)} />
+        {Number(inv.vat_amount) > 0 && <PrintRow label={`VAT ${inv.vat_rate}%`} value={npr(inv.vat_amount)} />}
+        {Number(inv.sd_tax) > 0 && <PrintRow label={`SD tax ${inv.sd_tax_rate}%`} value={npr(inv.sd_tax)} />}
         {Number(inv.luxury_tax) > 0 && <PrintRow label={`Luxury tax ${inv.luxury_tax_rate}%`} value={npr(inv.luxury_tax)} />}
         <PrintRow label="Old gold credit" value={`- ${npr(inv.old_gold_credit)}`} />
         <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1.5px solid #000", paddingTop: "4px", marginTop: "4px", fontWeight: 700, fontSize: "12px" }}>

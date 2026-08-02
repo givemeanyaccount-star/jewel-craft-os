@@ -13,12 +13,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil } from "lucide-react";
 import {
-  npr, computeLineTotal, VAT_RATE, LUXURY_TAX_RATE, LUXURY_TAX_THRESHOLD,
+  npr, computeLineTotal, SD_TAX_RATE,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
-  computeNetWeight, computeFineWeight,
+  computeNetWeight, computeFineWeight, purityFactor,
 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { QRScanButton } from "@/components/QRScanButton";
+import { PuritySelect } from "@/components/PuritySelect";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { ItemDialog } from "@/pages/Inventory";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
@@ -84,6 +86,7 @@ export function lineDisplay(r: {
 
 export default function POS() {
   const { user } = useAuth();
+  const { settings } = useAppSettings();
   const nav = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -197,8 +200,8 @@ export default function POS() {
 
   const tax = useMemo(() => computeInvoiceTaxes({
     subtotal, stonesTotal, discount, oldGoldCredit,
-    vatRate: VAT_RATE, luxuryTaxRate: LUXURY_TAX_RATE, luxuryTaxThreshold: LUXURY_TAX_THRESHOLD,
-  }), [subtotal, stonesTotal, discount, oldGoldCredit]);
+    vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
+  }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
 
   const paid = useMemo(() => payments.reduce((a, p) => a + (Number(p.amount) || 0), 0), [payments]);
   const balance = Math.max(0, tax.total - paid);
@@ -208,6 +211,7 @@ export default function POS() {
     if (!t || t <= 0) return toast.error("Enter target net amount");
     const d = discountForTargetTotal({
       subtotal, stonesTotal, oldGoldCredit, targetTotal: t,
+      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
     });
     setDiscount(d);
     toast.success(`Discount set to ${npr(d)} to reach ${npr(t)}`);
@@ -227,8 +231,9 @@ export default function POS() {
         customer_id: customerId,
         subtotal,
         stones_total: stonesTotal,
-        vat_rate: VAT_RATE, vat_amount: tax.vat,
-        luxury_tax_rate: LUXURY_TAX_RATE, luxury_tax: tax.luxuryTax,
+        vat_rate: settings.vat_enabled ? settings.vat_rate : 0, vat_amount: tax.vat,
+        sd_tax_rate: settings.sd_tax_rate, sd_tax: tax.sdTax,
+        luxury_tax_rate: 0, luxury_tax: 0,
         discount, old_gold_credit: oldGoldCredit, total: tax.total,
         amount_paid: paid, balance_due: balance,
         notes: notes || null, status, created_by: user?.id,
@@ -425,15 +430,15 @@ export default function POS() {
           <CardHeader><CardTitle className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Summary</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Row label="Subtotal" value={npr(subtotal)} />
-            <Row label="  Stones (VAT-able)" value={npr(stonesTotal)} />
+            <Row label={settings.vat_enabled ? "  Stones (VAT-able)" : "  Stones"} value={npr(stonesTotal)} />
             <Row label="  Gold + Making + Wastage" value={npr(tax.nonStoneTotal)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Discount</span>
               <Input type="number" className="h-8 w-28 text-right" value={discount}
                 onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
             </div>
-            <Row label={`VAT ${VAT_RATE}% (stones only)`} value={npr(tax.vat)} />
-            <Row label={`Luxury tax ${LUXURY_TAX_RATE}% (gold+making − old gold)`} value={npr(tax.luxuryTax)} />
+            {settings.vat_enabled && <Row label={`VAT ${settings.vat_rate}% (stones only)`} value={npr(tax.vat)} />}
+            <Row label={`SD tax ${settings.sd_tax_rate}% (gold+making − old gold)`} value={npr(tax.sdTax)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Old gold credit</span>
               <div className="flex gap-1">

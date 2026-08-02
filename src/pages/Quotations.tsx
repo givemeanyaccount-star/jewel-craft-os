@@ -12,10 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Trash2, Search, FileText, Eye, Pencil } from "lucide-react";
 import {
-  npr, VAT_RATE, LUXURY_TAX_RATE, LUXURY_TAX_THRESHOLD,
-  nextNumber, computeInvoiceTaxes, discountForTargetTotal,
+  npr, nextNumber, computeInvoiceTaxes, discountForTargetTotal,
 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { QRScanButton } from "@/components/QRScanButton";
 import { toast } from "sonner";
 import { CartRow, recompute, lineDisplay, Detail } from "@/pages/POS";
@@ -74,6 +74,7 @@ export default function Quotations() {
 function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
   open: boolean; onOpenChange: (v: boolean) => void; userId: string | null; onSaved: (id?: string) => void;
 }) {
+  const { settings } = useAppSettings();
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
@@ -161,13 +162,14 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
   const stonesTotal = useMemo(() => cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0), [cart]);
   const tax = useMemo(() => computeInvoiceTaxes({
     subtotal, stonesTotal, discount, oldGoldCredit,
-    vatRate: VAT_RATE, luxuryTaxRate: LUXURY_TAX_RATE, luxuryTaxThreshold: LUXURY_TAX_THRESHOLD,
-  }), [subtotal, stonesTotal, discount, oldGoldCredit]);
+    vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
+  }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
 
   function applyTargetTotal() {
     const t = Number(targetTotal);
     if (!t || t <= 0) return toast.error("Enter target net amount");
-    const d = discountForTargetTotal({ subtotal, stonesTotal, oldGoldCredit, targetTotal: t });
+    const d = discountForTargetTotal({ subtotal, stonesTotal, oldGoldCredit, targetTotal: t,
+      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate });
     setDiscount(d);
     toast.success(`Discount set to ${npr(d)}`);
   }
@@ -182,8 +184,9 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
       const { data: q, error } = await supabase.from("quotations").insert({
         quote_number: qNumber, customer_id: customerId, status: "draft",
         subtotal, stones_total: stonesTotal,
-        vat_rate: VAT_RATE, vat_amount: tax.vat,
-        luxury_tax_rate: LUXURY_TAX_RATE, luxury_tax: tax.luxuryTax,
+        vat_rate: settings.vat_enabled ? settings.vat_rate : 0, vat_amount: tax.vat,
+        sd_tax_rate: settings.sd_tax_rate, sd_tax: tax.sdTax,
+        luxury_tax_rate: 0, luxury_tax: 0,
         old_gold_credit: oldGoldCredit,
         discount, total: tax.total, notes: notes || null,
         valid_until: new Date(Date.now() + validDays * 86400000).toISOString().slice(0, 10),
@@ -331,8 +334,8 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
                 <Input type="number" className="h-8 w-28 text-right" value={discount}
                   onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
               </div>
-              <div className="flex justify-between"><span className="text-muted-foreground">VAT {VAT_RATE}% (stones)</span><span>{npr(tax.vat)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Luxury tax {LUXURY_TAX_RATE}%</span><span>{npr(tax.luxuryTax)}</span></div>
+              {settings.vat_enabled && <div className="flex justify-between"><span className="text-muted-foreground">VAT {settings.vat_rate}% (stones)</span><span>{npr(tax.vat)}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">SD tax {settings.sd_tax_rate}%</span><span>{npr(tax.sdTax)}</span></div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Old gold credit</span>
                 <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit}

@@ -3,7 +3,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScanLine } from "lucide-react";
+import { QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 const SCANNER_ID = "qr-reader-region";
@@ -83,8 +83,8 @@ export function QRScanButton({
 
   return (
     <>
-      <Button type="button" size={size} variant={variant} onClick={() => { setCamError(null); setManual(""); setOpen(true); }} title="Scan QR / barcode">
-        <ScanLine className={label ? "mr-1 h-4 w-4" : "h-4 w-4"} />
+      <Button type="button" size={size} variant={variant} onClick={() => { setCamError(null); setManual(""); setOpen(true); }} title="Scan QR / barcode" aria-label="Scan QR or barcode">
+        <QrCode className={label ? "mr-1 h-4 w-4" : "h-4 w-4"} />
         {label}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
