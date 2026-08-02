@@ -168,6 +168,8 @@ export default function InvoiceDetail() {
       </div>
 
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} invoice={inv} userId={user?.id ?? null} onSaved={() => { setPayOpen(false); load(); }} />
+      <CancelInvoiceDialog open={cancelOpen} onOpenChange={setCancelOpen} invoice={inv} items={items}
+        userId={user?.id ?? null} onDone={load} />
     </AppLayout>
   );
 }
