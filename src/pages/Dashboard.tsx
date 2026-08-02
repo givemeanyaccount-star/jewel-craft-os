@@ -6,7 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { npr } from "@/lib/format";
-import { Package, Receipt, Users, Coins, TrendingUp, AlertCircle } from "lucide-react";
+import { DailyRateDialog, todayIsoDate } from "@/components/DailyRateDialog";
+import { Package, Receipt, Users, Coins, TrendingUp, AlertCircle, Wrench, CircleDollarSign } from "lucide-react";
+
+const REPAIR_STAGES = [
+  { key: "received", label: "Received" },
+  { key: "in_progress", label: "In progress" },
+  { key: "quality_check", label: "Quality check" },
+  { key: "ready", label: "Ready for pickup" },
+] as const;
 
 interface Stats {
   itemsInStock: number;
@@ -16,6 +24,7 @@ interface Stats {
   customers: number;
   oldGoldToday: number;
   latestGoldRate: number | null;
+  creditCustomers: number;
 }
 
 export default function Dashboard() {
