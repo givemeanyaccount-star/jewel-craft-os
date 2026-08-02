@@ -334,8 +334,8 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
                 <Input type="number" className="h-8 w-28 text-right" value={discount}
                   onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
               </div>
-              <div className="flex justify-between"><span className="text-muted-foreground">VAT {VAT_RATE}% (stones)</span><span>{npr(tax.vat)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Luxury tax {LUXURY_TAX_RATE}%</span><span>{npr(tax.luxuryTax)}</span></div>
+              {settings.vat_enabled && <div className="flex justify-between"><span className="text-muted-foreground">VAT {settings.vat_rate}% (stones)</span><span>{npr(tax.vat)}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">SD tax {settings.sd_tax_rate}%</span><span>{npr(tax.sdTax)}</span></div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Old gold credit</span>
                 <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit}
