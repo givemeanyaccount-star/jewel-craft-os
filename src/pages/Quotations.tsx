@@ -184,8 +184,9 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
       const { data: q, error } = await supabase.from("quotations").insert({
         quote_number: qNumber, customer_id: customerId, status: "draft",
         subtotal, stones_total: stonesTotal,
-        vat_rate: VAT_RATE, vat_amount: tax.vat,
-        luxury_tax_rate: LUXURY_TAX_RATE, luxury_tax: tax.luxuryTax,
+        vat_rate: settings.vat_enabled ? settings.vat_rate : 0, vat_amount: tax.vat,
+        sd_tax_rate: settings.sd_tax_rate, sd_tax: tax.sdTax,
+        luxury_tax_rate: 0, luxury_tax: 0,
         old_gold_credit: oldGoldCredit,
         discount, total: tax.total, notes: notes || null,
         valid_until: new Date(Date.now() + validDays * 86400000).toISOString().slice(0, 10),
