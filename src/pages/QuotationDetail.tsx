@@ -129,7 +129,8 @@ export default function QuotationDetail() {
               <Row label="Subtotal" value={npr(q.subtotal)} />
               {Number(q.stones_total) > 0 && <Row label="  Stones (VAT-able)" value={npr(q.stones_total)} />}
               <Row label="Discount" value={`- ${npr(q.discount)}`} />
-              <Row label={`VAT ${q.vat_rate}% (stones only)`} value={npr(q.vat_amount)} />
+              {Number(q.vat_amount) > 0 && <Row label={`VAT ${q.vat_rate}% (stones only)`} value={npr(q.vat_amount)} />}
+              {Number(q.sd_tax) > 0 && <Row label={`SD tax ${q.sd_tax_rate}% (gold + making − old gold)`} value={npr(q.sd_tax)} />}
               {Number(q.luxury_tax) > 0 && <Row label={`Luxury tax ${q.luxury_tax_rate}% (gold + making − old gold)`} value={npr(q.luxury_tax)} />}
               {Number(q.old_gold_credit) > 0 && <Row label="Old gold credit" value={`- ${npr(q.old_gold_credit)}`} />}
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(q.total)}</span></div>
