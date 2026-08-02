@@ -430,15 +430,15 @@ export default function POS() {
           <CardHeader><CardTitle className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Summary</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Row label="Subtotal" value={npr(subtotal)} />
-            <Row label="  Stones (VAT-able)" value={npr(stonesTotal)} />
+            <Row label={settings.vat_enabled ? "  Stones (VAT-able)" : "  Stones"} value={npr(stonesTotal)} />
             <Row label="  Gold + Making + Wastage" value={npr(tax.nonStoneTotal)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Discount</span>
               <Input type="number" className="h-8 w-28 text-right" value={discount}
                 onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
             </div>
-            <Row label={`VAT ${VAT_RATE}% (stones only)`} value={npr(tax.vat)} />
-            <Row label={`Luxury tax ${LUXURY_TAX_RATE}% (gold+making − old gold)`} value={npr(tax.luxuryTax)} />
+            {settings.vat_enabled && <Row label={`VAT ${settings.vat_rate}% (stones only)`} value={npr(tax.vat)} />}
+            <Row label={`SD tax ${settings.sd_tax_rate}% (gold+making − old gold)`} value={npr(tax.sdTax)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Old gold credit</span>
               <div className="flex gap-1">
