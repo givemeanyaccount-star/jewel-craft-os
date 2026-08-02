@@ -74,6 +74,7 @@ export default function Quotations() {
 function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
   open: boolean; onOpenChange: (v: boolean) => void; userId: string | null; onSaved: (id?: string) => void;
 }) {
+  const { settings } = useAppSettings();
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
