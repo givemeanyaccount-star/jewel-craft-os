@@ -142,7 +142,7 @@ export default function QuotationDetail() {
               </div>
             )}
             <div className="mt-6 text-[10px] text-muted-foreground print:mt-8">
-              This quotation is an estimate based on today's metal rates. Final invoice values may vary with rate movement. Gold and making charges are exempt from VAT; VAT applies to stones only. Luxury tax (2%) applies to gold + making − old gold value per Nepal tax rules.
+              This quotation is an estimate based on today's metal rates. Final invoice values may vary with rate movement. Gold and making charges are exempt from VAT; where applicable VAT applies to stones only. SD tax (0.5%) applies to gold + making − old gold value per Nepal tax rules.
             </div>
           </CardContent>
         </Card>
