@@ -18,6 +18,7 @@ import { uploadImage } from "@/lib/storage";
 import { toast } from "sonner";
 import { ImageCaptureButton } from "@/components/ImageCapture";
 import { KarigarSelect, useKarigars } from "@/components/KarigarSelect";
+import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
 
 const METALS = ["gold", "silver", "platinum"];
 const PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
@@ -138,15 +139,15 @@ export default function Repairs() {
 function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
   const { user } = useAuth();
   const { karigars, refresh: refreshKarigars } = useKarigars();
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customer, setCustomer] = useState<PickedCustomer | null>(null);
   const [header, setHeader] = useState<any>({});
   const [items, setItems] = useState<any[]>([blankItem()]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    supabase.from("customers").select("id, full_name, phone").order("full_name").then(({ data }) => setCustomers(data ?? []));
-    setHeader({ customer_id: "", expected_delivery: "", special_notes: "" });
+    setCustomer(null);
+    setHeader({ expected_delivery: "", special_notes: "" });
     setItems([blankItem()]);
   }, [open]);
 
@@ -166,7 +167,7 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
       const repairNo = nextNumber("REP", num, 5);
       const { data: repair, error } = await supabase.from("repairs").insert({
         repair_no: repairNo,
-        customer_id: header.customer_id || null,
+        customer_id: customer?.id || null,
         expected_delivery: header.expected_delivery || null,
         special_notes: header.special_notes || null,
         created_by: user?.id,
@@ -205,15 +206,7 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> New Repair Receipt</DialogTitle></DialogHeader>
 
         <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <Label>Customer</Label>
-            <Select value={header.customer_id} onValueChange={(v) => setHeader({ ...header, customer_id: v })}>
-              <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} {c.phone && `· ${c.phone}`}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          <CustomerSelector value={customer} onChange={setCustomer} />
           <div><Label>Expected delivery</Label><Input type="date" value={header.expected_delivery ?? ""} onChange={(e) => setHeader({ ...header, expected_delivery: e.target.value })} /></div>
         </div>
 
