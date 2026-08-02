@@ -12,10 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Trash2, Search, FileText, Eye, Pencil } from "lucide-react";
 import {
-  npr, VAT_RATE, LUXURY_TAX_RATE, LUXURY_TAX_THRESHOLD,
-  nextNumber, computeInvoiceTaxes, discountForTargetTotal,
+  npr, nextNumber, computeInvoiceTaxes, discountForTargetTotal,
 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { QRScanButton } from "@/components/QRScanButton";
 import { toast } from "sonner";
 import { CartRow, recompute, lineDisplay, Detail } from "@/pages/POS";
