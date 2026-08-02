@@ -73,7 +73,7 @@ export default function Dashboard() {
   const cards = [
     { label: "Today's Sales", value: npr(stats?.salesToday ?? 0), icon: Receipt, hint: `${stats?.itemsSoldToday ?? 0} items sold` },
     { label: "Items in Stock", value: stats?.itemsInStock ?? 0, icon: Package, hint: "Available across showcases", asLink: "/inventory" },
-    { label: "Outstanding Credit", value: npr(stats?.pendingBalance ?? 0), icon: AlertCircle, hint: "Across all unpaid invoices" },
+    { label: "Outstanding Credit", value: npr(stats?.pendingBalance ?? 0), icon: AlertCircle, hint: `${stats?.creditCustomers ?? 0} customers with dues`, asLink: "/credit" },
     { label: "Customers", value: stats?.customers ?? 0, icon: Users, hint: "Total in CRM", asLink: "/customers" },
     { label: "Old Gold Today", value: npr(stats?.oldGoldToday ?? 0), icon: Coins, hint: "Purchased today" },
     { label: "Gold Rate (24K)", value: stats?.latestGoldRate ? npr(stats.latestGoldRate) + "/g" : "—", icon: TrendingUp, hint: "Latest entry", asLink: "/rates" },
