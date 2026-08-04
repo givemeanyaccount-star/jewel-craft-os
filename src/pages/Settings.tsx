@@ -29,14 +29,19 @@ export default function Settings() {
 function TaxationCard() {
   const { settings, setSettings, loading, reload } = useAppSettings();
   const [saving, setSaving] = useState(false);
+  const [recalcOpen, setRecalcOpen] = useState(false);
 
   async function save(next: { vat_enabled?: boolean; vat_rate?: number; sd_tax_rate?: number }) {
-    setSaving(true);
     const payload = {
       vat_enabled: next.vat_enabled ?? settings.vat_enabled,
       vat_rate: next.vat_rate ?? settings.vat_rate,
       sd_tax_rate: next.sd_tax_rate ?? settings.sd_tax_rate,
     };
+    const changed =
+      payload.vat_enabled !== settings.vat_enabled ||
+      Number(payload.vat_rate) !== Number(settings.vat_rate) ||
+      Number(payload.sd_tax_rate) !== Number(settings.sd_tax_rate);
+    setSaving(true);
     let error;
     if (settings.id) {
       ({ error } = await supabase.from("app_settings").update(payload).eq("id", settings.id));
@@ -46,8 +51,10 @@ function TaxationCard() {
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Tax settings saved");
-    reload();
+    await reload();
+    if (changed) setRecalcOpen(true);
   }
+
 
   return (
     <Card>
