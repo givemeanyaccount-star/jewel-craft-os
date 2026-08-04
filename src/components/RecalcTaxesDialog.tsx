@@ -37,10 +37,10 @@ export function RecalcTaxesDialog({
       const [inv, q] = await Promise.all([
         supabase.from("invoices")
           .select("id, invoice_number, subtotal, stones_total, discount, old_gold_credit, total, amount_paid")
-          .in("status", OPEN_INVOICE_STATUSES as unknown as string[]),
+          .in("status", [...OPEN_INVOICE_STATUSES]),
         supabase.from("quotations")
           .select("id, quote_number, subtotal, stones_total, discount, old_gold_credit, total")
-          .in("status", OPEN_QUOTE_STATUSES as unknown as string[]),
+          .in("status", [...OPEN_QUOTE_STATUSES]),
       ]);
       setInvoices((inv.data ?? []).map((r: any) => ({
         id: r.id, label: r.invoice_number, subtotal: Number(r.subtotal ?? 0),
