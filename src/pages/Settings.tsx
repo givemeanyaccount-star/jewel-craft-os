@@ -98,9 +98,11 @@ function TaxationCard() {
           </div>
         </div>
       </CardContent>
+      <RecalcTaxesDialog open={recalcOpen} onOpenChange={setRecalcOpen} settings={settings} />
     </Card>
   );
 }
+
 
 
 function CategoriesEditor() {
