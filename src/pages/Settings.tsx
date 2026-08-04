@@ -11,6 +11,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { RecalcTaxesDialog } from "@/components/RecalcTaxesDialog";
+
 
 export default function Settings() {
   const { hasRole } = useAuth();
