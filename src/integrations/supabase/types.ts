@@ -93,6 +93,7 @@ export type Database = {
           id_doc_type: Database["public"]["Enums"]["id_doc_type"] | null
           notes: string | null
           phone: string | null
+          photo_url: string | null
           updated_at: string
         }
         Insert: {
@@ -110,6 +111,7 @@ export type Database = {
           id_doc_type?: Database["public"]["Enums"]["id_doc_type"] | null
           notes?: string | null
           phone?: string | null
+          photo_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -127,6 +129,7 @@ export type Database = {
           id_doc_type?: Database["public"]["Enums"]["id_doc_type"] | null
           notes?: string | null
           phone?: string | null
+          photo_url?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -246,9 +249,14 @@ export type Database = {
           making_input: number | null
           making_type: string | null
           metal: Database["public"]["Enums"]["metal_type"] | null
+          new_inventory_item_id: string | null
           purity: string | null
           quantity: number
           rate: number | null
+          refund_amount: number | null
+          return_disposition: string | null
+          return_reason: string | null
+          returned_at: string | null
           stone_value: number
           stone_weight: number | null
           wastage_amount: number
@@ -268,9 +276,14 @@ export type Database = {
           making_input?: number | null
           making_type?: string | null
           metal?: Database["public"]["Enums"]["metal_type"] | null
+          new_inventory_item_id?: string | null
           purity?: string | null
           quantity?: number
           rate?: number | null
+          refund_amount?: number | null
+          return_disposition?: string | null
+          return_reason?: string | null
+          returned_at?: string | null
           stone_value?: number
           stone_weight?: number | null
           wastage_amount?: number
@@ -290,9 +303,14 @@ export type Database = {
           making_input?: number | null
           making_type?: string | null
           metal?: Database["public"]["Enums"]["metal_type"] | null
+          new_inventory_item_id?: string | null
           purity?: string | null
           quantity?: number
           rate?: number | null
+          refund_amount?: number | null
+          return_disposition?: string | null
+          return_reason?: string | null
+          returned_at?: string | null
           stone_value?: number
           stone_weight?: number | null
           wastage_amount?: number
@@ -313,6 +331,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_new_inventory_item_id_fkey"
+            columns: ["new_inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
         ]
@@ -952,6 +977,63 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repair_item_status_log: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          gross_weight_out: number | null
+          id: string
+          karigar_id: string | null
+          karigar_name: string | null
+          net_weight_out: number | null
+          note: string | null
+          repair_item_id: string
+          status: Database["public"]["Enums"]["repair_status"]
+          stone_weight_out: number | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          gross_weight_out?: number | null
+          id?: string
+          karigar_id?: string | null
+          karigar_name?: string | null
+          net_weight_out?: number | null
+          note?: string | null
+          repair_item_id: string
+          status: Database["public"]["Enums"]["repair_status"]
+          stone_weight_out?: number | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          gross_weight_out?: number | null
+          id?: string
+          karigar_id?: string | null
+          karigar_name?: string | null
+          net_weight_out?: number | null
+          note?: string | null
+          repair_item_id?: string
+          status?: Database["public"]["Enums"]["repair_status"]
+          stone_weight_out?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_item_status_log_karigar_id_fkey"
+            columns: ["karigar_id"]
+            isOneToOne: false
+            referencedRelation: "karigars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_item_status_log_repair_item_id_fkey"
+            columns: ["repair_item_id"]
+            isOneToOne: false
+            referencedRelation: "repair_items"
             referencedColumns: ["id"]
           },
         ]

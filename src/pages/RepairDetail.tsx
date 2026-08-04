@@ -220,7 +220,7 @@ function WorkflowDialog({ item, onOpenChange, onSaved }: any) {
       if (error) throw error;
 
       await supabase.from("repair_item_status_log").insert({
-        repair_item_id: item.id, status,
+        repair_item_id: item.id, status: status as any,
         karigar_id: karigarId, karigar_name: karigarId ? karigars.find((k) => k.id === karigarId)?.name : karigarName || null,
         gross_weight_out: grossOut !== "" ? Number(grossOut) : null,
         stone_weight_out: stoneOut !== "" ? Number(stoneOut) : null,
