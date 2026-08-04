@@ -7,13 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Printer, Eye, ReceiptText } from "lucide-react";
+import { ArrowLeft, Printer, Eye, ReceiptText, History, PencilLine } from "lucide-react";
 import { npr, gms, computeNetWeight } from "@/lib/format";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import logoUrl from "@/assets/logo.png";
 import { getSignedUrls } from "@/lib/storage";
 import { STATUS_LABEL, STATUS_COLOR } from "./Repairs";
+import { KarigarSelect, useKarigars } from "@/components/KarigarSelect";
 
 const STATUS_FLOW = ["received", "in_progress", "quality_check", "ready", "delivered"];
 
@@ -25,6 +29,7 @@ export default function RepairDetail() {
   const [karigarNames, setKarigarNames] = useState<Record<string, string>>({});
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [docType, setDocType] = useState<"estimate" | "final" | null>(null);
+  const [workflowItem, setWorkflowItem] = useState<any>(null);
 
   useEffect(() => { load(); }, [id]);
 
@@ -42,22 +47,6 @@ export default function RepairDetail() {
     }
     const allPhotos = (its ?? []).flatMap((i) => i.photos ?? []);
     if (allPhotos.length) setPhotoUrls(await getSignedUrls("customer-docs", allPhotos));
-  }
-
-  async function advanceItemStatus(item: any, next: string, weightOut?: { gross: number; stone: number }, finalCost?: number) {
-    try {
-      const patch: any = { status: next };
-      if (weightOut) {
-        patch.gross_weight_out = weightOut.gross;
-        patch.stone_weight_out = weightOut.stone;
-        patch.net_weight_out = computeNetWeight(weightOut.gross, weightOut.stone);
-      }
-      if (finalCost != null) patch.final_cost = finalCost;
-      const { error } = await supabase.from("repair_items").update(patch).eq("id", item.id);
-      if (error) throw error;
-      toast.success(`${item.item_description} → ${STATUS_LABEL[next]}`);
-      load();
-    } catch (e: any) { toast.error(e.message); }
   }
 
   if (!repair) return <AppLayout><p>Loading...</p></AppLayout>;
@@ -93,7 +82,7 @@ export default function RepairDetail() {
               item={it}
               karigarName={it.karigar_id ? karigarNames[it.karigar_id] : it.karigar_name}
               photoUrls={photoUrls}
-              onAdvance={advanceItemStatus}
+              onOpenWorkflow={() => setWorkflowItem(it)}
             />
           ))}
         </div>
@@ -112,18 +101,23 @@ export default function RepairDetail() {
       </div>
 
       <ReceiptDialog docType={docType} onOpenChange={(v: boolean) => !v && setDocType(null)} repair={repair} items={items} />
+      <WorkflowDialog item={workflowItem} onOpenChange={(v: boolean) => !v && setWorkflowItem(null)} onSaved={load} />
     </AppLayout>
   );
 }
 
-function RepairItemCard({ item, karigarName, photoUrls, onAdvance }: any) {
-  const currentIdx = STATUS_FLOW.indexOf(item.status);
-  const nextStatus = STATUS_FLOW[currentIdx + 1];
-  const needsWeightOut = nextStatus === "ready" || nextStatus === "delivered";
-  const [grossOut, setGrossOut] = useState(item.gross_weight_out ?? "");
-  const [stoneOut, setStoneOut] = useState(item.stone_weight_out ?? "");
-  const [finalCost, setFinalCost] = useState(item.final_cost ?? item.estimated_cost ?? "");
+function RepairItemCard({ item, karigarName, photoUrls, onOpenWorkflow }: any) {
   const weightMismatch = item.net_weight_out != null && item.net_weight_out < item.net_weight_in;
+  const [showHistory, setShowHistory] = useState(false);
+  const [log, setLog] = useState<any[]>([]);
+
+  async function toggleHistory() {
+    if (!showHistory && log.length === 0) {
+      const { data } = await supabase.from("repair_item_status_log").select("*").eq("repair_item_id", item.id).order("changed_at");
+      setLog(data ?? []);
+    }
+    setShowHistory(!showHistory);
+  }
 
   return (
     <Card>
@@ -152,23 +146,123 @@ function RepairItemCard({ item, karigarName, photoUrls, onAdvance }: any) {
           </div>
         )}
 
-        {needsWeightOut && item.status !== "delivered" && (
-          <div className="grid grid-cols-3 gap-2 rounded border p-2">
-            <div><Label className="text-xs">Gross out (g)</Label><Input type="number" step="0.001" value={grossOut} onChange={(e) => setGrossOut(e.target.value)} /></div>
-            <div><Label className="text-xs">Stone out (g)</Label><Input type="number" step="0.001" value={stoneOut} onChange={(e) => setStoneOut(e.target.value)} /></div>
-            <div><Label className="text-xs">Final cost</Label><Input type="number" value={finalCost} onChange={(e) => setFinalCost(e.target.value)} /></div>
-          </div>
+        <div className="flex gap-2">
+          {item.status !== "delivered" && (
+            <Button size="sm" onClick={onOpenWorkflow}><PencilLine className="mr-1 h-3.5 w-3.5" /> Update Status</Button>
+          )}
+          <Button size="sm" variant="outline" onClick={toggleHistory}><History className="mr-1 h-3.5 w-3.5" /> {showHistory ? "Hide" : "Show"} History</Button>
+        </div>
+
+        {item.status === "delivered" && (
+          <p className="text-sm text-muted-foreground">Delivered — {npr(item.final_cost ?? item.estimated_cost)} paid.</p>
         )}
 
-        {nextStatus ? (
-          <Button size="sm" onClick={() => onAdvance(item, nextStatus, needsWeightOut ? { gross: Number(grossOut) || 0, stone: Number(stoneOut) || 0 } : undefined, needsWeightOut ? Number(finalCost) || 0 : undefined)}>
-            Mark as {STATUS_LABEL[nextStatus]}
-          </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">Delivered — {npr(item.final_cost ?? item.estimated_cost)} paid.</p>
+        {showHistory && (
+          <div className="space-y-2 rounded border p-3">
+            {log.length === 0 ? <p className="text-xs text-muted-foreground">No history yet</p> : log.map((l) => (
+              <div key={l.id} className="border-b pb-1.5 text-xs last:border-0 last:pb-0">
+                <div className="flex justify-between">
+                  <span className="font-medium">{STATUS_LABEL[l.status]}</span>
+                  <span className="text-muted-foreground">{new Date(l.changed_at).toLocaleString()}</span>
+                </div>
+                {l.karigar_name && <div className="text-muted-foreground">Karigar: {l.karigar_name}</div>}
+                {l.net_weight_out != null && <div className="text-muted-foreground">Weight out: {gms(l.net_weight_out)}</div>}
+                {l.note && <div className="mt-0.5">{l.note}</div>}
+              </div>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function WorkflowDialog({ item, onOpenChange, onSaved }: any) {
+  const { user } = useAuth();
+  const { karigars, refresh: refreshKarigars } = useKarigars();
+  const [status, setStatus] = useState("");
+  const [karigarId, setKarigarId] = useState<string | null>(null);
+  const [karigarName, setKarigarName] = useState("");
+  const [grossOut, setGrossOut] = useState<any>("");
+  const [stoneOut, setStoneOut] = useState<any>("");
+  const [finalCost, setFinalCost] = useState<any>("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!item) return;
+    setStatus(item.status);
+    setKarigarId(item.karigar_id);
+    setKarigarName(item.karigar_name ?? "");
+    setGrossOut(item.gross_weight_out ?? "");
+    setStoneOut(item.stone_weight_out ?? "");
+    setFinalCost(item.final_cost ?? item.estimated_cost ?? "");
+    setNote("");
+  }, [item]);
+
+  if (!item) return null;
+
+  const currentIdx = STATUS_FLOW.indexOf(item.status);
+  const availableStatuses = STATUS_FLOW.slice(currentIdx); // stay at current, or move forward
+  const movingToDeliverable = status === "ready" || status === "delivered";
+
+  async function save() {
+    setSaving(true);
+    try {
+      const netOut = (grossOut !== "" || stoneOut !== "") ? computeNetWeight(Number(grossOut) || 0, Number(stoneOut) || 0) : item.net_weight_out;
+      const patch: any = { status, karigar_id: karigarId, karigar_name: karigarId ? null : (karigarName || null) };
+      if (grossOut !== "") patch.gross_weight_out = Number(grossOut) || 0;
+      if (stoneOut !== "") patch.stone_weight_out = Number(stoneOut) || 0;
+      if (grossOut !== "" || stoneOut !== "") patch.net_weight_out = netOut;
+      if (movingToDeliverable && finalCost !== "") patch.final_cost = Number(finalCost) || 0;
+
+      const { error } = await supabase.from("repair_items").update(patch).eq("id", item.id);
+      if (error) throw error;
+
+      await supabase.from("repair_item_status_log").insert({
+        repair_item_id: item.id, status,
+        karigar_id: karigarId, karigar_name: karigarId ? karigars.find((k) => k.id === karigarId)?.name : karigarName || null,
+        gross_weight_out: grossOut !== "" ? Number(grossOut) : null,
+        stone_weight_out: stoneOut !== "" ? Number(stoneOut) : null,
+        net_weight_out: (grossOut !== "" || stoneOut !== "") ? netOut : null,
+        note: note || null, changed_by: user?.id,
+      });
+
+      toast.success(`${item.item_description} updated`);
+      onSaved();
+      onOpenChange(false);
+    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={!!item} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Update — {item.item_description}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Status</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{availableStatuses.map((s) => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Karigar</Label>
+            <KarigarSelect karigars={karigars} value={karigarId} valueName={karigarName} onChange={(id, name) => { setKarigarId(id); setKarigarName(name); }} onKarigarCreated={refreshKarigars} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label className="text-xs">Gross weight out (g)</Label><Input type="number" step="0.001" value={grossOut} onChange={(e) => setGrossOut(e.target.value)} /></div>
+            <div><Label className="text-xs">Stone weight out (g)</Label><Input type="number" step="0.001" value={stoneOut} onChange={(e) => setStoneOut(e.target.value)} /></div>
+          </div>
+          {movingToDeliverable && <div><Label className="text-xs">Final cost (NPR)</Label><Input type="number" value={finalCost} onChange={(e) => setFinalCost(e.target.value)} /></div>}
+          <div><Label>Note for this update</Label><Textarea rows={2} placeholder="What was done at this stage..." value={note} onChange={(e) => setNote(e.target.value)} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save Update"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

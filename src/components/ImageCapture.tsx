@@ -25,8 +25,8 @@ async function croppedFile(src: string, area: Area, name = "photo.jpg"): Promise
   return new File([blob], name, { type: "image/jpeg" });
 }
 
-export function ImageCaptureButton({ onCapture, label = "Add photo" }: {
-  onCapture: (file: File) => void; label?: string;
+export function ImageCaptureButton({ onCapture, label = "Add photo", title }: {
+  onCapture: (file: File) => void; label?: string; title?: string;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -34,13 +34,13 @@ export function ImageCaptureButton({ onCapture, label = "Add photo" }: {
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
         <Camera className="mr-1 h-4 w-4" /> {label}
       </Button>
-      <ImageCaptureDialog open={open} onOpenChange={setOpen} onCapture={(f) => { onCapture(f); setOpen(false); }} />
+      <ImageCaptureDialog open={open} onOpenChange={setOpen} onCapture={(f) => { onCapture(f); setOpen(false); }} title={title} />
     </>
   );
 }
 
-export function ImageCaptureDialog({ open, onOpenChange, onCapture }: {
-  open: boolean; onOpenChange: (v: boolean) => void; onCapture: (file: File) => void;
+export function ImageCaptureDialog({ open, onOpenChange, onCapture, title = "Add Photo" }: {
+  open: boolean; onOpenChange: (v: boolean) => void; onCapture: (file: File) => void; title?: string;
 }) {
   const [tab, setTab] = useState<"camera" | "upload">("camera");
   const [src, setSrc] = useState<string | null>(null);
@@ -110,7 +110,7 @@ export function ImageCaptureDialog({ open, onOpenChange, onCapture }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Add Product Photo</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
         {!src ? (
           <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
             <TabsList className="grid w-full grid-cols-2">

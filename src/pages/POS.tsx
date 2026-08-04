@@ -15,17 +15,16 @@ import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil 
 import {
   npr, computeLineTotal, SD_TAX_RATE,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
-  computeNetWeight, computeFineWeight, purityFactor,
 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { QRScanButton } from "@/components/QRScanButton";
 import { PuritySelect } from "@/components/PuritySelect";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { ItemDialog } from "@/pages/Inventory";
+import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
+import { PickedCustomer } from "@/components/CustomerSelector";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
-const OG_METALS = ["gold", "silver", "platinum"];
-const OG_PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
 
 export interface CartRow {
   inventory_item_id: string | null;
@@ -98,6 +97,7 @@ export default function POS() {
   const [cart, setCart] = useState<CartRow[]>([]);
   const [discount, setDiscount] = useState(0);
   const [oldGoldCredit, setOldGoldCredit] = useState(0);
+  const [oldGoldPurchaseId, setOldGoldPurchaseId] = useState<string | null>(null);
   const [targetTotal, setTargetTotal] = useState<string>("");
   const [payments, setPayments] = useState<PayLine[]>([{ method: "cash", amount: 0 }]);
   const [notes, setNotes] = useState("");
@@ -270,6 +270,10 @@ export default function POS() {
       const itemIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
       if (itemIds.length) {
         await supabase.from("inventory_items").update({ status: "sold" }).in("id", itemIds);
+      }
+
+      if (oldGoldPurchaseId) {
+        await supabase.from("old_gold_purchases").update({ linked_invoice_id: inv.id }).eq("id", oldGoldPurchaseId);
       }
 
       if (balance > 0 && customerId) {
@@ -502,9 +506,9 @@ export default function POS() {
 
       <NewCustomerDialog open={newCustOpen} onOpenChange={setNewCustOpen}
         onSaved={async (id) => { setNewCustOpen(false); await loadCustomers(); setCustomerId(id); }} />
-      <OldGoldQuickDialog open={ogOpen} onOpenChange={setOgOpen} userId={user?.id ?? null}
-        customerId={customerId} customers={customers}
-        onSaved={(amount) => { setOgOpen(false); setOldGoldCredit(amount); toast.success(`Old gold credit set to ${npr(amount)}`); }} />
+      <OldGoldPurchaseDialog open={ogOpen} onOpenChange={setOgOpen}
+        initialCustomer={customers.find((c) => c.id === customerId) ? { id: customerId!, full_name: customers.find((c) => c.id === customerId)!.full_name, phone: customers.find((c) => c.id === customerId)!.phone ?? null } : null}
+        onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); toast.success(`Old gold credit set to ${npr(result.total)}`); }} />
       <ItemDialog open={newItemOpen} onOpenChange={setNewItemOpen}
         editing={null} cats={categories as any} locs={locations as any}
         onSaved={(created) => {
@@ -577,84 +581,16 @@ function NewCustomerDialog({ open, onOpenChange, onSaved }: {
   );
 }
 
-function OldGoldQuickDialog({ open, onOpenChange, userId, customerId, customers, onSaved }: {
-  open: boolean; onOpenChange: (v: boolean) => void; userId: string | null;
-  customerId: string | null; customers: any[]; onSaved: (amount: number) => void;
+function OldGoldPurchaseDialog({ open, onOpenChange, initialCustomer, onSaved }: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  initialCustomer: PickedCustomer | null; onSaved: (r: OldGoldSaveResult) => void;
 }) {
-  const [form, setForm] = useState<any>({});
-  const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const cust = customers.find((c) => c.id === customerId);
-    setForm({
-      customer_name: cust?.full_name ?? "", customer_phone: cust?.phone ?? "",
-      id_doc_type: "citizenship", id_doc_number: "",
-      metal: "gold", purity: "22K", gross_weight: 0, stone_weight: 0,
-      rate_per_gram: 0, deduction: 0, payment_method: "old_gold", notes: "",
-    });
-  }, [open, customerId, customers]);
-  const net = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
-  const fine = computeFineWeight(net, form.purity || "");
-  const total = Math.max(0, fine * Number(form.rate_per_gram || 0) - Number(form.deduction || 0));
-
-  async function save() {
-    if (!form.customer_name?.trim()) return toast.error("Customer name required");
-    if (!form.gross_weight) return toast.error("Weight required");
-    if (!form.rate_per_gram) return toast.error("Rate required");
-    setSaving(true);
-    try {
-      const num = Math.floor(Date.now() / 1000) % 100000;
-      const receipt = nextNumber("OG", num, 5);
-      const { error } = await supabase.from("old_gold_purchases").insert({
-        receipt_number: receipt,
-        customer_name: form.customer_name.trim(), customer_phone: form.customer_phone || null,
-        id_doc_type: form.id_doc_type, id_doc_number: form.id_doc_number || null,
-        metal: form.metal, purity: form.purity,
-        gross_weight: Number(form.gross_weight), stone_weight: Number(form.stone_weight) || 0,
-        net_weight: net, fine_weight: fine,
-        rate_per_gram: Number(form.rate_per_gram), deduction: Number(form.deduction) || 0,
-        total_amount: total, payment_method: form.payment_method, notes: form.notes || null,
-        created_by: userId,
-      } as any);
-      if (error) throw error;
-      toast.success(`Receipt ${receipt} created`);
-      onSaved(total);
-    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Coins className="h-5 w-5" /> Old Gold Purchase</DialogTitle></DialogHeader>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div><Label>Customer name *</Label><Input value={form.customer_name ?? ""} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} /></div>
-          <div><Label>Phone</Label><Input value={form.customer_phone ?? ""} onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} /></div>
-          <div><Label>ID number</Label><Input value={form.id_doc_number ?? ""} onChange={(e) => setForm({ ...form, id_doc_number: e.target.value })} /></div>
-          <div><Label>Metal</Label>
-            <Select value={form.metal} onValueChange={(v) => setForm({ ...form, metal: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{OG_METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
-            </Select></div>
-          <div><Label>Purity</Label>
-            <Select value={form.purity} onValueChange={(v) => setForm({ ...form, purity: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{OG_PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-            </Select></div>
-          <div><Label>Gross wt (g)</Label><Input type="number" step="0.001" value={form.gross_weight ?? 0} onChange={(e) => setForm({ ...form, gross_weight: e.target.value })} /></div>
-          <div><Label>Stone wt (g)</Label><Input type="number" step="0.001" value={form.stone_weight ?? 0} onChange={(e) => setForm({ ...form, stone_weight: e.target.value })} /></div>
-          <div><Label>Net (auto)</Label><Input readOnly value={net.toFixed(3)} className="bg-muted" /></div>
-          <div><Label>Fine (auto)</Label><Input readOnly value={fine.toFixed(3)} className="bg-muted" /></div>
-          <div><Label>Rate/g (fine)</Label><Input type="number" value={form.rate_per_gram ?? 0} onChange={(e) => setForm({ ...form, rate_per_gram: e.target.value })} /></div>
-          <div><Label>Deduction</Label><Input type="number" value={form.deduction ?? 0} onChange={(e) => setForm({ ...form, deduction: e.target.value })} /></div>
-          <div className="md:col-span-2 rounded bg-secondary p-3 text-center">
-            <div className="text-xs text-muted-foreground">Purchase total → applies as old gold credit</div>
-            <div className="text-2xl font-semibold">{npr(total)}</div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Create & Apply"}</Button>
-        </DialogFooter>
+        <p className="text-xs text-muted-foreground">Applies as credit toward this sale. ID document and photo are required for every gold purchase.</p>
+        {open && <OldGoldForm compact initialCustomer={initialCustomer} submitLabel="Create & Apply to Sale" onSaved={onSaved} />}
       </DialogContent>
     </Dialog>
   );

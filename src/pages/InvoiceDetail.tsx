@@ -10,11 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Printer, Plus, Ban } from "lucide-react";
+import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { npr } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { CancelInvoiceDialog } from "@/components/CancelInvoiceDialog";
+import { ReturnItemsDialog } from "@/components/ReturnItemsDialog";
 import logoUrl from "@/assets/logo.png";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
@@ -41,6 +42,7 @@ export default function InvoiceDetail() {
   const [payments, setPayments] = useState<any[]>([]);
   const [payOpen, setPayOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
 
   useEffect(() => { load(); }, [id]);
   async function load() {
@@ -62,6 +64,11 @@ export default function InvoiceDetail() {
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
         <Button size="sm" variant="outline" onClick={() => printInvoice(inv.id)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
+        {cancellable && (
+          <Button size="sm" variant="outline" onClick={() => setReturnOpen(true)}>
+            <Undo2 className="mr-1 h-4 w-4" /> Return item(s)
+          </Button>
+        )}
         {cancellable && (
           <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}>
             <Ban className="mr-1 h-4 w-4" /> Cancel invoice
@@ -169,6 +176,8 @@ export default function InvoiceDetail() {
 
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} invoice={inv} userId={user?.id ?? null} onSaved={() => { setPayOpen(false); load(); }} />
       <CancelInvoiceDialog open={cancelOpen} onOpenChange={setCancelOpen} invoice={inv} items={items}
+        userId={user?.id ?? null} onDone={load} />
+      <ReturnItemsDialog open={returnOpen} onOpenChange={setReturnOpen} invoice={inv} items={items}
         userId={user?.id ?? null} onDone={load} />
     </AppLayout>
   );

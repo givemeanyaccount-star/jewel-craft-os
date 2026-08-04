@@ -139,11 +139,11 @@ export function CustomerDialog({
           </div>
           <div>
             <Label className="mb-1 block">ID photo</Label>
-            <PhotoField file={idFile} existingUrl={form.id_doc_image_url} onCapture={setIdFile} />
+            <PhotoField file={idFile} existingUrl={form.id_doc_image_url} onCapture={setIdFile} title="Add ID Photo" />
           </div>
           <div>
             <Label className="mb-1 block">Customer photo</Label>
-            <PhotoField file={photoFile} existingUrl={form.photo_url} onCapture={setPhotoFile} />
+            <PhotoField file={photoFile} existingUrl={form.photo_url} onCapture={setPhotoFile} title="Add Customer Photo" />
           </div>
           <div className="md:col-span-2"><Label>Notes</Label><Textarea rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
@@ -164,14 +164,14 @@ function Warning({ text }: { text: string }) {
   );
 }
 
-function PhotoField({ file, existingUrl, onCapture }: { file: File | null; existingUrl?: string | null; onCapture: (f: File) => void }) {
+function PhotoField({ file, existingUrl, onCapture, title }: { file: File | null; existingUrl?: string | null; onCapture: (f: File) => void; title: string }) {
   const preview = file ? URL.createObjectURL(file) : null;
   return (
     <div className="flex items-center gap-2">
       {preview ? <img src={preview} className="h-12 w-12 rounded object-cover" /> : existingUrl ? (
         <div className="flex h-12 w-12 items-center justify-center rounded bg-muted text-[10px] text-muted-foreground">On file</div>
       ) : null}
-      <ImageCaptureButton label={file || existingUrl ? "Retake" : "Capture"} onCapture={onCapture} />
+      <ImageCaptureButton label={file || existingUrl ? "Retake" : "Capture"} onCapture={onCapture} title={title} />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import Quotations from "./pages/Quotations";
 import QuotationDetail from "./pages/QuotationDetail";
 import POS from "./pages/POS";
 import Invoices from "./pages/Invoices";
+import InvoicesOldGold from "./pages/InvoicesOldGold";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import Purchases from "./pages/Purchases";
 import MetalRates from "./pages/MetalRates";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/quotations/:id" element={<ProtectedRoute roles={[...SALES]}><QuotationDetail /></ProtectedRoute>} />
             <Route path="/pos" element={<ProtectedRoute roles={[...SALES]}><POS /></ProtectedRoute>} />
             <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+            <Route path="/invoices/old-gold" element={<ProtectedRoute><InvoicesOldGold /></ProtectedRoute>} />
             <Route path="/credit" element={<ProtectedRoute><CreditLedger /></ProtectedRoute>} />
             <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
             <Route path="/purchases" element={<ProtectedRoute roles={["admin", "manager"]}><Purchases /></ProtectedRoute>} />

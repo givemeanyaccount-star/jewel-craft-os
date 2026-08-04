@@ -266,7 +266,7 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
                           </button>
                         </div>
                       ))}
-                      <ImageCaptureButton label="Add" onCapture={(f) => updateItem(it.key, { photoFiles: [...it.photoFiles, f] })} />
+                      <ImageCaptureButton label="Add" title="Add Repair Item Photo" onCapture={(f) => updateItem(it.key, { photoFiles: [...it.photoFiles, f] })} />
                     </div>
                   </div>
                 </div>

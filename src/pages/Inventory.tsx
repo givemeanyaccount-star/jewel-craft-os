@@ -337,7 +337,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
                     className="absolute right-0 top-0 rounded-bl bg-destructive px-1 text-[10px] text-destructive-foreground">×</button>
                 </div>
               ))}
-              <ImageCaptureButton onCapture={addFile} label={previews.length ? "Add another" : "Take / upload photo"} />
+              <ImageCaptureButton onCapture={addFile} label={previews.length ? "Add another" : "Take / upload photo"} title="Add Product Photo" />
             </div>
           </div>
         </div>

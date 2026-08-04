@@ -11,13 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, ShoppingCart, Coins, Eye, Printer } from "lucide-react";
-import { npr, gms, computeNetWeight, computeFineWeight, nextNumber } from "@/lib/format";
+import { Plus, Trash2, ShoppingCart, Eye, Printer } from "lucide-react";
+import { npr, gms, computeNetWeight, nextNumber } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadImage, getSignedUrls } from "@/lib/storage";
 import { toast } from "sonner";
-import { ImageCaptureButton } from "@/components/ImageCapture";
-import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
+import { OldGoldForm } from "@/components/OldGoldForm";
 import logoUrl from "@/assets/logo.png";
 
 const METALS = ["gold", "silver", "platinum"];
@@ -240,7 +239,7 @@ function OldGoldPurchasesTab() {
   return (
     <div>
       <p className="mb-3 text-sm text-muted-foreground">Cash buyback: customer sells gold/silver to the shop. Automatically linked to your Customer CRM.</p>
-      {canWrite && <div className="mb-4"><OldGoldForm onSaved={load} /></div>}
+      {canWrite && <div className="mb-4"><OldGoldForm onSaved={() => load()} /></div>}
 
       <h3 className="mb-2 text-sm font-medium text-muted-foreground">Purchase History</h3>
       <Card><CardContent className="p-0">
@@ -269,111 +268,6 @@ function OldGoldPurchasesTab() {
 
       <ReceiptDialog purchase={detail} onOpenChange={(v: boolean) => !v && setDetail(null)} />
     </div>
-  );
-}
-
-function OldGoldForm({ onSaved }: { onSaved: () => void }) {
-  const { user } = useAuth();
-  const [form, setForm] = useState<any>({});
-  const [customer, setCustomer] = useState<PickedCustomer | null>(null);
-  const [idFile, setIdFile] = useState<File | null>(null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => { reset(); }, []);
-  function reset() {
-    setForm({ metal: "gold", purity: "22K", gross_weight: 0, stone_weight: 0, rate_per_gram: 0, deduction: 0, payment_method: "cash", notes: "" });
-    setCustomer(null); setIdFile(null); setPhotoFile(null);
-  }
-
-  const net = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
-  const fine = computeFineWeight(net, form.purity || "");
-  const total = Math.max(0, fine * Number(form.rate_per_gram || 0) - Number(form.deduction || 0));
-
-  async function save() {
-    if (!customer) return toast.error("Select or create a customer first");
-    if (!form.gross_weight) return toast.error("Weight required");
-    if (!form.rate_per_gram) return toast.error("Rate required");
-
-    setSaving(true);
-    try {
-      let idPath = null, photoPath = null;
-      if (idFile) idPath = await uploadImage("customer-docs", idFile, "oldgold-ids/");
-      if (photoFile) photoPath = await uploadImage("customer-docs", photoFile, "oldgold-photos/");
-      const num = Math.floor(Date.now() / 1000) % 100000;
-      const receipt = nextNumber("OG", num, 5);
-      const { error } = await supabase.from("old_gold_purchases").insert({
-        receipt_number: receipt,
-        customer_id: customer.id, customer_name: customer.full_name, customer_phone: customer.phone,
-        id_doc_image_url: idPath, customer_photo_url: photoPath,
-        metal: form.metal, purity: form.purity,
-        gross_weight: Number(form.gross_weight), stone_weight: Number(form.stone_weight) || 0,
-        net_weight: net, fine_weight: fine,
-        rate_per_gram: Number(form.rate_per_gram), deduction: Number(form.deduction) || 0,
-        total_amount: total, payment_method: form.payment_method, notes: form.notes || null,
-        created_by: user?.id,
-      });
-      if (error) throw error;
-      toast.success(`Receipt ${receipt} created`);
-      reset();
-      onSaved();
-    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
-  }
-
-  return (
-    <Card>
-      <CardContent className="space-y-4 p-4">
-        <div className="flex items-center gap-2"><Coins className="h-5 w-5" /> <span className="font-medium">New Old Gold Purchase</span></div>
-
-        <CustomerSelector value={customer} onChange={setCustomer} />
-
-        <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <Label className="mb-1 block">ID photo</Label>
-            <div className="flex items-center gap-2">
-              {idFile && <img src={URL.createObjectURL(idFile)} className="h-12 w-12 rounded object-cover" />}
-              <ImageCaptureButton label={idFile ? "Retake" : "Capture"} onCapture={setIdFile} />
-            </div>
-          </div>
-          <div>
-            <Label className="mb-1 block">Customer photo</Label>
-            <div className="flex items-center gap-2">
-              {photoFile && <img src={URL.createObjectURL(photoFile)} className="h-12 w-12 rounded object-cover" />}
-              <ImageCaptureButton label={photoFile ? "Retake" : "Capture"} onCapture={setPhotoFile} />
-            </div>
-          </div>
-
-          <div><Label>Metal</Label>
-            <Select value={form.metal} onValueChange={(v) => setForm({ ...form, metal: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
-            </Select></div>
-          <div><Label>Purity</Label>
-            <Select value={form.purity} onValueChange={(v) => setForm({ ...form, purity: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-            </Select></div>
-          <div><Label>Gross wt (g)</Label><Input type="number" step="0.001" value={form.gross_weight ?? 0} onChange={(e) => setForm({ ...form, gross_weight: e.target.value })} /></div>
-          <div><Label>Stone wt (g)</Label><Input type="number" step="0.001" value={form.stone_weight ?? 0} onChange={(e) => setForm({ ...form, stone_weight: e.target.value })} /></div>
-          <div><Label>Net (auto)</Label><Input readOnly value={net.toFixed(3)} className="bg-muted" /></div>
-          <div><Label>Fine (auto)</Label><Input readOnly value={fine.toFixed(3)} className="bg-muted" /></div>
-          <div><Label>Rate per gram (fine)</Label><Input type="number" value={form.rate_per_gram ?? 0} onChange={(e) => setForm({ ...form, rate_per_gram: e.target.value })} /></div>
-          <div><Label>Deduction</Label><Input type="number" value={form.deduction ?? 0} onChange={(e) => setForm({ ...form, deduction: e.target.value })} /></div>
-          <div className="md:col-span-2 rounded bg-secondary p-3 text-center">
-            <div className="text-xs text-muted-foreground">Total payable to customer (cash out)</div>
-            <div className="text-2xl font-semibold">{npr(total)}</div>
-          </div>
-          <div><Label>Payment method</Label>
-            <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
-            </Select></div>
-          <div className="md:col-span-2"><Label>Notes</Label><Textarea rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
-        </div>
-
-        <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving..." : "Record Purchase & Pay Out"}</Button>
-      </CardContent>
-    </Card>
   );
 }
 

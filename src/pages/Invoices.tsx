@@ -13,6 +13,15 @@ import { Search, Plus } from "lucide-react";
 
 const STATUSES = ["all", "issued", "partial", "paid", "cancelled", "refunded"];
 
+export function InvoiceSubNav({ active }: { active: "sales" | "oldgold" }) {
+  return (
+    <div className="mb-4 flex gap-2 border-b">
+      <Link to="/invoices" className={`px-3 py-2 text-sm font-medium ${active === "sales" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground"}`}>Sales</Link>
+      <Link to="/invoices/old-gold" className={`px-3 py-2 text-sm font-medium ${active === "oldgold" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground"}`}>Old Gold Purchases</Link>
+    </div>
+  );
+}
+
 export default function Invoices() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [q, setQ] = useState("");
@@ -39,6 +48,7 @@ export default function Invoices() {
     <AppLayout title="Invoices" actions={
       <Button size="sm" asChild><Link to="/pos"><Plus className="mr-1 h-4 w-4" /> New Sale</Link></Button>
     }>
+      <InvoiceSubNav active="sales" />
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
