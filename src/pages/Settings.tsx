@@ -8,6 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Plus, Trash2, Save } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useAppSettings } from "@/hooks/useAppSettings";
 
 export default function Settings() {
   const { hasRole } = useAuth();
@@ -15,12 +18,83 @@ export default function Settings() {
   return (
     <AppLayout title="Settings">
       <div className="grid gap-4 md:grid-cols-2">
+        <TaxationCard />
         <CategoriesEditor />
         <SimpleList table="locations" title="Showcase Locations" />
       </div>
     </AppLayout>
   );
 }
+
+function TaxationCard() {
+  const { settings, setSettings, loading, reload } = useAppSettings();
+  const [saving, setSaving] = useState(false);
+
+  async function save(next: { vat_enabled?: boolean; vat_rate?: number; sd_tax_rate?: number }) {
+    setSaving(true);
+    const payload = {
+      vat_enabled: next.vat_enabled ?? settings.vat_enabled,
+      vat_rate: next.vat_rate ?? settings.vat_rate,
+      sd_tax_rate: next.sd_tax_rate ?? settings.sd_tax_rate,
+    };
+    let error;
+    if (settings.id) {
+      ({ error } = await supabase.from("app_settings").update(payload).eq("id", settings.id));
+    } else {
+      ({ error } = await supabase.from("app_settings").insert({ ...payload, purities: settings.purities }));
+    }
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Tax settings saved");
+    reload();
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Taxation</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          VAT applies to the stones portion only. When disabled, no VAT is charged on any invoice or quotation. SD tax always applies to (gold + making + wastage − old gold credit).
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between rounded border p-3">
+          <div>
+            <Label htmlFor="vat-toggle" className="text-sm font-medium">VAT on stones</Label>
+            <p className="text-xs text-muted-foreground">{settings.vat_enabled ? "Enabled" : "Disabled"}</p>
+          </div>
+          <Switch
+            id="vat-toggle"
+            disabled={loading || saving}
+            checked={settings.vat_enabled}
+            onCheckedChange={(v) => { setSettings({ ...settings, vat_enabled: v }); save({ vat_enabled: v }); }}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">VAT rate (%)</Label>
+            <Input
+              type="number" step="0.01" disabled={!settings.vat_enabled || loading}
+              value={settings.vat_rate}
+              onChange={(e) => setSettings({ ...settings, vat_rate: Number(e.target.value) })}
+              onBlur={(e) => save({ vat_rate: Number(e.target.value) })}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">SD tax rate (%)</Label>
+            <Input
+              type="number" step="0.01" disabled={loading}
+              value={settings.sd_tax_rate}
+              onChange={(e) => setSettings({ ...settings, sd_tax_rate: Number(e.target.value) })}
+              onBlur={(e) => save({ sd_tax_rate: Number(e.target.value) })}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function CategoriesEditor() {
   const [rows, setRows] = useState<any[]>([]);
