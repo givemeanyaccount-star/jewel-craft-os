@@ -377,11 +377,7 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+
 
 function PermissionMatrix({
   matrix,
