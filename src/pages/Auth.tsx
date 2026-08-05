@@ -57,6 +57,19 @@ const Auth = () => {
     if (result.error) toast.error("Google sign-in failed");
   };
 
+  const onForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Reset link sent — check your email");
+    setForgotOpen(false);
+  };
+
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
