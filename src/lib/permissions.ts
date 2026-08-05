@@ -1,5 +1,7 @@
 export type AppRole = "admin" | "manager" | "sales" | "karigar" | "accountant";
 
+export const ALL_ROLES: AppRole[] = ["admin", "manager", "sales", "karigar", "accountant"];
+
 export type AppPermission =
   | "view_dashboard"
   | "pos_create_sale"
