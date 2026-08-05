@@ -13,10 +13,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil } from "lucide-react";
 import {
-  npr, computeLineTotal, SD_TAX_RATE,
+  npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermission } from "@/hooks/usePermission";
 import { QRScanButton } from "@/components/QRScanButton";
 import { PuritySelect } from "@/components/PuritySelect";
 import { useAppSettings } from "@/hooks/useAppSettings";
