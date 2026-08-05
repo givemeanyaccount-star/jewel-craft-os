@@ -10,6 +10,7 @@ interface AuthContextValue {
   session: Session | null;
   roles: AppRole[];
   loading: boolean;
+  rolesError: string | null;
   hasRole: (role: AppRole) => boolean;
   signOut: () => Promise<void>;
 }
@@ -20,10 +21,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [rolesError, setRolesError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchRoles = async (userId: string) => {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    if (error) {
+      setRolesError(error.message);
+      setRoles([]);
+      return;
+    }
+    setRolesError(null);
     setRoles((data ?? []).map((r) => r.role as AppRole));
   };
 
