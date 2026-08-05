@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Search, Package, QrCode } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { usePermission } from "@/hooks/usePermission";
 import { computeNetWeight, computeFineWeight, npr, gms } from "@/lib/format";
 import { uploadImage } from "@/lib/storage";
 import { QRScanButton } from "@/components/QRScanButton";
