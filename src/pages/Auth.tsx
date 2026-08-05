@@ -17,6 +17,8 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
   useEffect(() => {
     if (!loading && user) navigate("/", { replace: true });
@@ -55,6 +57,19 @@ const Auth = () => {
     if (result.error) toast.error("Google sign-in failed");
   };
 
+  const onForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Reset link sent — check your email");
+    setForgotOpen(false);
+  };
+
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
@@ -70,20 +85,46 @@ const Auth = () => {
             </TabsList>
 
             <TabsContent value="signin">
-              <form onSubmit={onSignIn} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Signing in…" : "Sign in"}
-                </Button>
-              </form>
+              {forgotOpen ? (
+                <form onSubmit={onForgot} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="remail">Email</Label>
+                    <Input id="remail" type="email" required value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">
+                      We'll email you a link to set a new password.
+                    </p>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Sending…" : "Send reset link"}
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full" onClick={() => setForgotOpen(false)}>
+                    Back to sign in
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={onSignIn} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Signing in…" : "Sign in"}
+                  </Button>
+                  <button
+                    type="button"
+                    className="w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
+                    onClick={() => { setResetEmail(email); setForgotOpen(true); }}
+                  >
+                    Forgot password?
+                  </button>
+                </form>
+              )}
             </TabsContent>
+
 
             <TabsContent value="signup">
               <form onSubmit={onSignUp} className="space-y-4 pt-4">
