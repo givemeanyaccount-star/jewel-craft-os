@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 const Auth = () => {
@@ -15,9 +14,8 @@ const Auth = () => {
   const { user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [forgotOpen, setForgotOpen] = useState(false);
+  const [mode, setMode] = useState<"signin" | "forgot" | "activate">("signin");
   const [resetEmail, setResetEmail] = useState("");
 
   useEffect(() => {
@@ -34,22 +32,6 @@ const Auth = () => {
     navigate("/", { replace: true });
   };
 
-  const onSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { full_name: fullName },
-      },
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Account created — signing you in");
-  };
-
   const onGoogle = async () => {
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
@@ -57,7 +39,7 @@ const Auth = () => {
     if (result.error) toast.error("Google sign-in failed");
   };
 
-  const onForgot = async (e: React.FormEvent) => {
+  const onEmailLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
@@ -65,90 +47,71 @@ const Auth = () => {
     });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Reset link sent — check your email");
-    setForgotOpen(false);
+    toast.success(
+      mode === "activate" ? "Link sent — check your email to set your password" : "Reset link sent — check your email",
+    );
+    setMode("signin");
   };
-
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">JewelMaster OS</CardTitle>
-          <CardDescription>Sign in to continue</CardDescription>
+          <CardDescription>
+            {mode === "signin" ? "Sign in to continue" : mode === "activate" ? "Set your password" : "Reset your password"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign in</TabsTrigger>
-              <TabsTrigger value="signup">Sign up</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="signin">
-              {forgotOpen ? (
-                <form onSubmit={onForgot} className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="remail">Email</Label>
-                    <Input id="remail" type="email" required value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
-                    <p className="text-xs text-muted-foreground">
-                      We'll email you a link to set a new password.
-                    </p>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={busy}>
-                    {busy ? "Sending…" : "Send reset link"}
-                  </Button>
-                  <Button type="button" variant="ghost" className="w-full" onClick={() => setForgotOpen(false)}>
-                    Back to sign in
-                  </Button>
-                </form>
-              ) : (
-                <form onSubmit={onSignIn} className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={busy}>
-                    {busy ? "Signing in…" : "Sign in"}
-                  </Button>
-                  <button
-                    type="button"
-                    className="w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
-                    onClick={() => { setResetEmail(email); setForgotOpen(true); }}
-                  >
-                    Forgot password?
-                  </button>
-                </form>
-              )}
-            </TabsContent>
-
-
-            <TabsContent value="signup">
-              <form onSubmit={onSignUp} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full name</Label>
-                  <Input id="name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email2">Email</Label>
-                  <Input id="email2" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password2">Password</Label>
-                  <Input id="password2" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Creating…" : "Create account"}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  The first account becomes Admin. Other accounts default to Sales until an Admin changes the role.
+          {mode !== "signin" ? (
+            <form onSubmit={onEmailLink} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="remail">Email</Label>
+                <Input id="remail" type="email" required value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
+                <p className="text-xs text-muted-foreground">
+                  {mode === "activate"
+                    ? "Enter the email your administrator used to create your account. We'll email a link to create your password."
+                    : "We'll email you a link to set a new password."}
                 </p>
-              </form>
-            </TabsContent>
-          </Tabs>
+              </div>
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? "Sending…" : "Send link"}
+              </Button>
+              <Button type="button" variant="ghost" className="w-full" onClick={() => setMode("signin")}>
+                Back to sign in
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={onSignIn} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? "Signing in…" : "Sign in"}
+              </Button>
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  className="w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
+                  onClick={() => { setResetEmail(email); setMode("forgot"); }}
+                >
+                  Forgot password?
+                </button>
+                <button
+                  type="button"
+                  className="w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
+                  onClick={() => { setResetEmail(email); setMode("activate"); }}
+                >
+                  First time here? Set your password
+                </button>
+              </div>
+            </form>
+          )}
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
@@ -159,10 +122,14 @@ const Auth = () => {
           <Button variant="outline" className="w-full" onClick={onGoogle}>
             Continue with Google
           </Button>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Accounts are created by an administrator. Google sign-in gives read-only access until an admin assigns a role.
+          </p>
         </CardContent>
       </Card>
     </div>
   );
 };
+
 
 export default Auth;

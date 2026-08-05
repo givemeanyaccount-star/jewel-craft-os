@@ -694,6 +694,7 @@ export type Database = {
           id: string
           phone: string | null
           updated_at: string
+          username: string | null
         }
         Insert: {
           created_at?: string
@@ -701,6 +702,7 @@ export type Database = {
           id: string
           phone?: string | null
           updated_at?: string
+          username?: string | null
         }
         Update: {
           created_at?: string
@@ -708,6 +710,7 @@ export type Database = {
           id?: string
           phone?: string | null
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -1264,7 +1267,13 @@ export type Database = {
       next_category_sku: { Args: { _category_id: string }; Returns: string }
     }
     Enums: {
-      app_role: "admin" | "manager" | "sales" | "karigar" | "accountant"
+      app_role:
+        | "admin"
+        | "manager"
+        | "sales"
+        | "karigar"
+        | "accountant"
+        | "viewer"
       id_doc_type:
         | "citizenship"
         | "passport"
@@ -1437,7 +1446,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "sales", "karigar", "accountant"],
+      app_role: [
+        "admin",
+        "manager",
+        "sales",
+        "karigar",
+        "accountant",
+        "viewer",
+      ],
       id_doc_type: [
         "citizenship",
         "passport",

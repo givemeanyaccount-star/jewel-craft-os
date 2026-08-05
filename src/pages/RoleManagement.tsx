@@ -41,6 +41,7 @@ interface UserRow {
   id: string;
   full_name: string | null;
   phone: string | null;
+  username?: string | null;
   email?: string | null;
   last_sign_in_at?: string | null;
   roles: AppRole[];
@@ -57,7 +58,7 @@ const RoleManagement = () => {
   const load = async () => {
     setLoading(true);
     const [{ data: profiles, error: pErr }, { data: roles, error: rErr }] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, phone").order("full_name"),
+      supabase.from("profiles").select("id, full_name, phone, username").order("full_name"),
       supabase.from("user_roles").select("user_id, role"),
     ]);
     if (pErr || rErr) {
@@ -85,6 +86,7 @@ const RoleManagement = () => {
         id: p.id,
         full_name: p.full_name,
         phone: p.phone,
+        username: (p as any).username ?? null,
         email: accounts[p.id]?.email ?? null,
         last_sign_in_at: accounts[p.id]?.last_sign_in_at ?? null,
         roles: byUser.get(p.id) ?? [],
@@ -192,7 +194,7 @@ const RoleManagement = () => {
                             {isSelf && <Badge variant="outline" className="ml-2">you</Badge>}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {[u.email, u.phone].filter(Boolean).join(" · ") || "—"}
+                            {[u.username ? `@${u.username}` : null, u.email, u.phone].filter(Boolean).join(" · ") || "—"}
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-1">
@@ -213,7 +215,7 @@ const RoleManagement = () => {
                           )}
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
                         {ALL_ROLES.map((role) => {
                           const has = u.roles.includes(role);
                           const key = `${u.id}:${role}`;
@@ -277,9 +279,12 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [roles, setRoles] = useState<AppRole[]>(["sales"]);
+
+  const usernameValid = /^[a-zA-Z0-9._-]{3,30}$/.test(username.trim());
 
   const submit = async () => {
     setSaving(true);
@@ -287,6 +292,7 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
       body: {
         action: "create",
         email,
+        username: username.trim(),
         full_name: fullName,
         phone,
         roles,
@@ -301,6 +307,7 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
     toast({ title: "Invitation sent", description: `${email} can set a password from the emailed link.` });
     setOpen(false);
     setEmail("");
+    setUsername("");
     setFullName("");
     setPhone("");
     setRoles(["sales"]);
@@ -317,9 +324,18 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
           <DialogTitle>Add user</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label>Email</Label>
-            <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Username</Label>
+              <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ramesh.k" />
+              {username && !usernameValid && (
+                <p className="text-xs text-destructive">3–30 characters: letters, numbers, . _ -</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" />
+            </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
@@ -348,12 +364,13 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            The user receives an email invitation to set their own password.
+            The user signs in with their email and sets their own password from the emailed link. The username is a
+            unique display handle.
           </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={saving || !email.trim()}>
+          <Button onClick={submit} disabled={saving || !email.trim() || !usernameValid}>
             {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Send invite
           </Button>
         </DialogFooter>
@@ -361,6 +378,8 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
     </Dialog>
   );
 }
+
+
 
 function PermissionMatrix({
   matrix,

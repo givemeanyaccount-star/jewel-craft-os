@@ -53,6 +53,7 @@ Deno.serve(async (req) => {
 
     if (action === "create") {
       const email = String(body.email ?? "").trim().toLowerCase();
+      const username = String(body.username ?? "").trim();
       const fullName = String(body.full_name ?? "").trim();
       const phone = String(body.phone ?? "").trim();
       const roles: string[] = Array.isArray(body.roles) ? body.roles : [];
@@ -60,26 +61,37 @@ Deno.serve(async (req) => {
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
         return json({ error: "A valid email is required" }, 400);
       }
+      if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
+        return json({ error: "Username must be 3-30 characters (letters, numbers, . _ -)" }, 400);
+      }
       if (fullName.length > 255 || phone.length > 40) {
         return json({ error: "Name or phone too long" }, 400);
       }
 
+      const { data: existing } = await admin
+        .from("profiles")
+        .select("id")
+        .ilike("username", username)
+        .maybeSingle();
+      if (existing) return json({ error: "That username is already taken" }, 400);
+
       const { data: created, error: createErr } = await admin.auth.admin.inviteUserByEmail(email, {
-        data: { full_name: fullName, phone },
+        data: { full_name: fullName, phone, username, invited_roles: roles },
         redirectTo: redirectTo || undefined,
       });
       if (createErr || !created?.user) return json({ error: createErr?.message ?? "Create failed" }, 400);
 
       const newId = created.user.id;
-      await admin.from("profiles").upsert({ id: newId, full_name: fullName, phone });
+      await admin.from("profiles").upsert({ id: newId, full_name: fullName, phone, username });
       if (roles.length > 0) {
         await admin.from("user_roles").delete().eq("user_id", newId);
         await admin
           .from("user_roles")
           .insert(roles.map((role) => ({ user_id: newId, role })));
       }
-      return json({ id: newId, email });
+      return json({ id: newId, email, username });
     }
+
 
     if (action === "delete") {
       const targetId = String(body.user_id ?? "");

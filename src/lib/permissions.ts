@@ -1,6 +1,7 @@
-export type AppRole = "admin" | "manager" | "sales" | "karigar" | "accountant";
+export type AppRole = "admin" | "manager" | "sales" | "karigar" | "accountant" | "viewer";
 
-export const ALL_ROLES: AppRole[] = ["admin", "manager", "sales", "karigar", "accountant"];
+export const ALL_ROLES: AppRole[] = ["admin", "manager", "sales", "karigar", "accountant", "viewer"];
+
 
 export type AppPermission =
   | "view_dashboard"
@@ -68,7 +69,13 @@ export const ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "metal_rate_manage",
     "report_view",
   ],
+  viewer: [
+    "view_dashboard",
+    "inventory_view",
+    "invoice_view",
+  ],
 };
+
 
 export function can(roles: AppRole[], permission: AppPermission): boolean {
   return roles.some((role) => ROLE_PERMISSIONS[role]?.includes(permission));
