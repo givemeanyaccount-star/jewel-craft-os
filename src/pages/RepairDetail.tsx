@@ -24,6 +24,7 @@ const STATUS_FLOW = ["received", "in_progress", "quality_check", "ready", "deliv
 export default function RepairDetail() {
   const { id } = useParams();
   const nav = useNavigate();
+  const { karigars, refresh: refreshKarigars } = useKarigars();
   const [repair, setRepair] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [karigarNames, setKarigarNames] = useState<Record<string, string>>({});
@@ -80,8 +81,11 @@ export default function RepairDetail() {
             <RepairItemCard
               key={it.id}
               item={it}
-              karigarName={it.karigar_id ? karigarNames[it.karigar_id] : it.karigar_name}
+              karigarName={it.karigar_id ? (karigarNames[it.karigar_id] ?? karigars.find((k) => k.id === it.karigar_id)?.name) : it.karigar_name}
               photoUrls={photoUrls}
+              karigars={karigars}
+              onKarigarCreated={refreshKarigars}
+              onAssigned={load}
               onOpenWorkflow={() => setWorkflowItem(it)}
             />
           ))}
@@ -106,10 +110,12 @@ export default function RepairDetail() {
   );
 }
 
-function RepairItemCard({ item, karigarName, photoUrls, onOpenWorkflow }: any) {
+function RepairItemCard({ item, karigarName, photoUrls, karigars, onKarigarCreated, onAssigned, onOpenWorkflow }: any) {
+  const { user } = useAuth();
   const weightMismatch = item.net_weight_out != null && item.net_weight_out < item.net_weight_in;
   const [showHistory, setShowHistory] = useState(false);
   const [log, setLog] = useState<any[]>([]);
+  const [assigning, setAssigning] = useState(false);
 
   async function toggleHistory() {
     if (!showHistory && log.length === 0) {
@@ -117,6 +123,27 @@ function RepairItemCard({ item, karigarName, photoUrls, onOpenWorkflow }: any) {
       setLog(data ?? []);
     }
     setShowHistory(!showHistory);
+  }
+
+  async function assignKarigar(karigarId: string | null, name: string) {
+    if (karigarId === item.karigar_id && name === (item.karigar_name ?? "")) return;
+    setAssigning(true);
+    try {
+      const { error } = await supabase
+        .from("repair_items")
+        .update({ karigar_id: karigarId, karigar_name: karigarId ? null : (name || null) })
+        .eq("id", item.id);
+      if (error) throw error;
+      await supabase.from("repair_item_status_log").insert({
+        repair_item_id: item.id, status: item.status,
+        karigar_id: karigarId, karigar_name: name || null,
+        note: `Karigar ${item.karigar_id || item.karigar_name ? "changed" : "assigned"} to ${name || "unassigned"}`,
+        changed_by: user?.id,
+      });
+      setLog([]);
+      toast.success(`Karigar set to ${name}`);
+      onAssigned?.();
+    } catch (e: any) { toast.error(e.message); } finally { setAssigning(false); }
   }
 
   return (
@@ -131,10 +158,25 @@ function RepairItemCard({ item, karigarName, photoUrls, onOpenWorkflow }: any) {
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           <div><span className="text-xs text-muted-foreground block">Metal / Purity</span><span className="capitalize">{item.metal} {item.purity}</span></div>
-          <div><span className="text-xs text-muted-foreground block">Karigar</span>{karigarName || "Unassigned"}</div>
           <div><span className="text-xs text-muted-foreground block">Net wt in</span>{gms(item.net_weight_in)}</div>
           <div><span className="text-xs text-muted-foreground block">Net wt out</span>{item.net_weight_out != null ? gms(item.net_weight_out) : "—"}{weightMismatch && <Badge variant="destructive" className="ml-1">weight loss</Badge>}</div>
         </div>
+
+        <div className="max-w-xs">
+          <span className="text-xs text-muted-foreground block mb-1">Karigar {assigning && "· saving..."}</span>
+          {item.status === "delivered" ? (
+            <div className="text-sm">{karigarName || "Unassigned"}</div>
+          ) : (
+            <KarigarSelect
+              karigars={karigars ?? []}
+              value={item.karigar_id}
+              valueName={karigarName}
+              onChange={assignKarigar}
+              onKarigarCreated={onKarigarCreated}
+            />
+          )}
+        </div>
+
 
         {item.photos?.length > 0 && (
           <div className="flex gap-2">
