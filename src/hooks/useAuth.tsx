@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { AppRole } from "@/lib/permissions";
+import { AppRole, AppPermission, ALL_ROLES, RolePermissionMatrix, defaultMatrix } from "@/lib/permissions";
 
 export type { AppRole };
 
@@ -11,6 +11,8 @@ interface AuthContextValue {
   roles: AppRole[];
   loading: boolean;
   rolesError: string | null;
+  permissionMatrix: RolePermissionMatrix;
+  reloadPermissions: () => Promise<void>;
   hasRole: (role: AppRole) => boolean;
   signOut: () => Promise<void>;
 }
@@ -23,6 +25,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [rolesError, setRolesError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [permissionMatrix, setPermissionMatrix] = useState<RolePermissionMatrix>(defaultMatrix());
+
+  const fetchPermissions = async () => {
+    const { data, error } = await supabase.from("role_permissions").select("role, permission, allowed");
+    if (error || !data) return;
+    const next = ALL_ROLES.reduce((acc, r) => {
+      acc[r] = [];
+      return acc;
+    }, {} as RolePermissionMatrix);
+    data.forEach((row) => {
+      if (!row.allowed) return;
+      const role = row.role as AppRole;
+      if (next[role]) next[role].push(row.permission as AppPermission);
+    });
+    setPermissionMatrix(next);
+  };
 
   const fetchRoles = async (userId: string) => {
     const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -40,7 +58,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
       if (newSession?.user) {
-        setTimeout(() => fetchRoles(newSession.user.id), 0);
+        setTimeout(() => {
+          fetchRoles(newSession.user.id);
+          fetchPermissions();
+        }, 0);
       } else {
         setRoles([]);
       }
@@ -49,7 +70,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user) fetchRoles(s.user.id).finally(() => setLoading(false));
+      if (s?.user) {
+        fetchPermissions();
+        fetchRoles(s.user.id).finally(() => setLoading(false));
+      }
       else setLoading(false);
     });
 
@@ -62,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, loading, rolesError, hasRole, signOut }}>
+    <AuthContext.Provider value={{ user, session, roles, loading, rolesError, permissionMatrix, reloadPermissions: fetchPermissions, hasRole, signOut }}>
       {children}
     </AuthContext.Provider>
   );
