@@ -37,7 +37,7 @@ const NAV: NavItem[] = [
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { user, signOut } = useAuth();
+  const { user, roles, signOut } = useAuth();
   const { hasPermission } = usePermission();
   const visible = NAV.filter((n) => !n.permission || hasPermission(n.permission));
   return (
