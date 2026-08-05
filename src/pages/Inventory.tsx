@@ -33,8 +33,8 @@ const PURITIES = ["24K", "22K", "20K", "18K", "14K", "999", "925", "750"];
 const STATUSES = ["in_stock", "reserved", "sold", "returned", "melted", "transferred"];
 
 export default function Inventory() {
-  const { hasRole } = useAuth();
-  const canWrite = hasRole("admin") || hasRole("manager") || hasRole("sales");
+  const { hasPermission } = usePermission();
+  const canWrite = hasPermission("inventory_manage");
   const [items, setItems] = useState<Item[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [locs, setLocs] = useState<Location_[]>([]);
