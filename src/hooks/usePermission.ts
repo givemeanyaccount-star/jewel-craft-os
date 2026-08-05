@@ -1,17 +1,18 @@
 import { useMemo } from "react";
 import { useAuth } from "./useAuth";
-import { AppPermission, can, canAny } from "@/lib/permissions";
+import { AppPermission, canWith } from "@/lib/permissions";
 
 export function usePermission() {
-  const { roles } = useAuth();
+  const { roles, permissionMatrix } = useAuth();
 
   return useMemo(() => {
+    const has = (permission: AppPermission) => canWith(permissionMatrix, roles, permission);
     return {
       roles,
-      hasPermission: (permission: AppPermission) => can(roles, permission),
-      hasAnyPermission: (permissions: AppPermission[]) => canAny(roles, permissions),
-      hasAllPermissions: (permissions: AppPermission[]) =>
-        permissions.every((p) => can(roles, p)),
+      permissionMatrix,
+      hasPermission: has,
+      hasAnyPermission: (permissions: AppPermission[]) => permissions.some(has),
+      hasAllPermissions: (permissions: AppPermission[]) => permissions.every(has),
     };
-  }, [roles]);
+  }, [roles, permissionMatrix]);
 }
