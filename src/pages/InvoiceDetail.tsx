@@ -14,6 +14,7 @@ import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { npr } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermission } from "@/hooks/usePermission";
 import { CancelInvoiceDialog } from "@/components/CancelInvoiceDialog";
 import { ReturnItemsDialog } from "@/components/ReturnItemsDialog";
 import logoUrl from "@/assets/logo.png";
