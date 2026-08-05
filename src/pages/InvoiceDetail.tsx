@@ -151,7 +151,9 @@ export default function InvoiceDetail() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Payments</CardTitle>
-            {Number(inv.balance_due) > 0 && <Button size="sm" onClick={() => setPayOpen(true)}><Plus className="mr-1 h-4 w-4" /> Add</Button>}
+            {Number(inv.balance_due) > 0 && hasPermission("pos_create_sale") && (
+              <Button size="sm" onClick={() => setPayOpen(true)}><Plus className="mr-1 h-4 w-4" /> Add</Button>
+            )}
           </CardHeader>
           <CardContent>
             {payments.length === 0 ? <p className="text-sm text-muted-foreground">No payments yet</p> :
