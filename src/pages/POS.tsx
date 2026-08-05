@@ -401,7 +401,7 @@ export default function POS() {
                         </TableCell>
                         <TableCell className="text-right font-medium">{npr(r.line_total)}</TableCell>
                         <TableCell className="flex gap-0.5">
-                          {r.raw_item && (
+                          {r.raw_item && canManageInventory && (
                             <Button size="icon" variant="ghost" title="Edit inventory details"
                               onClick={() => setEditItem({ row: i, item: r.raw_item })}>
                               <Pencil className="h-4 w-4" />
