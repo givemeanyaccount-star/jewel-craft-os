@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Search, Package, QrCode } from "lucide-react";
-import { usePermission } from "@/hooks/usePermission";
+import { useAuth } from "@/hooks/useAuth";
 import { computeNetWeight, computeFineWeight, npr, gms } from "@/lib/format";
 import { uploadImage } from "@/lib/storage";
 import { QRScanButton } from "@/components/QRScanButton";
@@ -33,8 +33,8 @@ const PURITIES = ["24K", "22K", "20K", "18K", "14K", "999", "925", "750"];
 const STATUSES = ["in_stock", "reserved", "sold", "returned", "melted", "transferred"];
 
 export default function Inventory() {
-  const { hasPermission } = usePermission();
-  const canWrite = hasPermission("inventory_manage");
+  const { hasRole } = useAuth();
+  const canWrite = hasRole("admin") || hasRole("manager") || hasRole("sales");
   const [items, setItems] = useState<Item[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [locs, setLocs] = useState<Location_[]>([]);
