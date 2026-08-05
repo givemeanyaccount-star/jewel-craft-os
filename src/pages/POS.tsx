@@ -13,10 +13,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil } from "lucide-react";
 import {
-  npr, computeLineTotal, SD_TAX_RATE,
+  npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermission } from "@/hooks/usePermission";
 import { QRScanButton } from "@/components/QRScanButton";
 import { PuritySelect } from "@/components/PuritySelect";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -85,6 +86,8 @@ export function lineDisplay(r: {
 
 export default function POS() {
   const { user } = useAuth();
+  const { hasPermission } = usePermission();
+  const canManageInventory = hasPermission("inventory_manage");
   const { settings } = useAppSettings();
   const nav = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
@@ -342,9 +345,11 @@ export default function POS() {
                   <Input className="pl-8" placeholder="Scan QR or search name / SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
                 <QRScanButton onScan={handleScan} />
-                <Button size="sm" variant="secondary" onClick={() => setNewItemOpen(true)} title="Create new item and add to sale">
-                  <Plus className="mr-1 h-4 w-4" /> New item
-                </Button>
+                {canManageInventory && (
+                  <Button size="sm" variant="secondary" onClick={() => setNewItemOpen(true)} title="Create new item and add to sale">
+                    <Plus className="mr-1 h-4 w-4" /> New item
+                  </Button>
+                )}
               </div>
 
               {items.length > 0 && (
@@ -396,7 +401,7 @@ export default function POS() {
                         </TableCell>
                         <TableCell className="text-right font-medium">{npr(r.line_total)}</TableCell>
                         <TableCell className="flex gap-0.5">
-                          {r.raw_item && (
+                          {r.raw_item && canManageInventory && (
                             <Button size="icon" variant="ghost" title="Edit inventory details"
                               onClick={() => setEditItem({ row: i, item: r.raw_item })}>
                               <Pencil className="h-4 w-4" />
