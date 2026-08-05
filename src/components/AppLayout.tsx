@@ -37,8 +37,9 @@ const NAV: NavItem[] = [
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-  const { roles, user, signOut } = useAuth();
-  const visible = NAV.filter((n) => !n.roles || n.roles.some((r) => roles.includes(r)));
+  const { user, signOut } = useAuth();
+  const { hasPermission } = usePermission();
+  const visible = NAV.filter((n) => !n.permission || hasPermission(n.permission));
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <Link to="/" onClick={onNavigate} className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
