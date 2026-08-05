@@ -52,10 +52,10 @@ const App = () => (
             <Route path="/quotations" element={<ProtectedRoute roles={[...SALES]}><Quotations /></ProtectedRoute>} />
             <Route path="/quotations/:id" element={<ProtectedRoute roles={[...SALES]}><QuotationDetail /></ProtectedRoute>} />
             <Route path="/pos" element={<ProtectedRoute roles={[...SALES]}><POS /></ProtectedRoute>} />
-            <Route path="/invoices" element={<ProtectedRoute roles={["admin", "manager", "sales", "accountant"]}><Invoices /></ProtectedRoute>} />
+            <Route path="/invoices" element={<ProtectedRoute roles={["admin", "manager", "sales", "accountant", "viewer"]}><Invoices /></ProtectedRoute>} />
             <Route path="/invoices/old-gold" element={<ProtectedRoute roles={[...SALES]}><InvoicesOldGold /></ProtectedRoute>} />
             <Route path="/credit" element={<ProtectedRoute roles={["admin", "manager", "accountant"]}><CreditLedger /></ProtectedRoute>} />
-            <Route path="/invoices/:id" element={<ProtectedRoute roles={["admin", "manager", "sales", "accountant"]}><InvoiceDetail /></ProtectedRoute>} />
+            <Route path="/invoices/:id" element={<ProtectedRoute roles={["admin", "manager", "sales", "accountant", "viewer"]}><InvoiceDetail /></ProtectedRoute>} />
             <Route path="/purchases" element={<ProtectedRoute roles={["admin", "manager"]}><Purchases /></ProtectedRoute>} />
             <Route path="/rates" element={<ProtectedRoute roles={["admin", "manager", "accountant"]}><MetalRates /></ProtectedRoute>} />
             <Route path="/repairs" element={<ProtectedRoute roles={["admin", "manager", "karigar"]}><Repairs /></ProtectedRoute>} />
