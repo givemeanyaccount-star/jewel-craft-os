@@ -5,32 +5,35 @@ import {
   Settings, LogOut, Menu, ShieldCheck, TrendingUp,
   Wrench, Truck, ShoppingCart
 } from "lucide-react";
-import { useAuth, AppRole } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import logoUrl from "@/assets/logo.png";
+import { AppPermission } from "@/lib/permissions";
+import { usePermission } from "@/hooks/usePermission";
 
 interface NavItem {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
-  roles?: AppRole[];
+  permission?: AppPermission;
 }
 
 const NAV: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/pos", label: "POS / New Sale", icon: Receipt, roles: ["admin", "manager", "sales"] },
-  { to: "/inventory", label: "Inventory", icon: Package },
-  { to: "/customers", label: "Customers", icon: Users },
-  { to: "/quotations", label: "Quotations", icon: FileText, roles: ["admin", "manager", "sales"] },
-  { to: "/invoices", label: "Invoices", icon: Receipt },
-  { to: "/purchases", label: "Purchases", icon: ShoppingCart, roles: ["admin", "manager"] },
-  { to: "/rates", label: "Metal Rates", icon: TrendingUp },
-  { to: "/repairs", label: "Repairs", icon: Wrench },
-  { to: "/suppliers", label: "Suppliers", icon: Truck, roles: ["admin", "manager"] },
-  { to: "/settings", label: "Settings", icon: Settings, roles: ["admin", "manager"] },
-  { to: "/admin/roles", label: "Role Management", icon: ShieldCheck, roles: ["admin"] },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
+  { to: "/pos", label: "POS / New Sale", icon: Receipt, permission: "pos_create_sale" },
+  { to: "/inventory", label: "Inventory", icon: Package, permission: "inventory_view" },
+  { to: "/customers", label: "Customers", icon: Users, permission: "customer_manage" },
+  { to: "/quotations", label: "Quotations", icon: FileText, permission: "quotation_create_edit" },
+  { to: "/invoices", label: "Invoices", icon: Receipt, permission: "invoice_view" },
+  { to: "/purchases", label: "Purchases", icon: ShoppingCart, permission: "purchase_manage" },
+  { to: "/rates", label: "Metal Rates", icon: TrendingUp, permission: "metal_rate_manage" },
+  { to: "/repairs", label: "Repairs", icon: Wrench, permission: "repair_manage" },
+  { to: "/repairs/karigars", label: "Karigars", icon: Wrench, permission: "karigar_manage" },
+  { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "supplier_manage" },
+  { to: "/settings", label: "Settings", icon: Settings, permission: "settings_manage" },
+  { to: "/admin/roles", label: "Role Management", icon: ShieldCheck, permission: "role_manage" },
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
