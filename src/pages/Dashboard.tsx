@@ -28,6 +28,7 @@ interface Stats {
 }
 
 export default function Dashboard() {
+  const { roles, rolesError } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
   const [repairCounts, setRepairCounts] = useState<Record<string, number>>({});
