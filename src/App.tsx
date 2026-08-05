@@ -46,19 +46,19 @@ const App = () => (
             <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
             <Route path="/inventory/:id" element={<ProtectedRoute><ItemDetail /></ProtectedRoute>} />
             <Route path="/scan" element={<ProtectedRoute roles={[...SALES]}><ScanQR /></ProtectedRoute>} />
-            <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+            <Route path="/customers" element={<ProtectedRoute roles={[...SALES]}><Customers /></ProtectedRoute>} />
             <Route path="/quotations" element={<ProtectedRoute roles={[...SALES]}><Quotations /></ProtectedRoute>} />
             <Route path="/quotations/:id" element={<ProtectedRoute roles={[...SALES]}><QuotationDetail /></ProtectedRoute>} />
             <Route path="/pos" element={<ProtectedRoute roles={[...SALES]}><POS /></ProtectedRoute>} />
-            <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
-            <Route path="/invoices/old-gold" element={<ProtectedRoute><InvoicesOldGold /></ProtectedRoute>} />
-            <Route path="/credit" element={<ProtectedRoute><CreditLedger /></ProtectedRoute>} />
-            <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
+            <Route path="/invoices" element={<ProtectedRoute roles={["admin", "manager", "sales", "accountant"]}><Invoices /></ProtectedRoute>} />
+            <Route path="/invoices/old-gold" element={<ProtectedRoute roles={[...SALES]}><InvoicesOldGold /></ProtectedRoute>} />
+            <Route path="/credit" element={<ProtectedRoute roles={["admin", "manager", "accountant"]}><CreditLedger /></ProtectedRoute>} />
+            <Route path="/invoices/:id" element={<ProtectedRoute roles={["admin", "manager", "sales", "accountant"]}><InvoiceDetail /></ProtectedRoute>} />
             <Route path="/purchases" element={<ProtectedRoute roles={["admin", "manager"]}><Purchases /></ProtectedRoute>} />
-            <Route path="/rates" element={<ProtectedRoute><MetalRates /></ProtectedRoute>} />
-            <Route path="/repairs" element={<ProtectedRoute><Repairs /></ProtectedRoute>} />
-            <Route path="/repairs/karigars" element={<ProtectedRoute><Karigars /></ProtectedRoute>} />
-            <Route path="/repairs/:id" element={<ProtectedRoute><RepairDetail /></ProtectedRoute>} />
+            <Route path="/rates" element={<ProtectedRoute roles={["admin", "manager", "accountant"]}><MetalRates /></ProtectedRoute>} />
+            <Route path="/repairs" element={<ProtectedRoute roles={["admin", "manager", "karigar"]}><Repairs /></ProtectedRoute>} />
+            <Route path="/repairs/karigars" element={<ProtectedRoute roles={["admin", "manager"]}><Karigars /></ProtectedRoute>} />
+            <Route path="/repairs/:id" element={<ProtectedRoute roles={["admin", "manager", "karigar"]}><RepairDetail /></ProtectedRoute>} />
             <Route path="/suppliers" element={<ProtectedRoute roles={["admin", "manager"]}><Suppliers /></ProtectedRoute>} />
             <Route path="/purchases/:id" element={<ProtectedRoute roles={["admin", "manager"]}><PurchaseDetail /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute roles={["admin", "manager"]}><Settings /></ProtectedRoute>} />
