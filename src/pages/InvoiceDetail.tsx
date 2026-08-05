@@ -38,6 +38,7 @@ export default function InvoiceDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const { user } = useAuth();
+  const { hasPermission } = usePermission();
   const [inv, setInv] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
