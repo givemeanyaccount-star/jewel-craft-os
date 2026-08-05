@@ -85,20 +85,46 @@ const Auth = () => {
             </TabsList>
 
             <TabsContent value="signin">
-              <form onSubmit={onSignIn} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Signing in…" : "Sign in"}
-                </Button>
-              </form>
+              {forgotOpen ? (
+                <form onSubmit={onForgot} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="remail">Email</Label>
+                    <Input id="remail" type="email" required value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">
+                      We'll email you a link to set a new password.
+                    </p>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Sending…" : "Send reset link"}
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full" onClick={() => setForgotOpen(false)}>
+                    Back to sign in
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={onSignIn} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Signing in…" : "Sign in"}
+                  </Button>
+                  <button
+                    type="button"
+                    className="w-full text-center text-xs text-muted-foreground underline-offset-4 hover:underline"
+                    onClick={() => { setResetEmail(email); setForgotOpen(true); }}
+                  >
+                    Forgot password?
+                  </button>
+                </form>
+              )}
             </TabsContent>
+
 
             <TabsContent value="signup">
               <form onSubmit={onSignUp} className="space-y-4 pt-4">
