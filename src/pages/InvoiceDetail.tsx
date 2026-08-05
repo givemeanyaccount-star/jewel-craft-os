@@ -14,7 +14,6 @@ import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { npr } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { usePermission } from "@/hooks/usePermission";
 import { CancelInvoiceDialog } from "@/components/CancelInvoiceDialog";
 import { ReturnItemsDialog } from "@/components/ReturnItemsDialog";
 import logoUrl from "@/assets/logo.png";
@@ -38,7 +37,6 @@ export default function InvoiceDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const { user } = useAuth();
-  const { hasPermission } = usePermission();
   const [inv, setInv] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -66,12 +64,12 @@ export default function InvoiceDetail() {
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
         <Button size="sm" variant="outline" onClick={() => printInvoice(inv.id)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
-        {cancellable && hasPermission("invoice_cancel_refund") && (
+        {cancellable && (
           <Button size="sm" variant="outline" onClick={() => setReturnOpen(true)}>
             <Undo2 className="mr-1 h-4 w-4" /> Return item(s)
           </Button>
         )}
-        {cancellable && hasPermission("invoice_cancel_refund") && (
+        {cancellable && (
           <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}>
             <Ban className="mr-1 h-4 w-4" /> Cancel invoice
           </Button>
@@ -151,9 +149,7 @@ export default function InvoiceDetail() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Payments</CardTitle>
-            {Number(inv.balance_due) > 0 && hasPermission("pos_create_sale") && (
-              <Button size="sm" onClick={() => setPayOpen(true)}><Plus className="mr-1 h-4 w-4" /> Add</Button>
-            )}
+            {Number(inv.balance_due) > 0 && <Button size="sm" onClick={() => setPayOpen(true)}><Plus className="mr-1 h-4 w-4" /> Add</Button>}
           </CardHeader>
           <CardContent>
             {payments.length === 0 ? <p className="text-sm text-muted-foreground">No payments yet</p> :
