@@ -81,7 +81,23 @@ export default function Dashboard() {
 
   return (
     <AppLayout title="Dashboard">
+      {(rolesError || roles.length === 0) && (
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+          <div className="text-sm">
+            <div className="font-medium text-destructive">
+              {rolesError ? "Could not load your permissions" : "No roles assigned"}
+            </div>
+            <p className="text-muted-foreground">
+              {rolesError
+                ? "Your access rights could not be read, so menus and data may be hidden. Try signing out and back in, or contact an administrator."
+                : "Your account has no roles yet, so most features are hidden. Ask an administrator to assign you a role."}
+            </p>
+          </div>
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
         {cards.map((c) => {
           const Card_ = (
             <Card key={c.label} className="transition hover:shadow-md">
