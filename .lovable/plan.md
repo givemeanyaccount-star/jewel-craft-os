@@ -33,7 +33,8 @@ Creating and deleting accounts must run server-side with admin privileges, so th
 - **Per-user overrides**: grant/revoke a single permission for one person without changing their role.
 - **Temporary access**: role assignment with an expiry date.
 - **Suspend instead of delete**: disable login while keeping history intact.
-- **Branch scoping**: roles limited to a branch/location, ready for multi-store.
+
+Scope note: single-branch operation only — no branch/location scoping anywhere in this work.
 
 ## Technical notes
 - New table `public.role_permissions` (role `app_role`, permission text, allowed boolean), unique on (role, permission), admin-write / authenticated-read.
