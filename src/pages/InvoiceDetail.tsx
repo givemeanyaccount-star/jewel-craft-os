@@ -66,12 +66,12 @@ export default function InvoiceDetail() {
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
         <Button size="sm" variant="outline" onClick={() => printInvoice(inv.id)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
-        {cancellable && (
+        {cancellable && hasPermission("invoice_cancel_refund") && (
           <Button size="sm" variant="outline" onClick={() => setReturnOpen(true)}>
             <Undo2 className="mr-1 h-4 w-4" /> Return item(s)
           </Button>
         )}
-        {cancellable && (
+        {cancellable && hasPermission("invoice_cancel_refund") && (
           <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}>
             <Ban className="mr-1 h-4 w-4" /> Cancel invoice
           </Button>
