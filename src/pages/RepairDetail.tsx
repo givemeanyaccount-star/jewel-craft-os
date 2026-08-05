@@ -24,6 +24,7 @@ const STATUS_FLOW = ["received", "in_progress", "quality_check", "ready", "deliv
 export default function RepairDetail() {
   const { id } = useParams();
   const nav = useNavigate();
+  const { karigars, refresh: refreshKarigars } = useKarigars();
   const [repair, setRepair] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [karigarNames, setKarigarNames] = useState<Record<string, string>>({});
@@ -80,8 +81,11 @@ export default function RepairDetail() {
             <RepairItemCard
               key={it.id}
               item={it}
-              karigarName={it.karigar_id ? karigarNames[it.karigar_id] : it.karigar_name}
+              karigarName={it.karigar_id ? (karigarNames[it.karigar_id] ?? karigars.find((k) => k.id === it.karigar_id)?.name) : it.karigar_name}
               photoUrls={photoUrls}
+              karigars={karigars}
+              onKarigarCreated={refreshKarigars}
+              onAssigned={load}
               onOpenWorkflow={() => setWorkflowItem(it)}
             />
           ))}
