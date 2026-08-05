@@ -6,24 +6,53 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { AppRole, ALL_ROLES, ALL_PERMISSIONS, can } from "@/lib/permissions";
-import { Check, X } from "lucide-react";
+import {
+  AppPermission,
+  AppRole,
+  ALL_ROLES,
+  ALL_PERMISSIONS,
+  DEFAULT_ROLE_PERMISSIONS,
+  RolePermissionMatrix,
+} from "@/lib/permissions";
+import { Loader2, Plus, Trash2, RotateCcw } from "lucide-react";
 
 interface UserRow {
   id: string;
   full_name: string | null;
   phone: string | null;
+  email?: string | null;
+  last_sign_in_at?: string | null;
   roles: AppRole[];
 }
 
 const RoleManagement = () => {
-  const { user: currentUser, signOut } = useAuth();
+  const { user: currentUser, signOut, permissionMatrix, reloadPermissions } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [pending, setPending] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -42,11 +71,22 @@ const RoleManagement = () => {
       arr.push(r.role as AppRole);
       byUser.set(r.user_id, arr);
     });
+
+    let accounts: Record<string, { email?: string | null; last_sign_in_at?: string | null }> = {};
+    const { data: fnData } = await supabase.functions.invoke("admin-users", { body: { action: "list" } });
+    if (fnData?.users) {
+      accounts = Object.fromEntries(
+        fnData.users.map((u: any) => [u.id, { email: u.email, last_sign_in_at: u.last_sign_in_at }]),
+      );
+    }
+
     setUsers(
       (profiles ?? []).map((p) => ({
         id: p.id,
         full_name: p.full_name,
         phone: p.phone,
+        email: accounts[p.id]?.email ?? null,
+        last_sign_in_at: accounts[p.id]?.last_sign_in_at ?? null,
         roles: byUser.get(p.id) ?? [],
       })),
     );
@@ -80,10 +120,29 @@ const RoleManagement = () => {
     setPending(null);
   };
 
+  const removeUser = async (u: UserRow) => {
+    setPending(`del:${u.id}`);
+    const { data, error } = await supabase.functions.invoke("admin-users", {
+      body: { action: "delete", user_id: u.id },
+    });
+    setPending(null);
+    setDeleteTarget(null);
+    if (error || data?.error) {
+      toast({ title: "Delete failed", description: data?.error ?? error?.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "User removed" });
+    setUsers((prev) => prev.filter((x) => x.id !== u.id));
+  };
+
   const filtered = users.filter((u) => {
     const q = search.toLowerCase().trim();
     if (!q) return true;
-    return (u.full_name ?? "").toLowerCase().includes(q) || (u.phone ?? "").toLowerCase().includes(q);
+    return (
+      (u.full_name ?? "").toLowerCase().includes(q) ||
+      (u.phone ?? "").toLowerCase().includes(q) ||
+      (u.email ?? "").toLowerCase().includes(q)
+    );
   });
 
   return (
@@ -91,8 +150,8 @@ const RoleManagement = () => {
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 p-4">
           <div>
-            <h1 className="text-xl font-semibold">Role Management</h1>
-            <p className="text-xs text-muted-foreground">Assign or revoke roles for any user</p>
+            <h1 className="text-xl font-semibold">Users &amp; Permissions</h1>
+            <p className="text-xs text-muted-foreground">Manage accounts, roles and what each role can do</p>
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm"><Link to="/">Home</Link></Button>
@@ -102,14 +161,16 @@ const RoleManagement = () => {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
-        <PermissionMatrix />
+        <PermissionMatrix matrix={permissionMatrix} reload={reloadPermissions} />
+
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
             <CardTitle>Users</CardTitle>
+            <AddUserDialog onCreated={load} />
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
-              placeholder="Search by name or phone…"
+              placeholder="Search by name, email or phone…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -124,19 +185,31 @@ const RoleManagement = () => {
                   const isSelf = u.id === currentUser?.id;
                   return (
                     <div key={u.id} className="rounded-lg border bg-card p-4">
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <div className="font-medium">
                             {u.full_name || "(no name)"}
                             {isSelf && <Badge variant="outline" className="ml-2">you</Badge>}
                           </div>
-                          {u.phone && <div className="text-xs text-muted-foreground">{u.phone}</div>}
+                          <div className="text-xs text-muted-foreground">
+                            {[u.email, u.phone].filter(Boolean).join(" · ") || "—"}
+                          </div>
                         </div>
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap items-center gap-1">
                           {u.roles.length === 0 ? (
                             <span className="text-xs text-muted-foreground">No roles</span>
                           ) : (
                             u.roles.map((r) => <Badge key={r} variant="secondary">{r}</Badge>)
+                          )}
+                          {!isSelf && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive"
+                              onClick={() => setDeleteTarget(u)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -164,7 +237,7 @@ const RoleManagement = () => {
                       </div>
                       {isSelf && (
                         <p className="mt-2 text-xs text-muted-foreground">
-                          You can't revoke your own admin role (to avoid lockout).
+                          You can't revoke your own admin role or delete your own account (to avoid lockout).
                         </p>
                       )}
                     </div>
@@ -175,16 +248,181 @@ const RoleManagement = () => {
           </CardContent>
         </Card>
       </main>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.full_name || deleteTarget?.email} will permanently lose access. Records they created
+              stay in the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && removeUser(deleteTarget)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove user
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
-function PermissionMatrix() {
+function AddUserDialog({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [roles, setRoles] = useState<AppRole[]>(["sales"]);
+
+  const submit = async () => {
+    setSaving(true);
+    const { data, error } = await supabase.functions.invoke("admin-users", {
+      body: {
+        action: "create",
+        email,
+        full_name: fullName,
+        phone,
+        roles,
+        redirect_to: `${window.location.origin}/reset-password`,
+      },
+    });
+    setSaving(false);
+    if (error || data?.error) {
+      toast({ title: "Could not add user", description: data?.error ?? error?.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Invitation sent", description: `${email} can set a password from the emailed link.` });
+    setOpen(false);
+    setEmail("");
+    setFullName("");
+    setPhone("");
+    setRoles(["sales"]);
+    onCreated();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm"><Plus className="mr-1 h-4 w-4" /> Add user</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add user</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>Email</Label>
+            <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Full name</Label>
+              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Phone</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Roles</Label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {ALL_ROLES.map((r) => (
+                <label key={r} className="flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm">
+                  <Checkbox
+                    checked={roles.includes(r)}
+                    onCheckedChange={(c) =>
+                      setRoles((prev) => (c ? [...prev, r] : prev.filter((x) => x !== r)))
+                    }
+                  />
+                  <span className="capitalize">{r}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            The user receives an email invitation to set their own password.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={saving || !email.trim()}>
+            {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Send invite
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PermissionMatrix({
+  matrix,
+  reload,
+}: {
+  matrix: RolePermissionMatrix;
+  reload: () => Promise<void>;
+}) {
+  const [saving, setSaving] = useState<string | null>(null);
+
+  const setCell = async (role: AppRole, permission: AppPermission, allowed: boolean) => {
+    if (role === "admin" && permission === "role_manage" && !allowed) {
+      toast({
+        title: "Not allowed",
+        description: "Admins must keep role management to avoid locking everyone out.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const key = `${role}:${permission}`;
+    setSaving(key);
+    const { error } = await supabase
+      .from("role_permissions")
+      .upsert({ role, permission, allowed }, { onConflict: "role,permission" });
+    setSaving(null);
+    if (error) {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await reload();
+  };
+
+  const resetDefaults = async () => {
+    setSaving("reset");
+    const rows = ALL_ROLES.flatMap((role) =>
+      ALL_PERMISSIONS.map((permission) => ({
+        role,
+        permission,
+        allowed: DEFAULT_ROLE_PERMISSIONS[role].includes(permission),
+      })),
+    );
+    const { error } = await supabase.from("role_permissions").upsert(rows, { onConflict: "role,permission" });
+    setSaving(null);
+    if (error) {
+      toast({ title: "Reset failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    await reload();
+    toast({ title: "Permissions reset to defaults" });
+  };
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Permission Matrix</CardTitle>
-        <p className="text-xs text-muted-foreground">What each role can do in the system</p>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+        <div>
+          <CardTitle>Permission Matrix</CardTitle>
+          <p className="text-xs text-muted-foreground">Tick a box to grant a role that capability</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={resetDefaults} disabled={saving === "reset"}>
+          {saving === "reset" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-1 h-4 w-4" />}
+          Reset defaults
+        </Button>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <table className="w-full min-w-[600px] text-sm">
@@ -201,14 +439,15 @@ function PermissionMatrix() {
               <tr key={p} className="border-b last:border-0">
                 <td className="py-2 text-muted-foreground">{p.replace(/_/g, " ")}</td>
                 {ALL_ROLES.map((r) => {
-                  const ok = can([r], p);
+                  const key = `${r}:${p}`;
+                  const checked = (matrix[r] ?? []).includes(p);
                   return (
                     <td key={r} className="py-2 text-center">
-                      {ok ? (
-                        <Check className="mx-auto h-4 w-4 text-primary" />
-                      ) : (
-                        <X className="mx-auto h-4 w-4 text-muted-foreground/40" />
-                      )}
+                      <Checkbox
+                        checked={checked}
+                        disabled={saving === key || saving === "reset"}
+                        onCheckedChange={(c) => setCell(r, p, !!c)}
+                      />
                     </td>
                   );
                 })}
