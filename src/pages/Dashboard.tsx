@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { npr } from "@/lib/format";
 import { DailyRateDialog, todayIsoDate } from "@/components/DailyRateDialog";
 import { Package, Receipt, Users, Coins, TrendingUp, AlertCircle, Wrench, CircleDollarSign } from "lucide-react";
