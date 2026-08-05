@@ -50,19 +50,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Only roles allowed to write metal rates may trigger the sync.
-    const { data: roleRows } = await supa
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userData.user.id);
-    const allowed = ["admin", "manager", "accountant"];
-    if (!roleRows?.some((r: { role: string }) => allowed.includes(r.role))) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-
     const { fineGoldPer10g, silverPer10g, source } = await scrape();
     const goldPerGram999 = fineGoldPer10g / 10; // 9999 fine basis
 
