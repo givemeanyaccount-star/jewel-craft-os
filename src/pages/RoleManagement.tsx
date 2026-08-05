@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { AppRole, useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-
-const ALL_ROLES: AppRole[] = ["admin", "manager", "sales", "karigar", "accountant"];
+import { AppRole, ALL_ROLES, ALL_PERMISSIONS, can } from "@/lib/permissions";
+import { Check, X } from "lucide-react";
 
 interface UserRow {
   id: string;
