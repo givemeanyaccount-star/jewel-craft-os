@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Plus, Trash2, Save } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { usePermission } from "@/hooks/usePermission";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -15,8 +15,8 @@ import { RecalcTaxesDialog } from "@/components/RecalcTaxesDialog";
 
 
 export default function Settings() {
-  const { hasRole } = useAuth();
-  if (!(hasRole("admin") || hasRole("manager"))) return <AppLayout><p>Access denied.</p></AppLayout>;
+  const { hasPermission } = usePermission();
+  if (!hasPermission("settings_manage")) return <AppLayout><p>Access denied.</p></AppLayout>;
   return (
     <AppLayout title="Settings">
       <div className="grid gap-4 md:grid-cols-2">
