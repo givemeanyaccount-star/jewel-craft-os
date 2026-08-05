@@ -277,9 +277,12 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [roles, setRoles] = useState<AppRole[]>(["sales"]);
+
+  const usernameValid = /^[a-zA-Z0-9._-]{3,30}$/.test(username.trim());
 
   const submit = async () => {
     setSaving(true);
@@ -287,6 +290,7 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
       body: {
         action: "create",
         email,
+        username: username.trim(),
         full_name: fullName,
         phone,
         roles,
@@ -301,6 +305,7 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
     toast({ title: "Invitation sent", description: `${email} can set a password from the emailed link.` });
     setOpen(false);
     setEmail("");
+    setUsername("");
     setFullName("");
     setPhone("");
     setRoles(["sales"]);
@@ -317,9 +322,18 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
           <DialogTitle>Add user</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label>Email</Label>
-            <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Username</Label>
+              <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ramesh.k" />
+              {username && !usernameValid && (
+                <p className="text-xs text-destructive">3–30 characters: letters, numbers, . _ -</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@example.com" />
+            </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
@@ -348,14 +362,21 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            The user receives an email invitation to set their own password.
+            The user signs in with their email and sets their own password from the emailed link. The username is a
+            unique display handle.
           </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={saving || !email.trim()}>
+          <Button onClick={submit} disabled={saving || !email.trim() || !usernameValid}>
             {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Send invite
           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
         </DialogFooter>
       </DialogContent>
     </Dialog>
