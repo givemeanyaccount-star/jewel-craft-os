@@ -81,3 +81,26 @@ export function canAny(roles: AppRole[], permissions: AppPermission[]): boolean 
 export function permissionsForRole(role: AppRole): AppPermission[] {
   return ROLE_PERMISSIONS[role] ?? [];
 }
+
+/** Built-in defaults, used for seeding and for "reset to defaults". */
+export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = ROLE_PERMISSIONS;
+
+export type RolePermissionMatrix = Record<AppRole, AppPermission[]>;
+
+export function defaultMatrix(): RolePermissionMatrix {
+  return ALL_ROLES.reduce((acc, r) => {
+    acc[r] = [...DEFAULT_ROLE_PERMISSIONS[r]];
+    return acc;
+  }, {} as RolePermissionMatrix);
+}
+
+export function canWith(
+  matrix: RolePermissionMatrix | null | undefined,
+  roles: AppRole[],
+  permission: AppPermission,
+): boolean {
+  const m = matrix ?? DEFAULT_ROLE_PERMISSIONS;
+  // Admins always keep role management, to avoid permanent lockout.
+  if (permission === "role_manage" && roles.includes("admin")) return true;
+  return roles.some((role) => m[role]?.includes(permission));
+}
