@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { AppRole, useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-
-const ALL_ROLES: AppRole[] = ["admin", "manager", "sales", "karigar", "accountant"];
+import { AppRole, ALL_ROLES, ALL_PERMISSIONS, can } from "@/lib/permissions";
+import { Check, X } from "lucide-react";
 
 interface UserRow {
   id: string;
@@ -102,6 +102,7 @@ const RoleManagement = () => {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
+        <PermissionMatrix />
         <Card>
           <CardHeader>
             <CardTitle>Users</CardTitle>
@@ -177,5 +178,47 @@ const RoleManagement = () => {
     </div>
   );
 };
+
+function PermissionMatrix() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Permission Matrix</CardTitle>
+        <p className="text-xs text-muted-foreground">What each role can do in the system</p>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <table className="w-full min-w-[600px] text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="py-2 text-left font-medium">Permission</th>
+              {ALL_ROLES.map((r) => (
+                <th key={r} className="py-2 text-center font-medium capitalize">{r}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ALL_PERMISSIONS.map((p) => (
+              <tr key={p} className="border-b last:border-0">
+                <td className="py-2 text-muted-foreground">{p.replace(/_/g, " ")}</td>
+                {ALL_ROLES.map((r) => {
+                  const ok = can([r], p);
+                  return (
+                    <td key={r} className="py-2 text-center">
+                      {ok ? (
+                        <Check className="mx-auto h-4 w-4 text-primary" />
+                      ) : (
+                        <X className="mx-auto h-4 w-4 text-muted-foreground/40" />
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default RoleManagement;
