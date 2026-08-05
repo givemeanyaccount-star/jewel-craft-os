@@ -86,6 +86,8 @@ export function lineDisplay(r: {
 
 export default function POS() {
   const { user } = useAuth();
+  const { hasPermission } = usePermission();
+  const canManageInventory = hasPermission("inventory_manage");
   const { settings } = useAppSettings();
   const nav = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
