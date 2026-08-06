@@ -39,6 +39,7 @@ const NAV: NavItem[] = [
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, roles, signOut } = useAuth();
   const { hasPermission } = usePermission();
+  const navigate = useNavigate();
   const visible = NAV.filter((n) => !n.permission || hasPermission(n.permission));
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
@@ -58,7 +59,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 isActive
                   ? "bg-sidebar-accent text-sidebar-primary font-medium"
                   : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
@@ -67,9 +68,35 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           >
             <item.icon className="h-4 w-4 shrink-0" />
             <span className="truncate">{item.label}</span>
+            {item.to !== "/" && (
+              <span
+                role="button"
+                tabIndex={0}
+                title="Back to dashboard"
+                aria-label="Back to dashboard"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onNavigate?.();
+                  navigate("/");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onNavigate?.();
+                    navigate("/");
+                  }
+                }}
+                className="ml-auto shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-sidebar-accent focus:opacity-100 group-hover:opacity-60 hover:opacity-100"
+              >
+                <Home className="h-3.5 w-3.5" />
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
+
       <div className="border-t border-sidebar-border p-3">
         <div className="mb-2 px-2 text-xs text-sidebar-foreground/70 truncate">{user?.email}</div>
         <div className="mb-2 flex flex-wrap gap-1 px-2">
