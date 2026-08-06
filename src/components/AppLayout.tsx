@@ -93,6 +93,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 export function AppLayout({ children, title, actions }: { children: ReactNode; title?: string; actions?: ReactNode }) {
   const location = useLocation();
   const current = NAV.find((n) => n.to === location.pathname);
+  const isHome = location.pathname === "/";
+  useEscapeBack();
   return (
     <div className="flex min-h-screen bg-muted/30">
       <aside className="hidden w-64 shrink-0 md:block">
@@ -110,9 +112,20 @@ export function AppLayout({ children, title, actions }: { children: ReactNode; t
               <SheetContentInner />
             </SheetContent>
           </Sheet>
+          {!isHome && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                  <Link to="/" aria-label="Go to dashboard"><Home className="h-4 w-4" /></Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Dashboard · Esc to go back</TooltipContent>
+            </Tooltip>
+          )}
           <div className="flex-1 min-w-0">
             <h1 className="truncate text-lg font-semibold">{title ?? current?.label ?? "JewelMaster OS"}</h1>
           </div>
+
           <div className="flex items-center gap-2">
             {actions}
             <ThemeSwitcher className="hidden sm:flex" />
