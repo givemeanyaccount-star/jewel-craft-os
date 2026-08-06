@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { PrintDocument, printDocument } from "@/components/PrintDocument";
 import { npr } from "@/lib/format";
+import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
@@ -46,6 +47,16 @@ export default function InvoiceDetail() {
   const [payOpen, setPayOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [fineRates, setFineRates] = useState<FineRates>({});
+  const [tradeMetal, setTradeMetal] = useState<string>("gold");
+
+  useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
+  useEffect(() => {
+    if (!id) return;
+    supabase.from("old_gold_purchases").select("metal, total_amount")
+      .eq("linked_invoice_id", id).order("total_amount", { ascending: false }).limit(1)
+      .then(({ data }) => { if (data?.[0]?.metal) setTradeMetal(data[0].metal as string); });
+  }, [id]);
 
   useEffect(() => { load(); }, [id]);
   async function load() {
@@ -57,6 +68,11 @@ export default function InvoiceDetail() {
     ]);
     setInv(i.data); setItems(it.data ?? []); setPayments(p.data ?? []);
   }
+
+  const oldGoldEq = inv && Number(inv.old_gold_credit) > 0
+    ? fineEquivalentNote(Number(inv.old_gold_credit), billFineRate(items, tradeMetal, fineRates), tradeMetal)
+    : null;
+
 
   if (!inv) return <AppLayout><p>Loading...</p></AppLayout>;
 
@@ -142,6 +158,8 @@ export default function InvoiceDetail() {
               {Number(inv.sd_tax) > 0 && <Row label={`SD tax ${inv.sd_tax_rate}% (gold + making − old gold)`} value={npr(inv.sd_tax)} />}
               {Number(inv.luxury_tax) > 0 && <Row label={`Luxury tax ${inv.luxury_tax_rate}% (gold + making − old gold)`} value={npr(inv.luxury_tax)} />}
               <Row label="Old gold credit" value={`- ${npr(inv.old_gold_credit)}`} />
+              {oldGoldEq && <div className="text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
+
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(inv.total)}</span></div>
               <Row label="Paid" value={npr(inv.amount_paid)} />
               <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(inv.balance_due)}</span></div>

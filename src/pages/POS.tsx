@@ -16,6 +16,7 @@ import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
 } from "@/lib/format";
+import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import { QRScanButton } from "@/components/QRScanButton";
@@ -101,6 +102,9 @@ export default function POS() {
   const [discount, setDiscount] = useState(0);
   const [oldGoldCredit, setOldGoldCredit] = useState(0);
   const [oldGoldPurchaseId, setOldGoldPurchaseId] = useState<string | null>(null);
+  const [oldGoldMetal, setOldGoldMetal] = useState<string>("gold");
+  const [fineRates, setFineRates] = useState<FineRates>({});
+  useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
   const [targetTotal, setTargetTotal] = useState<string>("");
   const [payments, setPayments] = useState<PayLine[]>([{ method: "cash", amount: 0 }]);
   const [notes, setNotes] = useState("");
@@ -208,6 +212,12 @@ export default function POS() {
 
   const paid = useMemo(() => payments.reduce((a, p) => a + (Number(p.amount) || 0), 0), [payments]);
   const balance = Math.max(0, tax.total - paid);
+
+  // Fine-metal equivalent of the old gold credit, at the bill's rate (or the day's rate).
+  const oldGoldEq = useMemo(() => oldGoldCredit > 0
+    ? fineEquivalentNote(oldGoldCredit, billFineRate(cart as any, oldGoldMetal, fineRates), oldGoldMetal)
+    : null, [oldGoldCredit, cart, oldGoldMetal, fineRates]);
+
 
   function applyTargetTotal() {
     const t = Number(targetTotal);
@@ -457,6 +467,8 @@ export default function POS() {
                 <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(e) => setOldGoldCredit(Number(e.target.value) || 0)} />
               </div>
             </div>
+            {oldGoldEq && <div className="-mt-1 text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
+
             <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>
 
             <div className="rounded-md border bg-muted/40 p-2">
@@ -513,7 +525,7 @@ export default function POS() {
         onSaved={async (id) => { setNewCustOpen(false); await loadCustomers(); setCustomerId(id); }} />
       <OldGoldPurchaseDialog open={ogOpen} onOpenChange={setOgOpen}
         initialCustomer={customers.find((c) => c.id === customerId) ? { id: customerId!, full_name: customers.find((c) => c.id === customerId)!.full_name, phone: customers.find((c) => c.id === customerId)!.phone ?? null } : null}
-        onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); toast.success(`Old gold credit set to ${npr(result.total)}`); }} />
+        onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); setOldGoldMetal(result.metal ?? "gold"); toast.success(`Old gold credit set to ${npr(result.total)}`); }} />
       <ItemDialog open={newItemOpen} onOpenChange={setNewItemOpen}
         editing={null} cats={categories as any} locs={locations as any}
         onSaved={(created) => {

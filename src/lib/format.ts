@@ -95,6 +95,9 @@ export function computeNetWeight(gross: number, stone: number) {
 export function purityFactor(purity: string): number {
   if (!purity) return 1;
   const trimmed = purity.trim().toUpperCase();
+  // Percentage purity, e.g. "91.6%" -> 0.916
+  const pctMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*%$/);
+  if (pctMatch) return parseFloat(pctMatch[1]) / 100;
   const karatMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*K$/);
   if (karatMatch) return parseFloat(karatMatch[1]) / 24;
   const fineness = parseFloat(trimmed); // e.g. 999, 916, 750
@@ -106,6 +109,20 @@ export function purityFactor(purity: string): number {
 export function computeFineWeight(netWeight: number, purity: string) {
   return netWeight * purityFactor(purity);
 }
+
+/** Convert a rate quoted for a given purity into the equivalent fine (pure) metal rate per gram. */
+export function fineRateFromLine(ratePerGram: number, purity: string): number {
+  const f = purityFactor(purity);
+  if (!ratePerGram || !f) return 0;
+  return ratePerGram / f;
+}
+
+/** Grams of fine metal an amount of money is worth at a given fine rate per gram. */
+export function fineEquivalentGrams(amount: number, fineRatePerGram: number): number {
+  if (!amount || !fineRatePerGram || fineRatePerGram <= 0) return 0;
+  return amount / fineRatePerGram;
+}
+
 
 export interface PricingInputs {
   netWeight: number;

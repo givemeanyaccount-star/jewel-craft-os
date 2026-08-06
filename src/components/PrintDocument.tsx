@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getSignedUrls } from "@/lib/storage";
 import { toBS, toADDate, toADDateTime, toNepaliDigits } from "@/lib/nepaliDate";
 import { amountInWords } from "@/lib/numberToWords";
+import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import logoAsset from "@/assets/logo.png";
 
 export const TOLA_IN_GRAMS = 11.664;
@@ -89,6 +90,9 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const [qr, setQr] = useState<string | null>(null);
   const [thumbs, setThumbs] = useState<string[]>([]);
   const [tolaRate, setTolaRate] = useState<number | null>(null);
+  const [fineRates, setFineRates] = useState<FineRates>({});
+  const [tradeMetal, setTradeMetal] = useState<string>("gold");
+
 
   useEffect(() => {
     (async () => {
@@ -122,6 +126,17 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
       });
   }, []);
 
+  // Latest fine (pure) rate per metal, used for the trade-in equivalent weight.
+  useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
+
+  // Which metal was traded in (the linked old gold/metal purchase); defaults to gold.
+  useEffect(() => {
+    if (kind !== "invoice" || !doc?.id) return;
+    supabase.from("old_gold_purchases").select("metal, total_amount")
+      .eq("linked_invoice_id", doc.id).order("total_amount", { ascending: false }).limit(1)
+      .then(({ data }) => { if (data?.[0]?.metal) setTradeMetal(data[0].metal as string); });
+  }, [kind, doc?.id]);
+
   const isInvoice = kind === "invoice";
   const cust = doc.customers;
   const docNo = isInvoice ? doc.invoice_number : doc.quote_number;
@@ -137,6 +152,10 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const sdTaxable = Math.max(0, afterDiscount - stones - oldGold);
   const vat = Number(doc.vat_amount ?? 0);
   const netTotal = Number(doc.total ?? 0);
+  const oldGoldEq = oldGold > 0
+    ? fineEquivalentNote(oldGold, billFineRate(items, tradeMetal, fineRates), tradeMetal)
+    : null;
+
 
   const bd = "1px solid #000";
   const cell: React.CSSProperties = { borderLeft: bd, borderRight: bd, padding: "4px 3px", verticalAlign: "top" };
@@ -304,9 +323,13 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                   {oldGold > 0 && (
                     <tr>
                       <td style={{ border: bd, padding: "3px 6px" }}>Old Gold</td>
-                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(oldGold)}</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>
+                        {n2(oldGold)}
+                        {oldGoldEq && <div style={{ fontSize: "8px", color: "#777" }}>{oldGoldEq}</div>}
+                      </td>
                     </tr>
                   )}
+
                 </tbody>
               </table>
             </div>
@@ -318,6 +341,10 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
             {tot("Total", n2(afterDiscount), { borderBottom: bd })}
             {tot("Non Taxable Amt", n2(stones))}
             {tot("Customer Old Gold", n2(oldGold))}
+            {oldGoldEq && (
+              <div style={{ padding: "0 8px 3px", fontSize: "8.5px", color: "#777", textAlign: "right" }}>{oldGoldEq}</div>
+            )}
+
             {vat > 0 && tot(`VAT ${doc.vat_rate}% (stones)`, n2(vat))}
             {tot("SD Taxable Amt", n2(sdTaxable))}
             {tot(`SD Tax (${sdRate}%)`, n2(sdTax))}

@@ -13,12 +13,14 @@ import { uploadImage } from "@/lib/storage";
 import { toast } from "sonner";
 import { ImageCaptureButton } from "@/components/ImageCapture";
 import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
+import { PuritySelect } from "@/components/PuritySelect";
 
 const METALS = ["gold", "silver", "platinum"];
-const PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
+const PURITIES = ["24K", "22K", "20K", "18K", "14K", "9K", "999", "925"];
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
-export interface OldGoldSaveResult { id: string; receiptNumber: string; total: number; }
+export interface OldGoldSaveResult { id: string; receiptNumber: string; total: number; metal: string; purity: string; }
+
 
 /**
  * The single, shared Old Gold Purchase form — used identically whether a purchase
@@ -110,7 +112,7 @@ export function OldGoldForm({
       if (error) throw error;
       toast.success(`Receipt ${receipt} created`);
       reset();
-      onSaved({ id: data.id, receiptNumber: receipt, total });
+      onSaved({ id: data.id, receiptNumber: receipt, total, metal: form.metal, purity: form.purity });
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
 
@@ -159,10 +161,10 @@ export function OldGoldForm({
             <SelectContent>{METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
           </Select></div>
         <div><Label>Purity</Label>
-          <Select value={form.purity} onValueChange={(v) => setForm({ ...form, purity: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-          </Select></div>
+          <PuritySelect value={form.purity} onChange={(v) => setForm({ ...form, purity: v })}
+            options={PURITIES} allowPercent />
+        </div>
+
         <div><Label>Gross wt (g)</Label><Input type="number" step="0.001" value={form.gross_weight ?? 0} onChange={(e) => setForm({ ...form, gross_weight: e.target.value })} /></div>
         <div><Label>Stone wt (g)</Label><Input type="number" step="0.001" value={form.stone_weight ?? 0} onChange={(e) => setForm({ ...form, stone_weight: e.target.value })} /></div>
         <div><Label>Net (auto)</Label><Input readOnly value={net.toFixed(3)} className="bg-muted" /></div>
