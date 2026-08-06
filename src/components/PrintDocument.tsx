@@ -285,13 +285,21 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
               );
             })}
             <tr>
-              <td colSpan={14} style={{ height: "130px", borderLeft: bd, borderRight: bd, borderBottom: "1.5px solid #000" }}></td>
+              <td
+                colSpan={14}
+                style={{
+                  height: items.length <= 12 ? "130px" : "0px",
+                  borderLeft: bd,
+                  borderRight: bd,
+                  borderBottom: "1.5px solid #000",
+                }}
+              ></td>
             </tr>
           </tbody>
         </table>
 
         {/* FOOTER BAND */}
-        <div style={{ display: "flex", fontSize: "10px" }}>
+        <div className="pd-keep" style={{ display: "flex", fontSize: "10px" }}>
           <div style={{ flex: 1, padding: "6px 10px", borderRight: bd }}>
             <div><b>In Words:</b> {amountInWords(netTotal)}</div>
             {thumbs.length > 0 && (
