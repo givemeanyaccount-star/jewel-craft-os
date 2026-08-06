@@ -28,7 +28,20 @@ export default function PurchaseDetail() {
     setItems(it.data ?? []);
   }
 
+  function printReceipt() {
+    const el = document.getElementById("purchase-print");
+    if (!el) return;
+    openPrintPreview({
+      title: `Purchase ${purchase?.purchase_no ?? ""}`,
+      html: el.innerHTML,
+      includeAppStyles: true,
+      css: `.no-print{display:none!important} .print-only{display:block!important} @page{size:A4;margin:10mm}`,
+    });
+  }
+
   if (!purchase) return <AppLayout><p>Loading...</p></AppLayout>;
+
+
 
   return (
     <AppLayout title={purchase.purchase_no} actions={
