@@ -29,7 +29,7 @@
 
 ## Technical notes
 
-- Files: `src/components/OldGoldForm.tsx` (remove photo state/UI/upload, optional-ID validation + confirm dialog), `src/pages/Purchases.tsx` (badge, filter, update-ID dialog, remove photo thumbnail), `src/pages/Dashboard.tsx` (missing-ID count card).
+- Files: `src/components/OldGoldForm.tsx` (remove photo state/UI/upload, optional-ID validation + confirm dialog), `src/pages/Purchases.tsx` (badge, filter from `?missingId=1`, edit dialog, remove photo thumbnail), `src/pages/Dashboard.tsx` (missing-ID count card linking to `/purchases?tab=oldgold&missingId=1`).
 - Confirmation uses the existing shadcn `AlertDialog`; ID capture reuses `ImageCaptureButton` and `uploadImage("customer-docs", ...)`.
 - Missing-ID query: `id_doc_type is null or id_doc_number is null or id_doc_image_url is null` on `old_gold_purchases`.
 - No migration and no RLS change required — updates to `old_gold_purchases` are already permitted for staff roles.
