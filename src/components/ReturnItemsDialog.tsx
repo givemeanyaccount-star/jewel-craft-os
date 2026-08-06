@@ -58,11 +58,11 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
 
   const taxTotal = Number(invoice?.vat_amount ?? 0) + Number(invoice?.sd_tax ?? 0) + Number(invoice?.luxury_tax ?? 0);
 
-  // Goods value of the bill: final total with taxes and old gold credit added back,
-  // so both are settled once, explicitly, instead of hiding inside the line share.
+  // Goods value of the bill = subtotal − discount (taxes and old gold credit taken out),
+  // so tax and old gold are settled once, explicitly, instead of hiding inside the line share.
   const factor = useMemo(() => {
     const gross = items.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
-    const goods = Number(invoice?.total ?? 0) + taxTotal + oldGoldCredit;
+    const goods = Number(invoice?.total ?? 0) - taxTotal + oldGoldCredit;
     if (!gross || !goods) return 1;
     return Math.max(0, Math.min(1.5, goods / gross));
   }, [invoice, items]);
@@ -122,7 +122,11 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
 
   const ogRevalued = Math.round((og.fineWeight * (Number(ogRate) || 0)) * 100) / 100;
   const showOgPanel = oldGoldCredit > 0 && fullReturn;
-  const ogDeduction = showOgPanel ? (ogMode === "metal" ? oldGoldCredit : ogRevalued) : 0;
+  // Metal handed back → the whole credit is cancelled. Revalued → only the rate difference
+  // (credit − today's value) is deducted; a higher rate today increases the refund.
+  const ogDeduction = showOgPanel
+    ? Math.round((ogMode === "metal" ? oldGoldCredit : oldGoldCredit - ogRevalued) * 100) / 100
+    : 0;
   const totalRefund = Math.max(0, Math.round((goodsRefund - (Number(taxWithheld) || 0) - ogDeduction) * 100) / 100);
 
 
@@ -286,7 +290,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
               {receipt.oldGold && (
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Old gold {receipt.oldGold.mode === "metal" ? "returned to customer" : `revalued @ ${npr(receipt.oldGold.rate)}/g`}</span>
-                  <span>− {npr(receipt.oldGold.deduction)}</span>
+                  <span>{receipt.oldGold.deduction >= 0 ? "−" : "+"} {npr(Math.abs(receipt.oldGold.deduction))}</span>
                 </div>
               )}
               <div className="flex justify-between"><span>Net refund</span><span className="font-medium">{npr(receipt.totalRefund)}</span></div>
@@ -417,7 +421,11 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                           </div>
                         </div>
                       )}
-                      <div className="text-[11px] text-muted-foreground">Deducted from the refund: {npr(ogDeduction)}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {ogDeduction >= 0
+                          ? `Deducted from the refund: ${npr(ogDeduction)}`
+                          : `Added to the refund: ${npr(Math.abs(ogDeduction))} (metal is dearer today)`}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-[11px] text-muted-foreground">
@@ -437,7 +445,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                   <div className="flex flex-col items-end justify-end gap-1 text-[11px] text-muted-foreground">
                     <span>Goods refund {npr(goodsRefund)}</span>
                     {Number(taxWithheld) > 0 && <span>− tax withheld {npr(Number(taxWithheld))}</span>}
-                    {ogDeduction > 0 && <span>− old gold {npr(ogDeduction)}</span>}
+                    {ogDeduction !== 0 && <span>{ogDeduction > 0 ? "−" : "+"} old gold {npr(Math.abs(ogDeduction))}</span>}
                     <Badge variant="outline">Net refund: {npr(totalRefund)}</Badge>
                     <span>
                       Cash back {npr(Math.min(totalRefund, Number(invoice?.amount_paid ?? 0)))} · credit adjusted {npr(Math.max(0, totalRefund - Number(invoice?.amount_paid ?? 0)))}
@@ -485,7 +493,7 @@ function printRefundReceipt(r: any) {
           <tfoot>
             <tr><td class="r" colspan="2">Goods refund</td><td class="r">${escapeHtml(npr(r.goodsRefund ?? r.totalRefund))}</td></tr>
             ${Number(r.taxWithheld) > 0 ? `<tr><td class="r" colspan="2">Less: tax withheld (non-refundable)</td><td class="r">− ${escapeHtml(npr(r.taxWithheld))}</td></tr>` : ""}
-            ${r.oldGold ? `<tr><td class="r" colspan="2">Less: old gold settlement — ${r.oldGold.mode === "metal" ? "metal returned to customer" : `${escapeHtml(r.oldGold.fineWeight.toFixed(3))} g fine ${escapeHtml(METAL_LABEL[r.oldGold.metal] ?? r.oldGold.metal)} @ ${escapeHtml(npr(r.oldGold.rate))}/g`}</td><td class="r">− ${escapeHtml(npr(r.oldGold.deduction))}</td></tr>` : ""}
+            ${r.oldGold ? `<tr><td class="r" colspan="2">${r.oldGold.deduction >= 0 ? "Less" : "Add"}: old gold settlement — ${r.oldGold.mode === "metal" ? "metal returned to customer" : `${escapeHtml(r.oldGold.fineWeight.toFixed(3))} g fine ${escapeHtml(METAL_LABEL[r.oldGold.metal] ?? r.oldGold.metal)} @ ${escapeHtml(npr(r.oldGold.rate))}/g = ${escapeHtml(npr(r.oldGold.revalued))} vs credit ${escapeHtml(npr(r.oldGold.credit))}`}</td><td class="r">${r.oldGold.deduction >= 0 ? "−" : "+"} ${escapeHtml(npr(Math.abs(r.oldGold.deduction)))}</td></tr>` : ""}
             <tr><td class="r" colspan="2">Net refund</td><td class="r"><b>${escapeHtml(npr(r.totalRefund))}</b></td></tr>
             <tr><td class="r" colspan="2">Paid back (${escapeHtml(String(r.method).replace("_", " "))})</td><td class="r">${escapeHtml(npr(r.cashRefund))}</td></tr>
             ${r.creditReleased > 0 ? `<tr><td class="r" colspan="2">Adjusted against outstanding credit</td><td class="r">${escapeHtml(npr(r.creditReleased))}</td></tr>` : ""}
