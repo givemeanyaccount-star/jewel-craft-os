@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { npr } from "@/lib/format";
 import { openPrintPreview } from "@/components/PrintPreview";
+import { escapeHtml } from "@/lib/html";
 
 import { Printer, Undo2 } from "lucide-react";
 
