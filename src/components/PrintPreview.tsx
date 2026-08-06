@@ -243,6 +243,8 @@ export function PrintPreviewHost() {
           }
         }),
       );
+      try { (frameRef.current?.contentWindow as any)?.pdLayout?.(); } catch { /* ignore */ }
+      await new Promise((r) => setTimeout(r, 120));
       const g = geometry(job, setup);
       const canvas = await html2canvas(doc.body, {
         scale: 2,
