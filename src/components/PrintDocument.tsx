@@ -288,7 +288,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
               <td
                 colSpan={14}
                 style={{
-                  height: items.length <= 12 ? "130px" : "0px",
+                  height: items.length <= 12 ? "96px" : "0px",
                   borderLeft: bd,
                   borderRight: bd,
                   borderBottom: "1.5px solid #000",
