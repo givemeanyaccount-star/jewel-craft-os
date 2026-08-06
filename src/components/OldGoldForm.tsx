@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Coins } from "lucide-react";
 import { npr, computeNetWeight, computeFineWeight, nextNumber } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,67 +42,64 @@ export function OldGoldForm({
   const [customer, setCustomer] = useState<PickedCustomer | null>(initialCustomer ?? null);
   const [customerRecord, setCustomerRecord] = useState<any>(null);
   const [idFile, setIdFile] = useState<File | null>(null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmNoId, setConfirmNoId] = useState(false);
 
   useEffect(() => { reset(); }, []);
   function reset() {
     setForm({ metal: "gold", purity: "22K", gross_weight: 0, stone_weight: 0, rate_per_gram: 0, deduction: 0, payment_method: "cash", notes: "" });
     setCustomer(initialCustomer ?? null);
-    setIdFile(null); setPhotoFile(null);
+    setIdFile(null);
   }
 
   // Whenever the picked customer changes, load their full record so we can check
-  // for an ID doc / photo already on file and reuse it instead of forcing re-capture.
+  // for an ID doc already on file and reuse it instead of forcing re-capture.
   useEffect(() => {
     if (!customer) { setCustomerRecord(null); return; }
     supabase.from("customers").select("*").eq("id", customer.id).single().then(({ data }) => setCustomerRecord(data));
   }, [customer?.id]);
 
   const hasIdOnFile = !!(customerRecord?.id_doc_type && customerRecord?.id_doc_number && customerRecord?.id_doc_image_url);
-  const hasPhotoOnFile = !!customerRecord?.photo_url;
 
   const net = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
   const fine = computeFineWeight(net, form.purity || "");
   const total = Math.max(0, fine * Number(form.rate_per_gram || 0) - Number(form.deduction || 0));
 
-  async function save() {
+  function attemptSave() {
     if (!customer) return toast.error("Select or create a customer first");
     if (!form.gross_weight) return toast.error("Weight required");
     if (!form.rate_per_gram) return toast.error("Rate required");
 
-    // ID document is mandatory for every gold purchase — either already on file, or captured now.
     const idType = form.id_doc_type || customerRecord?.id_doc_type;
     const idNumber = form.id_doc_number || customerRecord?.id_doc_number;
-    if (!hasIdOnFile) {
-      if (!idType || !idNumber?.trim()) return toast.error("ID document type and number are required for gold purchases");
-      if (!idFile) return toast.error("ID photo is required for gold purchases");
-    }
-    if (!hasPhotoOnFile && !photoFile) return toast.error("Customer photo is required for gold purchases");
+    const idComplete = hasIdOnFile || (idType && idNumber?.trim() && idFile);
+    if (!idComplete) { setConfirmNoId(true); return; }
+    save();
+  }
 
+  async function save() {
+    const idType = form.id_doc_type || customerRecord?.id_doc_type || null;
+    const idNumber = form.id_doc_number || customerRecord?.id_doc_number || null;
     setSaving(true);
     try {
       let idPath: string | null = customerRecord?.id_doc_image_url ?? null;
       if (idFile) idPath = await uploadImage("customer-docs", idFile, "oldgold-ids/");
-      let photoPath: string | null = customerRecord?.photo_url ?? null;
-      if (photoFile) photoPath = await uploadImage("customer-docs", photoFile, "oldgold-photos/");
 
-      // Backfill the customer's own record with the ID/photo if they didn't have one yet —
+      // Backfill the customer's own record with the ID if they didn't have one yet —
       // so next time (any module) it's already on file and won't need re-capturing.
       const custPatch: any = {};
       if (!hasIdOnFile && (idType || idNumber || idPath)) {
         custPatch.id_doc_type = idType || null; custPatch.id_doc_number = idNumber || null; custPatch.id_doc_image_url = idPath;
       }
-      if (!hasPhotoOnFile && photoPath) custPatch.photo_url = photoPath;
-      if (Object.keys(custPatch).length) await supabase.from("customers").update(custPatch).eq("id", customer.id);
+      if (Object.keys(custPatch).length) await supabase.from("customers").update(custPatch).eq("id", customer!.id);
 
       const num = Math.floor(Date.now() / 1000) % 100000;
       const receipt = nextNumber("OG", num, 5);
       const { data, error } = await supabase.from("old_gold_purchases").insert({
         receipt_number: receipt,
-        customer_id: customer.id, customer_name: customer.full_name, customer_phone: customer.phone,
+        customer_id: customer!.id, customer_name: customer!.full_name, customer_phone: customer!.phone,
         id_doc_type: idType, id_doc_number: idNumber,
-        id_doc_image_url: idPath, customer_photo_url: photoPath,
+        id_doc_image_url: idPath,
         metal: form.metal, purity: form.purity,
         gross_weight: Number(form.gross_weight), stone_weight: Number(form.stone_weight) || 0,
         net_weight: net, fine_weight: fine,
@@ -116,13 +114,14 @@ export function OldGoldForm({
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
 
+
   const body = (
     <div className="space-y-4">
       <CustomerSelector value={customer} onChange={setCustomer} />
 
       <div className="grid gap-3 md:grid-cols-2">
-        <div>
-          <Label className="mb-1 block">ID document {!hasIdOnFile && <span className="text-destructive">*</span>}</Label>
+        <div className="md:col-span-2">
+          <Label className="mb-1 block">ID document <span className="text-xs font-normal text-muted-foreground">(recommended)</span></Label>
           {hasIdOnFile ? (
             <div className="flex items-center gap-2 rounded border px-2 py-1.5 text-xs text-muted-foreground">
               On file: {customerRecord.id_doc_type?.replace("_", " ")} {customerRecord.id_doc_number}
@@ -138,22 +137,12 @@ export function OldGoldForm({
               </div>
               <div className="flex items-center gap-2">
                 {idFile && <img src={URL.createObjectURL(idFile)} className="h-12 w-12 rounded object-cover" />}
-                <ImageCaptureButton label={idFile ? "Retake ID Photo" : "Capture ID Photo *"} title="Add ID Photo" onCapture={setIdFile} />
+                <ImageCaptureButton label={idFile ? "Retake ID Photo" : "Capture ID Photo"} title="Add ID Photo" onCapture={setIdFile} />
               </div>
             </div>
           )}
         </div>
-        <div>
-          <Label className="mb-1 block">Customer photo {!hasPhotoOnFile && <span className="text-destructive">*</span>}</Label>
-          {hasPhotoOnFile ? (
-            <div className="flex items-center gap-2 rounded border px-2 py-1.5 text-xs text-muted-foreground">Photo already on file for this customer</div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {photoFile && <img src={URL.createObjectURL(photoFile)} className="h-12 w-12 rounded object-cover" />}
-              <ImageCaptureButton label={photoFile ? "Retake" : "Capture Customer Photo *"} title="Add Customer Photo" onCapture={setPhotoFile} />
-            </div>
-          )}
-        </div>
+
 
         <div><Label>Metal</Label>
           <Select value={form.metal} onValueChange={(v) => setForm({ ...form, metal: v })}>
@@ -183,9 +172,26 @@ export function OldGoldForm({
         <div className="md:col-span-2"><Label>Notes</Label><Textarea rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
       </div>
 
-      <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving..." : submitLabel}</Button>
+      <Button onClick={attemptSave} disabled={saving} className="w-full">{saving ? "Saving..." : submitLabel}</Button>
+
+      <AlertDialog open={confirmNoId} onOpenChange={setConfirmNoId}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Continue without ID information?</AlertDialogTitle>
+            <AlertDialogDescription>
+              No complete ID document is recorded for this purchase. Capturing customer ID is recommended for gold purchases.
+              You can add the ID details later from Purchases → Old Gold Purchases.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => save()}>Continue without ID</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
+
 
   if (compact) return body;
 

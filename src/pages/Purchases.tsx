@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,12 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, ShoppingCart, Eye, Printer } from "lucide-react";
-import { npr, gms, computeNetWeight, nextNumber } from "@/lib/format";
+import { Plus, Trash2, ShoppingCart, Eye, Printer, Pencil, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { npr, gms, computeNetWeight, computeFineWeight, nextNumber } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadImage, getSignedUrls } from "@/lib/storage";
 import { toast } from "sonner";
 import { OldGoldForm } from "@/components/OldGoldForm";
+import { ImageCaptureButton } from "@/components/ImageCapture";
+import { PuritySelect } from "@/components/PuritySelect";
 import logoUrl from "@/assets/logo.png";
 
 const METALS = ["gold", "silver", "platinum"];
@@ -24,9 +27,11 @@ const PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
 export default function Purchases() {
+  const [params] = useSearchParams();
+  const initialTab = params.get("tab") === "oldgold" || params.get("missingId") === "1" ? "oldgold" : "stock";
   return (
     <AppLayout title="Purchases">
-      <Tabs defaultValue="stock">
+      <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="stock">Stock Purchases</TabsTrigger>
           <TabsTrigger value="oldgold">Old Gold Purchases</TabsTrigger>
@@ -224,9 +229,16 @@ function NewPurchaseDialog({ open, onOpenChange, onSaved }: any) {
 
 // ============ OLD GOLD PURCHASES ============
 
+export function isMissingId(p: any) {
+  return !p?.id_doc_type || !p?.id_doc_number || !p?.id_doc_image_url;
+}
+
 function OldGoldPurchasesTab() {
+  const [params] = useSearchParams();
   const [list, setList] = useState<any[]>([]);
   const [detail, setDetail] = useState<any>(null);
+  const [editing, setEditing] = useState<any>(null);
+  const [onlyMissing, setOnlyMissing] = useState(params.get("missingId") === "1");
   const { hasRole } = useAuth();
   const canWrite = hasRole("admin") || hasRole("manager") || hasRole("sales");
 
@@ -236,30 +248,49 @@ function OldGoldPurchasesTab() {
     setList(data ?? []);
   }
 
+  const missingCount = list.filter(isMissingId).length;
+  const shown = onlyMissing ? list.filter(isMissingId) : list;
+
   return (
     <div>
       <p className="mb-3 text-sm text-muted-foreground">Cash buyback: customer sells gold/silver to the shop. Automatically linked to your Customer CRM.</p>
       {canWrite && <div className="mb-4"><OldGoldForm onSaved={() => load()} /></div>}
 
-      <h3 className="mb-2 text-sm font-medium text-muted-foreground">Purchase History</h3>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-medium text-muted-foreground">Purchase History</h3>
+        <div className="flex items-center gap-2">
+          {missingCount > 0 && <Badge variant="outline" className="text-amber-600">{missingCount} missing ID</Badge>}
+          <Button size="sm" variant={onlyMissing ? "default" : "outline"} onClick={() => setOnlyMissing(!onlyMissing)}>
+            <AlertCircle className="mr-1 h-4 w-4" /> Only missing ID
+          </Button>
+        </div>
+      </div>
       <Card><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
             <TableHead>Receipt</TableHead><TableHead>Customer</TableHead><TableHead>Date</TableHead>
             <TableHead>Metal</TableHead><TableHead className="text-right">Net wt</TableHead>
-            <TableHead className="text-right">Amount</TableHead><TableHead className="w-10" />
+            <TableHead className="text-right">Amount</TableHead><TableHead className="w-20" />
           </TableRow></TableHeader>
           <TableBody>
-            {list.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No purchases yet</TableCell></TableRow>
-              : list.map((p) => (
+            {shown.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">{onlyMissing ? "No purchases missing ID info" : "No purchases yet"}</TableCell></TableRow>
+              : shown.map((p) => (
                 <TableRow key={p.id} className="cursor-pointer" onClick={() => setDetail(p)}>
-                  <TableCell className="font-medium">{p.receipt_number}</TableCell>
+                  <TableCell className="font-medium">
+                    {p.receipt_number}
+                    {isMissingId(p) && <Badge variant="outline" className="ml-2 text-amber-600">Missing ID</Badge>}
+                  </TableCell>
                   <TableCell><div>{p.customers?.full_name ?? p.customer_name}</div><div className="text-xs text-muted-foreground">{p.customers?.phone ?? p.customer_phone}</div></TableCell>
                   <TableCell>{new Date(p.purchased_at).toLocaleDateString()}</TableCell>
                   <TableCell className="capitalize">{p.metal} {p.purity}</TableCell>
                   <TableCell className="text-right">{gms(p.net_weight)}</TableCell>
                   <TableCell className="text-right font-medium">{npr(p.total_amount)}</TableCell>
-                  <TableCell><Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setDetail(p); }}><Eye className="h-4 w-4" /></Button></TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex">
+                      <Button size="icon" variant="ghost" onClick={() => setDetail(p)}><Eye className="h-4 w-4" /></Button>
+                      {canWrite && <Button size="icon" variant="ghost" onClick={() => setEditing(p)}><Pencil className="h-4 w-4" /></Button>}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
           </TableBody>
@@ -267,7 +298,118 @@ function OldGoldPurchasesTab() {
       </CardContent></Card>
 
       <ReceiptDialog purchase={detail} onOpenChange={(v: boolean) => !v && setDetail(null)} />
+      <EditOldGoldDialog purchase={editing} onOpenChange={(v: boolean) => !v && setEditing(null)} onSaved={() => { setEditing(null); load(); }} />
     </div>
+  );
+}
+
+function EditOldGoldDialog({ purchase, onOpenChange, onSaved }: { purchase: any; onOpenChange: (v: boolean) => void; onSaved: () => void }) {
+  const [form, setForm] = useState<any>({});
+  const [idFile, setIdFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!purchase) return;
+    setForm({ ...purchase });
+    setIdFile(null);
+  }, [purchase?.id]);
+
+  if (!purchase) return null;
+
+  const net = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
+  const fine = computeFineWeight(net, form.purity || "");
+  const total = Math.max(0, fine * Number(form.rate_per_gram || 0) - Number(form.deduction || 0));
+
+  async function save() {
+    setSaving(true);
+    try {
+      let idPath: string | null = form.id_doc_image_url ?? null;
+      if (idFile) idPath = await uploadImage("customer-docs", idFile, "oldgold-ids/");
+
+      const { error } = await supabase.from("old_gold_purchases").update({
+        id_doc_type: form.id_doc_type || null,
+        id_doc_number: form.id_doc_number || null,
+        id_doc_image_url: idPath,
+        metal: form.metal, purity: form.purity,
+        gross_weight: Number(form.gross_weight) || 0,
+        stone_weight: Number(form.stone_weight) || 0,
+        net_weight: net, fine_weight: fine,
+        rate_per_gram: Number(form.rate_per_gram) || 0,
+        deduction: Number(form.deduction) || 0,
+        total_amount: total,
+        payment_method: form.payment_method,
+        notes: form.notes || null,
+      }).eq("id", purchase.id);
+      if (error) throw error;
+
+      // Back-fill the linked customer's ID details when they have none on file.
+      if (purchase.customer_id && form.id_doc_type && form.id_doc_number && idPath) {
+        const { data: cust } = await supabase.from("customers").select("id_doc_type, id_doc_number, id_doc_image_url").eq("id", purchase.customer_id).single();
+        if (cust && (!cust.id_doc_type || !cust.id_doc_number || !cust.id_doc_image_url)) {
+          await supabase.from("customers").update({
+            id_doc_type: form.id_doc_type, id_doc_number: form.id_doc_number, id_doc_image_url: idPath,
+          }).eq("id", purchase.customer_id);
+        }
+      }
+      toast.success("Purchase updated");
+      onSaved();
+    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={!!purchase} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogHeader><DialogTitle>Edit {purchase.receipt_number}</DialogTitle></DialogHeader>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <Label className="mb-1 block">ID document</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={form.id_doc_type ?? undefined} onValueChange={(v) => setForm({ ...form, id_doc_type: v })}>
+                <SelectTrigger><SelectValue placeholder="ID type" /></SelectTrigger>
+                <SelectContent>{["citizenship", "passport", "license", "national_id", "other"].map((t) => <SelectItem key={t} value={t} className="capitalize">{t.replace("_", " ")}</SelectItem>)}</SelectContent>
+              </Select>
+              <Input placeholder="ID number" value={form.id_doc_number ?? ""} onChange={(e) => setForm({ ...form, id_doc_number: e.target.value })} />
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              {idFile && <img src={URL.createObjectURL(idFile)} className="h-12 w-12 rounded object-cover" />}
+              <ImageCaptureButton label={idFile ? "Retake ID Photo" : form.id_doc_image_url ? "Replace ID Photo" : "Capture ID Photo"} title="Add ID Photo" onCapture={setIdFile} />
+              {!idFile && form.id_doc_image_url && <span className="text-xs text-muted-foreground">Photo on file</span>}
+            </div>
+          </div>
+
+          <div><Label>Metal</Label>
+            <Select value={form.metal} onValueChange={(v) => setForm({ ...form, metal: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
+            </Select></div>
+          <div><Label>Purity</Label>
+            <PuritySelect value={form.purity} onChange={(v) => setForm({ ...form, purity: v })} options={["24K", "22K", "20K", "18K", "14K", "9K", "999", "925"]} allowPercent />
+          </div>
+          <div><Label>Gross wt (g)</Label><Input type="number" step="0.001" value={form.gross_weight ?? 0} onChange={(e) => setForm({ ...form, gross_weight: e.target.value })} /></div>
+          <div><Label>Stone wt (g)</Label><Input type="number" step="0.001" value={form.stone_weight ?? 0} onChange={(e) => setForm({ ...form, stone_weight: e.target.value })} /></div>
+          <div><Label>Net (auto)</Label><Input readOnly value={net.toFixed(3)} className="bg-muted" /></div>
+          <div><Label>Fine (auto)</Label><Input readOnly value={fine.toFixed(3)} className="bg-muted" /></div>
+          <div><Label>Rate per gram (fine)</Label><Input type="number" value={form.rate_per_gram ?? 0} onChange={(e) => setForm({ ...form, rate_per_gram: e.target.value })} /></div>
+          <div><Label>Deduction</Label><Input type="number" value={form.deduction ?? 0} onChange={(e) => setForm({ ...form, deduction: e.target.value })} /></div>
+          <div><Label>Payment method</Label>
+            <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
+            </Select></div>
+          <div className="md:col-span-2 rounded bg-secondary p-3 text-center">
+            <div className="text-xs text-muted-foreground">Total paid to customer</div>
+            <div className="text-2xl font-semibold">{npr(total)}</div>
+          </div>
+          <div className="md:col-span-2"><Label>Notes</Label><Textarea rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -276,7 +418,7 @@ function ReceiptDialog({ purchase, onOpenChange }: { purchase: any; onOpenChange
 
   useEffect(() => {
     if (!purchase) return;
-    const paths = [purchase.id_doc_image_url, purchase.customer_photo_url].filter(Boolean);
+    const paths = [purchase.id_doc_image_url].filter(Boolean);
     if (paths.length) getSignedUrls("customer-docs", paths).then(setPhotoUrls);
   }, [purchase]);
 
@@ -322,10 +464,9 @@ function ReceiptDialog({ purchase, onOpenChange }: { purchase: any; onOpenChange
           <div className="mt-3 text-right text-base font-semibold">Total paid: {npr(purchase.total_amount)}</div>
           {purchase.notes && <div className="mt-2 text-xs text-gray-600">Notes: {purchase.notes}</div>}
 
-          {(photoUrls[purchase.id_doc_image_url] || photoUrls[purchase.customer_photo_url]) && (
+          {photoUrls[purchase.id_doc_image_url] && (
             <div className="mt-4 flex gap-3">
-              {photoUrls[purchase.id_doc_image_url] && <div><div className="mb-1 text-[9px] text-gray-500">ID</div><img src={photoUrls[purchase.id_doc_image_url]} className="h-20 w-20 rounded object-cover" /></div>}
-              {photoUrls[purchase.customer_photo_url] && <div><div className="mb-1 text-[9px] text-gray-500">Customer</div><img src={photoUrls[purchase.customer_photo_url]} className="h-20 w-20 rounded object-cover" /></div>}
+              <div><div className="mb-1 text-[9px] text-gray-500">ID</div><img src={photoUrls[purchase.id_doc_image_url]} className="h-20 w-20 rounded object-cover" /></div>
             </div>
           )}
         </div>

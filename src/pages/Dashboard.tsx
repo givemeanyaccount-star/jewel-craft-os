@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
   const [repairCounts, setRepairCounts] = useState<Record<string, number>>({});
+  const [missingIdCount, setMissingIdCount] = useState(0);
   const [rateDialog, setRateDialog] = useState(false);
 
   useEffect(() => { load(); }, []);
@@ -43,7 +44,7 @@ export default function Dashboard() {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const todayIso = today.toISOString();
 
-    const [itemsAgg, soldToday, invoicesToday, balance, customers, oldGold, rate, recent, repairs, todayRate] = await Promise.all([
+    const [itemsAgg, soldToday, invoicesToday, balance, customers, oldGold, rate, recent, repairs, todayRate, missingId] = await Promise.all([
       supabase.from("inventory_items").select("id", { count: "exact", head: true }).eq("status", "in_stock"),
       supabase.from("inventory_items").select("id", { count: "exact", head: true }).eq("status", "sold").gte("updated_at", todayIso),
       supabase.from("invoices").select("total").gte("issued_at", todayIso).neq("status", "cancelled"),
@@ -54,7 +55,10 @@ export default function Dashboard() {
       supabase.from("invoices").select("id, invoice_number, total, balance_due, issued_at, customers(full_name)").order("issued_at", { ascending: false }).limit(8),
       supabase.from("repair_items").select("status"),
       supabase.from("metal_rates").select("id").eq("effective_date", todayIsoDate()).limit(1),
+      supabase.from("old_gold_purchases").select("id", { count: "exact", head: true })
+        .or("id_doc_type.is.null,id_doc_number.is.null,id_doc_image_url.is.null"),
     ]);
+
 
     setStats({
       itemsInStock: itemsAgg.count ?? 0,
@@ -70,6 +74,7 @@ export default function Dashboard() {
     const rc: Record<string, number> = {};
     for (const r of repairs.data ?? []) rc[r.status] = (rc[r.status] ?? 0) + 1;
     setRepairCounts(rc);
+    setMissingIdCount(missingId.count ?? 0);
     if ((todayRate.data ?? []).length === 0) setRateDialog(true);
   }
 
@@ -118,6 +123,20 @@ export default function Dashboard() {
           return c.asLink ? <Link key={c.label} to={c.asLink}>{Card_}</Link> : Card_;
         })}
       </div>
+
+      {missingIdCount > 0 && hasPermission("old_gold_purchase") && (
+        <Link to="/purchases?tab=oldgold&missingId=1" className="mt-4 block">
+          <Card className="border-amber-500/50 bg-amber-500/5 transition hover:shadow-md">
+            <CardContent className="flex items-center gap-3 p-4">
+              <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
+              <div className="text-sm">
+                <div className="font-medium text-amber-700">{missingIdCount} old gold purchase(s) missing ID information</div>
+                <p className="text-muted-foreground">Click to review and add the customer ID details.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-center justify-between">
