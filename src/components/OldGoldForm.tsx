@@ -171,9 +171,26 @@ export function OldGoldForm({
         <div className="md:col-span-2"><Label>Notes</Label><Textarea rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
       </div>
 
-      <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving..." : submitLabel}</Button>
+      <Button onClick={attemptSave} disabled={saving} className="w-full">{saving ? "Saving..." : submitLabel}</Button>
+
+      <AlertDialog open={confirmNoId} onOpenChange={setConfirmNoId}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Continue without ID information?</AlertDialogTitle>
+            <AlertDialogDescription>
+              No complete ID document is recorded for this purchase. Capturing customer ID is recommended for gold purchases.
+              You can add the ID details later from Purchases → Old Gold Purchases.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => save()}>Continue without ID</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
+
 
   if (compact) return body;
 
