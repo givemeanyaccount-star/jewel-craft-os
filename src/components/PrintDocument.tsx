@@ -50,13 +50,15 @@ export function docRowMath(r: any) {
 }
 
 /** Opens a print preview for the element with the given DOM id. */
-export function printDocument(domId: string, title = "Document") {
+export function printDocument(domId: string, title = "Document", fileName?: string) {
   const el = document.getElementById(domId);
   if (!el) return;
   openPrintPreview({
     title,
+    fileName: fileName ?? title,
+    page: "a4-landscape",
+    marginMm: 6,
     html: el.innerHTML,
-    css: `@page{size:A4 landscape;margin:6mm}`,
   });
 }
 
