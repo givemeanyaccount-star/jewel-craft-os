@@ -164,6 +164,9 @@ export function PrintPreviewHost() {
         import("jspdf"),
       ]);
       doc.querySelectorAll("[data-screen-only]").forEach((n) => n.remove());
+      // Strip the on-screen sheet chrome so the capture is exactly the paper area.
+      doc.body.style.margin = "0";
+      doc.body.style.boxShadow = "none";
       const g = geometry(job);
       const canvas = await html2canvas(doc.body, {
         scale: 2,
