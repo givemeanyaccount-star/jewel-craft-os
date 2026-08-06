@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RateCard, RatePoint } from "@/components/dashboard/RateCard";
+import { RateTrendChart } from "@/components/dashboard/RateTrendChart";
 import { VolumeChart, VolumePoint } from "@/components/dashboard/VolumeChart";
 import { ActivityLog, ActivityEntry } from "@/components/dashboard/ActivityLog";
 import {

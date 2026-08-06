@@ -30,7 +30,6 @@ const NAV: NavItem[] = [
   { to: "/purchases", label: "Purchases", icon: ShoppingCart, permission: "purchase_manage" },
   { to: "/rates", label: "Metal Rates", icon: TrendingUp, permission: "metal_rate_manage" },
   { to: "/repairs", label: "Repairs", icon: Wrench, permission: "repair_manage" },
-  { to: "/repairs/karigars", label: "Karigars", icon: Wrench, permission: "karigar_manage" },
   { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "supplier_manage" },
   { to: "/settings", label: "Settings", icon: Settings, permission: "settings_manage" },
   { to: "/admin/roles", label: "Role Management", icon: ShieldCheck, permission: "role_manage" },
