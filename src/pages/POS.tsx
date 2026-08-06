@@ -272,6 +272,7 @@ export default function POS() {
   }
 
   async function checkout() {
+    if (!customerId) return toast.error("Select a customer for this sale");
     if (cart.length === 0) return toast.error("Add at least one item");
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
     setSaving(true);
@@ -333,6 +334,10 @@ export default function POS() {
       if (balance > 0 && customerId) {
         const { data: cust } = await supabase.from("customers").select("balance").eq("id", customerId).single();
         await supabase.from("customers").update({ balance: Number(cust?.balance ?? 0) + balance }).eq("id", customerId);
+      }
+
+      if (quotationId) {
+        try { await deleteQuotation(quotationId); } catch { /* invoice already created */ }
       }
 
       toast.success(`Invoice ${invNumber} created`);
