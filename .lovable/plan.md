@@ -57,14 +57,14 @@ Same column order and grid as the sample, bordered box with a fixed minimum heig
 Left half:
 - **In Words:** amount spelled out in English (a number-to-words helper is added).
 - Product images: thumbnails of the sold items placed at the bottom-left, above the Remarks line, as you requested.
-- Tola conversion line (1 tola = 11.664 g) and the day's 24K per-tola gold value, derived from the saved daily rate.
 - Remarks.
 
 Middle: **Payment Mode** table listing each recorded payment method with its amount (Cash, QR Scan, Cheque, Old Gold, Advance, etc.) — driven by the actual payments on the invoice rather than a fixed list.
 
 Right: totals column in the sample's order — Amount, Discount, Total, Non Taxable Amt, Customer Old Gold, SD Taxable Amt, SD Tax (0.5%), and a boxed **Net Total**. VAT on stones appears only when it's enabled in Settings.
 
-Bottom: the Nepali terms-and-conditions line, then the signature row — Cashier (logged-in user), Customer, and the shop name.
+Bottom: the Nepali terms-and-conditions line, then the signature row — Cashier (logged-in user), Customer, and the shop name. Below the signature row, at the very bottom-left in small subtle grey type, the tola conversion note (1 tola = 11.664 g) with the day's 24K per-tola gold value derived from the saved daily rate.
+
 
 ## 6. Quotation / Estimate
 
