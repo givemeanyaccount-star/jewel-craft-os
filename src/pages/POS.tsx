@@ -101,6 +101,9 @@ export default function POS() {
   const [discount, setDiscount] = useState(0);
   const [oldGoldCredit, setOldGoldCredit] = useState(0);
   const [oldGoldPurchaseId, setOldGoldPurchaseId] = useState<string | null>(null);
+  const [oldGoldMetal, setOldGoldMetal] = useState<string>("gold");
+  const [fineRates, setFineRates] = useState<FineRates>({});
+  useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
   const [targetTotal, setTargetTotal] = useState<string>("");
   const [payments, setPayments] = useState<PayLine[]>([{ method: "cash", amount: 0 }]);
   const [notes, setNotes] = useState("");
