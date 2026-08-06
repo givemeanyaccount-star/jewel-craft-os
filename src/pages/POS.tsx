@@ -337,8 +337,11 @@ export default function POS() {
       }
 
       if (quotationId) {
-        try { await deleteQuotation(quotationId); } catch { /* invoice already created */ }
+        // items are already marked sold above — remove the quotation without releasing stock
+        await supabase.from("quotation_items").delete().eq("quotation_id", quotationId);
+        await supabase.from("quotations").delete().eq("id", quotationId);
       }
+
 
       toast.success(`Invoice ${invNumber} created`);
       nav(`/invoices/${inv.id}`);
