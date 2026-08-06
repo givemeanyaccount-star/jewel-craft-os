@@ -10,16 +10,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { npr } from "@/lib/format";
 import { Search, Plus } from "lucide-react";
+import { usePermission } from "@/hooks/usePermission";
+
 
 const STATUSES = ["all", "issued", "partial", "paid", "cancelled", "refunded"];
 
 export function InvoiceSubNav({ active }: { active: "sales" | "oldgold" }) {
+  const { hasPermission } = usePermission();
   return (
     <div className="mb-4 flex gap-2 border-b">
       <Link to="/invoices" className={`px-3 py-2 text-sm font-medium ${active === "sales" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground"}`}>Sales</Link>
-      <Link to="/invoices/old-gold" className={`px-3 py-2 text-sm font-medium ${active === "oldgold" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground"}`}>Old Gold Purchases</Link>
+      {hasPermission("old_gold_purchase") && (
+        <Link to="/invoices/old-gold" className={`px-3 py-2 text-sm font-medium ${active === "oldgold" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground"}`}>Old Gold Purchases</Link>
+      )}
     </div>
   );
+
 }
 
 export default function Invoices() {
