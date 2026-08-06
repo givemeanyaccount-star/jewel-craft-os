@@ -86,8 +86,9 @@ const PAGINATION_CSS = `
   .pd-page-number{position:absolute;right:0;font-size:8px;color:#888;letter-spacing:.02em}
 `;
 
-function buildSrcDoc(job: PrintJob) {
-  const g = geometry(job);
+function buildSrcDoc(job: PrintJob, setup: Setup) {
+  const g = geometry(job, setup);
+
   return `<!doctype html><html><head><meta charset="utf-8"><title>${job.title}</title>
 ${job.includeAppStyles ? appStyles() : ""}
 <style>
