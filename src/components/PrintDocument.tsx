@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getSignedUrls } from "@/lib/storage";
 import { toBS, toADDate, toADDateTime, toNepaliDigits } from "@/lib/nepaliDate";
 import { amountInWords } from "@/lib/numberToWords";
+import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import logoAsset from "@/assets/logo.png";
 
 export const TOLA_IN_GRAMS = 11.664;
