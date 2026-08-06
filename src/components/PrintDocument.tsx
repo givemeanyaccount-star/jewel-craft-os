@@ -359,6 +359,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
         </div>
 
         {/* TERMS + SIGNATURES */}
+        <div className="pd-keep">
         <div style={{ textAlign: "center", fontSize: "10px", padding: "6px", borderTop: "1.5px solid #000" }}>
           {isInvoice
             ? profile.terms_np
