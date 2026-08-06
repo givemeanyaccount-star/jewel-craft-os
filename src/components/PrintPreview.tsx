@@ -172,6 +172,26 @@ export function PrintPreviewHost() {
       // Strip the on-screen sheet chrome so the capture is exactly the paper area.
       doc.body.style.margin = "0";
       doc.body.style.boxShadow = "none";
+      // foreignObject rendering cannot fetch external images: inline them first.
+      const imgs = Array.from(doc.querySelectorAll("img"));
+      const originals = imgs.map((im) => im.src);
+      await Promise.all(
+        imgs.map(async (im) => {
+          if (im.src.startsWith("data:")) return;
+          try {
+            const blob = await (await fetch(im.src)).blob();
+            im.src = await new Promise<string>((res, rej) => {
+              const fr = new FileReader();
+              fr.onload = () => res(String(fr.result));
+              fr.onerror = rej;
+              fr.readAsDataURL(blob);
+            });
+            await im.decode().catch(() => undefined);
+          } catch {
+            /* keep the original src */
+          }
+        }),
+      );
       const g = geometry(job);
       const canvas = await html2canvas(doc.body, {
         scale: 2,
