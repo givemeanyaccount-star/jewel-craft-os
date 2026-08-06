@@ -231,6 +231,9 @@ export default function Dashboard() {
           <RateCard label="Silver" ratePerGram={silver?.latest ?? null} history={silver?.history} />
         </div>
 
+        {/* Rate trend */}
+        <RateTrendChart goldHistory={gold24?.history} silverHistory={silver?.history} />
+
         {/* Ops & alerts */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <OutstandingCreditCard amount={stats?.pendingBalance ?? 0} customers={stats?.creditCustomers ?? 0} />
