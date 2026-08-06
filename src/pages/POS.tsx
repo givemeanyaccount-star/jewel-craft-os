@@ -571,7 +571,7 @@ export default function POS() {
               <Label>Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
-            <Button className="w-full" onClick={checkout} disabled={saving || cart.length === 0}>
+            <Button className="w-full" onClick={checkout} disabled={saving || cart.length === 0 || !customerId}>
               {saving ? "Processing..." : "Complete Sale"}
             </Button>
           </CardContent>
