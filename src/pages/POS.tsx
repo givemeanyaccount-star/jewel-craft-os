@@ -525,7 +525,7 @@ export default function POS() {
         onSaved={async (id) => { setNewCustOpen(false); await loadCustomers(); setCustomerId(id); }} />
       <OldGoldPurchaseDialog open={ogOpen} onOpenChange={setOgOpen}
         initialCustomer={customers.find((c) => c.id === customerId) ? { id: customerId!, full_name: customers.find((c) => c.id === customerId)!.full_name, phone: customers.find((c) => c.id === customerId)!.phone ?? null } : null}
-        onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); toast.success(`Old gold credit set to ${npr(result.total)}`); }} />
+        onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); setOldGoldMetal(result.metal ?? "gold"); toast.success(`Old gold credit set to ${npr(result.total)}`); }} />
       <ItemDialog open={newItemOpen} onOpenChange={setNewItemOpen}
         editing={null} cats={categories as any} locs={locations as any}
         onSaved={(created) => {
