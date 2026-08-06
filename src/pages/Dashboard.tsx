@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RateCard, RatePoint } from "@/components/dashboard/RateCard";
+import { RateTrendChart } from "@/components/dashboard/RateTrendChart";
 import { VolumeChart, VolumePoint } from "@/components/dashboard/VolumeChart";
 import { ActivityLog, ActivityEntry } from "@/components/dashboard/ActivityLog";
 import {
@@ -229,6 +230,9 @@ export default function Dashboard() {
           <RateCard label="Gold 22K" ratePerGram={gold22?.latest ?? null} />
           <RateCard label="Silver" ratePerGram={silver?.latest ?? null} history={silver?.history} />
         </div>
+
+        {/* Rate trend */}
+        <RateTrendChart goldHistory={gold24?.history} silverHistory={silver?.history} />
 
         {/* Ops & alerts */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
