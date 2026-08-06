@@ -11,9 +11,9 @@ Rebuilds the dashboard main content in the chosen "Heritage luxury" direction: P
    - Repairs by stage — In workshop / Quality check / Ready to pickup with counts
    - Pending credit — count of customers with dues plus outstanding total
    - Missing-ID old gold alert — soft red card linking to the filtered purchases list (only rendered when count > 0; otherwise the slot shows today's sales)
-4. **Main area (2/3 + 1/3)**
-   - Daily volume bar chart — sales vs purchases, last 7 days, emerald and gold paired bars
-   - Activity log — combined recent invoices, purchases and old gold entries with type badges, scrollable, "View all" footer
+4. **Main area** — split so the activity list gets more room than the chart (roughly 40% chart / 60% list on desktop, stacked on mobile)
+   - Daily volume bar chart — sales vs purchases, last 7 days, emerald and gold paired bars, in the narrower left column
+   - Activity log — wider right column with combined recent invoices, purchases and old gold entries, type badges, more rows visible, "View all" footer
 5. Existing secondary counts (items in stock, customers, items sold today) are folded into small labels inside the relevant cards so the page stays uncluttered.
 
 ## Colour palette switcher
