@@ -3,7 +3,6 @@ import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { usePermission } from "@/hooks/usePermission";
 import { useAuth } from "@/hooks/useAuth";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RateCard, RatePoint } from "@/components/dashboard/RateCard";
 import { RateTrendChart } from "@/components/dashboard/RateTrendChart";
@@ -197,7 +196,7 @@ export default function Dashboard() {
 
   return (
     <AppLayout title="Dashboard">
-      <div className="space-y-6">
+      <div className="space-y-4">
         {(rolesError || roles.length === 0) && (
           <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
