@@ -365,6 +365,57 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
 
             {selectedLines.length > 0 && (
               <>
+                {taxTotal > 0 && (
+                  <div className="rounded border p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <Label className="text-xs">Tax withheld (non-refundable)</Label>
+                        <p className="text-[11px] text-muted-foreground">VAT + SD + luxury tax share of the returned items. Editable.</p>
+                      </div>
+                      <Input type="number" className="w-40" value={taxWithheld}
+                        onChange={(e) => { setTaxEdited(true); setTaxWithheld(Number(e.target.value) || 0); }} />
+                    </div>
+                  </div>
+                )}
+
+                {oldGoldCredit > 0 && (
+                  showOgPanel ? (
+                    <div className="rounded border p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Old gold settlement</Label>
+                        <span className="text-[11px] text-muted-foreground">
+                          Original credit {npr(oldGoldCredit)} · {og.fineWeight.toFixed(3)} g fine {METAL_LABEL[og.metal] ?? og.metal}
+                          {og.derived ? " (derived from the bill rate)" : ""}
+                        </span>
+                      </div>
+                      <Select value={ogMode} onValueChange={(v: any) => setOgMode(v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="metal">Return the metal to the customer — cancel the original credit</SelectItem>
+                          <SelectItem value="revalue">Keep the metal — revalue in cash at today's rate</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {ogMode === "revalue" && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Rate today (per g fine)</Label>
+                            <Input type="number" value={ogRate} onChange={(e) => setOgRate(Number(e.target.value) || 0)} />
+                          </div>
+                          <div className="flex flex-col justify-end text-xs text-muted-foreground">
+                            <span>Revalued: {npr(ogRevalued)}</span>
+                            <span>vs original: {ogRevalued >= oldGoldCredit ? "+" : "−"}{npr(Math.abs(ogRevalued - oldGoldCredit))}</span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="text-[11px] text-muted-foreground">Deducted from the refund: {npr(ogDeduction)}</div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      Old gold credit of {npr(oldGoldCredit)} is settled only when the complete sale is returned.
+                    </p>
+                  )
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Refund via</Label>
@@ -373,13 +424,17 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                       <SelectContent>{REFUND_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="flex flex-col items-end justify-end gap-1">
-                    <Badge variant="outline">Total refund: {npr(totalRefund)}</Badge>
-                    <span className="text-[11px] text-muted-foreground">
+                  <div className="flex flex-col items-end justify-end gap-1 text-[11px] text-muted-foreground">
+                    <span>Goods refund {npr(goodsRefund)}</span>
+                    {Number(taxWithheld) > 0 && <span>− tax withheld {npr(Number(taxWithheld))}</span>}
+                    {ogDeduction > 0 && <span>− old gold {npr(ogDeduction)}</span>}
+                    <Badge variant="outline">Net refund: {npr(totalRefund)}</Badge>
+                    <span>
                       Cash back {npr(Math.min(totalRefund, Number(invoice?.amount_paid ?? 0)))} · credit adjusted {npr(Math.max(0, totalRefund - Number(invoice?.amount_paid ?? 0)))}
                     </span>
                   </div>
                 </div>
+
                 <div><Label className="text-xs">Reason</Label><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Customer changed mind, defect..." /></div>
               </>
             )}
