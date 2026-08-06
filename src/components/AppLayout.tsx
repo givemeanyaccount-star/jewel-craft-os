@@ -109,7 +109,10 @@ export function AppLayout({ children, title, actions }: { children: ReactNode; t
           <div className="flex-1 min-w-0">
             <h1 className="truncate text-lg font-semibold">{title ?? current?.label ?? "JewelMaster OS"}</h1>
           </div>
-          <div className="flex items-center gap-2">{actions}</div>
+          <div className="flex items-center gap-2">
+            {actions}
+            <ThemeSwitcher className="hidden sm:flex" />
+          </div>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>
