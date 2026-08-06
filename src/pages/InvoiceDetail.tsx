@@ -46,6 +46,16 @@ export default function InvoiceDetail() {
   const [payOpen, setPayOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [fineRates, setFineRates] = useState<FineRates>({});
+  const [tradeMetal, setTradeMetal] = useState<string>("gold");
+
+  useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
+  useEffect(() => {
+    if (!id) return;
+    supabase.from("old_gold_purchases").select("metal, total_amount")
+      .eq("linked_invoice_id", id).order("total_amount", { ascending: false }).limit(1)
+      .then(({ data }) => { if (data?.[0]?.metal) setTradeMetal(data[0].metal as string); });
+  }, [id]);
 
   useEffect(() => { load(); }, [id]);
   async function load() {
@@ -57,6 +67,11 @@ export default function InvoiceDetail() {
     ]);
     setInv(i.data); setItems(it.data ?? []); setPayments(p.data ?? []);
   }
+
+  const oldGoldEq = inv && Number(inv.old_gold_credit) > 0
+    ? fineEquivalentNote(Number(inv.old_gold_credit), billFineRate(items, tradeMetal, fineRates), tradeMetal)
+    : null;
+
 
   if (!inv) return <AppLayout><p>Loading...</p></AppLayout>;
 
