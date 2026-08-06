@@ -303,7 +303,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
         </table>
 
         {/* FOOTER BAND */}
-        <div className="pd-keep" style={{ display: "table", width: "100%", tableLayout: "fixed", fontSize: "10px" }}>
+        <div className="pd-keep pd-tail" style={{ display: "table", width: "100%", tableLayout: "fixed", fontSize: "10px" }}>
           <div style={{ display: "table-cell", verticalAlign: "top", padding: "6px 10px", borderRight: bd }}>
             <div><b>In Words:</b> {amountInWords(netTotal)}</div>
             {thumbs.length > 0 && (
