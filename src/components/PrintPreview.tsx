@@ -41,17 +41,35 @@ function appStyles() {
     .join("\n");
 }
 
-function geometry(job: PrintJob) {
-  if (job.pageMm) return { ...job.pageMm, margin: job.marginMm ?? 5 };
-  switch (job.page) {
-    case "a4-landscape":
-      return { width: 297, height: 210, margin: job.marginMm ?? 6 };
-    case "tag":
-      return { width: 55, height: 85, margin: job.marginMm ?? 3 };
-    default:
-      return { width: 210, height: 297, margin: job.marginMm ?? 10 };
-  }
+type PaperKind = "a4" | "letter" | "custom";
+type Orientation = "portrait" | "landscape";
+
+const PAPER_MM: Record<"a4" | "letter", { width: number; height: number }> = {
+  a4: { width: 210, height: 297 },
+  letter: { width: 216, height: 279 },
+};
+
+type Setup = { paper: PaperKind; orientation: Orientation; margin: number };
+
+function defaultSetup(job: PrintJob): Setup {
+  if (job.pageMm) return { paper: "custom", orientation: job.pageMm.width > job.pageMm.height ? "landscape" : "portrait", margin: job.marginMm ?? 5 };
+  if (job.page === "tag") return { paper: "custom", orientation: "portrait", margin: job.marginMm ?? 3 };
+  if (job.page === "a4-landscape") return { paper: "a4", orientation: "landscape", margin: job.marginMm ?? 6 };
+  return { paper: "a4", orientation: "portrait", margin: job.marginMm ?? 10 };
 }
+
+function geometry(job: PrintJob, setup?: Setup) {
+  const s = setup ?? defaultSetup(job);
+  if (s.paper === "custom") {
+    const base = job.pageMm ?? (job.page === "tag" ? { width: 55, height: 85 } : { width: 210, height: 297 });
+    return { ...base, margin: s.margin };
+  }
+  const base = PAPER_MM[s.paper];
+  const width = s.orientation === "landscape" ? base.height : base.width;
+  const height = s.orientation === "landscape" ? base.width : base.height;
+  return { width, height, margin: s.margin };
+}
+
 
 function slug(s: string) {
   return (s || "document").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "document";
