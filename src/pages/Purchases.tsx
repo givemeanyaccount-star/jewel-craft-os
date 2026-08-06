@@ -505,8 +505,10 @@ function printReceipt(id: string) {
   if (!el) return;
   openPrintPreview({
     title: "Old Gold Purchase Receipt",
+    fileName: "Old-Gold-Purchase-Receipt",
+    page: "a4",
     html: el.innerHTML,
-    css: `body{font-family:sans-serif;margin:20px;} table{width:100%;border-collapse:collapse;} @page{size:A4;margin:10mm;}`,
+    css: `table{width:100%}`,
   });
 }
 

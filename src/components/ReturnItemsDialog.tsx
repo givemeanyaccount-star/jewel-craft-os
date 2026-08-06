@@ -261,11 +261,12 @@ function printTag(item: { sku: string; name: string }) {
   openPrintPreview({
     title: `Tag ${item.sku}`,
     html: `<div class="tag"><div class="name">${item.name}</div><div class="sku">${item.sku}</div></div>`,
-    css: `body{font-family:sans-serif;margin:0;padding:8mm;}
-      .tag{border:1px dashed #999;padding:6mm;width:60mm;}
+    fileName: `Tag-${item.sku}`,
+    page: "tag",
+    hidePageNumbers: true,
+    css: `.tag{border:1px dashed #999;padding:6mm;}
       .name{font-size:11px;font-weight:600;}
-      .sku{font-size:9px;color:#555;margin-top:2mm;}
-      @page{size:auto;margin:5mm;}`,
+      .sku{font-size:9px;color:#555;margin-top:2mm;}`,
   });
 }
 

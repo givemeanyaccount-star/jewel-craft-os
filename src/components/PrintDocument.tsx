@@ -50,13 +50,15 @@ export function docRowMath(r: any) {
 }
 
 /** Opens a print preview for the element with the given DOM id. */
-export function printDocument(domId: string, title = "Document") {
+export function printDocument(domId: string, title = "Document", fileName?: string) {
   const el = document.getElementById(domId);
   if (!el) return;
   openPrintPreview({
     title,
+    fileName: fileName ?? title,
+    page: "a4-landscape",
+    marginMm: 6,
     html: el.innerHTML,
-    css: `@page{size:A4 landscape;margin:6mm}`,
   });
 }
 
@@ -158,8 +160,9 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const th: React.CSSProperties = { border: bd, padding: "3px 2px", fontSize: "9px", lineHeight: 1.15 };
   const rr: React.CSSProperties = { ...cell, textAlign: "right" };
   const tot = (label: string, value: string, style: React.CSSProperties = {}) => (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 8px", fontSize: "11px", ...style }}>
-      <span>{label}</span><span>{value}</span>
+    <div style={{ display: "table", width: "100%", tableLayout: "fixed", padding: "3px 8px", fontSize: "11px", boxSizing: "border-box", ...style }}>
+      <span style={{ display: "table-cell" }}>{label}</span>
+      <span style={{ display: "table-cell", textAlign: "right" }}>{value}</span>
     </div>
   );
 
@@ -168,7 +171,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
       <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#000", border: "1.5px solid #000" }}>
 
         {/* HEADER */}
-        <div style={{ display: "flex", padding: "8px 10px", gap: "10px", alignItems: "flex-start" }}>
+        <div className="pd-keep" style={{ display: "flex", padding: "8px 10px", gap: "10px", alignItems: "flex-start" }}>
           <div style={{ width: "240px", fontSize: "11px", fontWeight: "bold", lineHeight: 2 }}>
             <div>
               PAN No:{" "}
@@ -283,14 +286,22 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
               );
             })}
             <tr>
-              <td colSpan={14} style={{ height: "130px", borderLeft: bd, borderRight: bd, borderBottom: "1.5px solid #000" }}></td>
+              <td
+                colSpan={14}
+                style={{
+                  height: items.length <= 12 ? "96px" : "0px",
+                  borderLeft: bd,
+                  borderRight: bd,
+                  borderBottom: "1.5px solid #000",
+                }}
+              ></td>
             </tr>
           </tbody>
         </table>
 
         {/* FOOTER BAND */}
-        <div style={{ display: "flex", fontSize: "10px" }}>
-          <div style={{ flex: 1, padding: "6px 10px", borderRight: bd }}>
+        <div className="pd-keep" style={{ display: "table", width: "100%", tableLayout: "fixed", fontSize: "10px" }}>
+          <div style={{ display: "table-cell", verticalAlign: "top", padding: "6px 10px", borderRight: bd }}>
             <div><b>In Words:</b> {amountInWords(netTotal)}</div>
             {thumbs.length > 0 && (
               <div style={{ display: "flex", gap: "6px", margin: "8px 0 6px" }}>
@@ -303,7 +314,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
           </div>
 
           {isInvoice && (
-            <div style={{ width: "230px", borderRight: "1.5px solid #000" }}>
+            <div style={{ display: "table-cell", verticalAlign: "top", width: "230px", borderRight: "1.5px solid #000" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
                 <tbody>
                   <tr><th colSpan={2} style={{ border: bd, padding: "3px", textAlign: "center" }}>Payment Mode</th></tr>
@@ -331,7 +342,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
             </div>
           )}
 
-          <div style={{ width: "260px" }}>
+          <div style={{ display: "table-cell", verticalAlign: "top", width: "260px" }}>
             {tot("Amount", n2(gross), { fontWeight: "bold", fontSize: "13px" })}
             {tot("Discount", n2(discount))}
             {tot("Total", n2(afterDiscount), { borderBottom: bd })}
@@ -349,6 +360,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
         </div>
 
         {/* TERMS + SIGNATURES */}
+        <div className="pd-keep">
         <div style={{ textAlign: "center", fontSize: "10px", padding: "6px", borderTop: "1.5px solid #000" }}>
           {isInvoice
             ? profile.terms_np
@@ -362,6 +374,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
         <div style={{ fontSize: "8.5px", color: "#777", padding: "4px 14px 6px" }}>
           ({toNepaliDigits(1)} तोला = {toNepaliDigits(TOLA_IN_GRAMS.toFixed(3))} ग्राम)
           {tolaRate ? ` · 24 क्यारेट 1 तोला सुनको मुल्य: ${Math.round(tolaRate).toLocaleString("en-IN")}` : ""}
+        </div>
         </div>
       </div>
     </div>

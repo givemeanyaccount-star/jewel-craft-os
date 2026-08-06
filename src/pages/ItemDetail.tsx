@@ -49,10 +49,12 @@ export default function ItemDetail() {
     const priceLine = `${item.metal.toUpperCase()} · ${item.purity} · ${Number(item.net_weight).toFixed(3)}g net`;
     openPrintPreview({
       title: `Tag ${item.sku}`,
+      fileName: `Tag-${item.sku}`,
+      page: "tag",
+      hidePageNumbers: true,
       css: `
-        @page { size: 55mm 85mm; margin: 3mm; }
-        body { font-family: 'Helvetica Neue', system-ui, sans-serif; margin: 0; padding: 3mm; color: #111; }
-        .tag { width: 49mm; padding: 3mm; border: 0.4mm solid #111; border-radius: 2mm; text-align: center; }
+        body { font-family: 'Helvetica Neue', system-ui, sans-serif; color: #111; }
+        .tag { padding: 3mm; border: 0.4mm solid #111; border-radius: 2mm; text-align: center; }
         .brand { display:flex; align-items:center; justify-content:center; gap:2mm; border-bottom: 0.2mm solid #ddd; padding-bottom:2mm; }
         .brand img { width: 8mm; height: 8mm; object-fit: contain; }
         .brand span { font-size: 8pt; letter-spacing: 0.15em; font-weight: 600; }

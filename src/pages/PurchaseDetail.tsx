@@ -33,9 +33,11 @@ export default function PurchaseDetail() {
     if (!el) return;
     openPrintPreview({
       title: `Purchase ${purchase?.purchase_no ?? ""}`,
+      fileName: `Purchase-${purchase?.purchase_no ?? ""}`,
+      page: "a4",
       html: el.innerHTML,
       includeAppStyles: true,
-      css: `.no-print{display:none!important} .print-only{display:block!important} @page{size:A4;margin:10mm}`,
+      css: `.no-print{display:none!important} .print-only{display:block!important}`,
     });
   }
 
