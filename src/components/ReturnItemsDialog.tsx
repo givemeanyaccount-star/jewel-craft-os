@@ -260,7 +260,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
 function printTag(item: { sku: string; name: string }) {
   openPrintPreview({
     title: `Tag ${item.sku}`,
-    html: `<div class="tag"><div class="name">${item.name}</div><div class="sku">${item.sku}</div></div>`,
+    html: `<div class="tag"><div class="name">${escapeHtml(item.name)}</div><div class="sku">${escapeHtml(item.sku)}</div></div>`,
     fileName: `Tag-${item.sku}`,
     page: "tag",
     hidePageNumbers: true,
