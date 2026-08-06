@@ -5,7 +5,7 @@ Rebuilds the dashboard main content in the chosen "Heritage luxury" direction: P
 ## New layout (top to bottom)
 
 1. **Header row** — "Dashboard" in Playfair Display with a subdued uppercase subtitle, and on the right: a discreet palette switcher (small colour dots in a pill) followed by the quick action buttons **New Sale**, **New Purchase**, **New Repair**. New Sale is solid emerald with a thin gold underline; the other two are outlined. Each button appears only for roles that have the matching permission.
-2. **Metal rates band** — three cards: Gold 24K, Gold 22K, Silver. Each shows the rate per tola (large) and per 10 g (small), with a 7-day sparkline on the right, green when rising and red when falling.
+2. **Metal rates band** — cards for Gold 24K, Gold 22K and Silver, each showing the rate per tola (large) and per 10 g (small). Only **Gold 24K** and **Silver** carry a 7-day sparkline; the 22K card shows figures only. Sparklines are green when rising and red when falling.
 3. **Ops & alerts row** — four cards:
    - Outstanding credit — dark emerald card, gold figure, thin progress bar
    - Repairs by stage — In workshop / Quality check / Ready to pickup with counts
