@@ -251,7 +251,9 @@ export function PrintPreviewHost() {
     } finally {
       setBusy(false);
     }
-  }, [job]);
+  }, [job, setup]);
+
+  const custom = setup.paper === "custom";
 
   return (
     <Dialog open={!!job} onOpenChange={(o) => !o && setJob(null)}>
@@ -271,7 +273,51 @@ export function PrintPreviewHost() {
             </Button>
           </div>
         </DialogHeader>
+        <div className="flex flex-wrap items-center gap-3 rounded border bg-muted/30 px-3 py-2 text-xs">
+          <label className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">Paper</span>
+            <select
+              className="h-7 rounded border bg-background px-2 text-xs"
+              value={setup.paper}
+              onChange={(e) => setSetup((s) => ({ ...s, paper: e.target.value as PaperKind }))}
+            >
+              <option value="a4">A4 (210 × 297 mm)</option>
+              <option value="letter">Letter (216 × 279 mm)</option>
+              {custom && <option value="custom">Custom</option>}
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">Orientation</span>
+            <select
+              className="h-7 rounded border bg-background px-2 text-xs disabled:opacity-50"
+              value={setup.orientation}
+              disabled={custom}
+              onChange={(e) => setSetup((s) => ({ ...s, orientation: e.target.value as Orientation }))}
+            >
+              <option value="portrait">Portrait</option>
+              <option value="landscape">Landscape</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">Margin (mm)</span>
+            <input
+              type="number"
+              min={0}
+              max={30}
+              step={1}
+              className="h-7 w-16 rounded border bg-background px-2 text-xs"
+              value={setup.margin}
+              onChange={(e) => setSetup((s) => ({ ...s, margin: Math.max(0, Math.min(30, Number(e.target.value) || 0)) }))}
+            />
+          </label>
+          {job && (
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setSetup(defaultSetup(job))}>
+              Reset
+            </Button>
+          )}
+        </div>
         <div ref={boxRef} className="min-h-0 flex-1 overflow-auto rounded border bg-muted/40">
+
           {job && (
             <iframe
               ref={frameRef}
