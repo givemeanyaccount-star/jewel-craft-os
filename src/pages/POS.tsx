@@ -209,6 +209,12 @@ export default function POS() {
   const paid = useMemo(() => payments.reduce((a, p) => a + (Number(p.amount) || 0), 0), [payments]);
   const balance = Math.max(0, tax.total - paid);
 
+  // Fine-metal equivalent of the old gold credit, at the bill's rate (or the day's rate).
+  const oldGoldEq = useMemo(() => oldGoldCredit > 0
+    ? fineEquivalentNote(oldGoldCredit, billFineRate(cart as any, oldGoldMetal, fineRates), oldGoldMetal)
+    : null, [oldGoldCredit, cart, oldGoldMetal, fineRates]);
+
+
   function applyTargetTotal() {
     const t = Number(targetTotal);
     if (!t || t <= 0) return toast.error("Enter target net amount");
