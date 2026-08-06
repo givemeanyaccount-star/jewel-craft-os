@@ -11,6 +11,7 @@ import { npr } from "@/lib/format";
 import { toast } from "sonner";
 import { lineDisplay } from "@/pages/POS";
 import logoUrl from "@/assets/logo.png";
+import { PrintDocument, printDocument } from "@/components/PrintDocument";
 
 export default function QuotationDetail() {
   const { id } = useParams();
