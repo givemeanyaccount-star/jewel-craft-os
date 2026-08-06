@@ -179,6 +179,9 @@ export function PrintPreviewHost() {
         useCORS: true,
         windowWidth: doc.body.scrollWidth,
         windowHeight: doc.body.scrollHeight,
+        // Renders through the browser's own layout engine: keeps borders and
+        // text baselines aligned exactly as they appear in the preview.
+        foreignObjectRendering: true,
       });
       const pdf = new jsPDF({
         orientation: g.width > g.height ? "landscape" : "portrait",
