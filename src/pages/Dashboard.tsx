@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { usePermission } from "@/hooks/usePermission";
 import { useAuth } from "@/hooks/useAuth";
 import { npr } from "@/lib/format";
 import { DailyRateDialog, todayIsoDate } from "@/components/DailyRateDialog";
@@ -30,6 +31,7 @@ interface Stats {
 
 export default function Dashboard() {
   const { roles, rolesError } = useAuth();
+  const { hasPermission } = usePermission();
   const [stats, setStats] = useState<Stats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<any[]>([]);
   const [repairCounts, setRepairCounts] = useState<Record<string, number>>({});
@@ -124,7 +126,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           {recentInvoices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No invoices yet. <Link to="/pos" className="text-primary underline">Create your first sale.</Link></p>
+            <p className="text-sm text-muted-foreground">No invoices yet.</p>
           ) : (
             <div className="divide-y">
               {recentInvoices.map((inv) => (
@@ -144,6 +146,7 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {hasPermission("repair_manage") && (
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /> Repair Jobs</CardTitle>
@@ -158,7 +161,9 @@ export default function Dashboard() {
           ))}
         </CardContent>
       </Card>
+      )}
 
+      {hasPermission("credit_view") && (
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2"><CircleDollarSign className="h-4 w-4 text-primary" /> Pending Credit</CardTitle>
@@ -168,6 +173,7 @@ export default function Dashboard() {
           {npr(stats?.pendingBalance ?? 0)} outstanding across {stats?.creditCustomers ?? 0} customer(s), including partially paid invoices.
         </CardContent>
       </Card>
+      )}
 
       <DailyRateDialog open={rateDialog} onOpenChange={setRateDialog} onSaved={load} />
     </AppLayout>
