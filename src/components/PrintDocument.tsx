@@ -89,6 +89,9 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const [qr, setQr] = useState<string | null>(null);
   const [thumbs, setThumbs] = useState<string[]>([]);
   const [tolaRate, setTolaRate] = useState<number | null>(null);
+  const [fineRates, setFineRates] = useState<FineRates>({});
+  const [tradeMetal, setTradeMetal] = useState<string>("gold");
+
 
   useEffect(() => {
     (async () => {
