@@ -280,8 +280,18 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
           </DialogHeader>
           <div className="space-y-2">
             <div className="rounded border p-3 text-sm">
-              <div className="flex justify-between"><span>Refund total</span><span className="font-medium">{npr(receipt.totalRefund)}</span></div>
+              {Number(receipt.taxWithheld) > 0 && (
+                <div className="flex justify-between text-xs text-muted-foreground"><span>Tax withheld (non-refundable)</span><span>− {npr(receipt.taxWithheld)}</span></div>
+              )}
+              {receipt.oldGold && (
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Old gold {receipt.oldGold.mode === "metal" ? "returned to customer" : `revalued @ ${npr(receipt.oldGold.rate)}/g`}</span>
+                  <span>− {npr(receipt.oldGold.deduction)}</span>
+                </div>
+              )}
+              <div className="flex justify-between"><span>Net refund</span><span className="font-medium">{npr(receipt.totalRefund)}</span></div>
               <div className="flex justify-between text-xs text-muted-foreground"><span>Cash / method refund</span><span>{npr(receipt.cashRefund)}</span></div>
+
               {receipt.creditReleased > 0 && (
                 <div className="flex justify-between text-xs text-muted-foreground"><span>Credit written off</span><span>{npr(receipt.creditReleased)}</span></div>
               )}
