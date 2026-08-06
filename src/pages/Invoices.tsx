@@ -54,8 +54,11 @@ export default function Invoices() {
 
   return (
     <AppLayout title="Invoices" actions={
-      <Button size="sm" asChild><Link to="/pos"><Plus className="mr-1 h-4 w-4" /> New Sale</Link></Button>
+      hasPermission("pos_create_sale") ? (
+        <Button size="sm" asChild><Link to="/pos"><Plus className="mr-1 h-4 w-4" /> New Sale</Link></Button>
+      ) : null
     }>
+
       <InvoiceSubNav active="sales" />
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[200px]">
