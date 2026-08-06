@@ -133,6 +133,43 @@ export default function POS() {
       .eq("effective_date", today).order("metal").then(({ data }) => setTodayRates(data ?? []));
   }, []);
 
+  // Prefill from an accepted quotation
+  useEffect(() => {
+    if (!quotationId) return;
+    (async () => {
+      const [{ data: q }, { data: lines }] = await Promise.all([
+        supabase.from("quotations").select("*").eq("id", quotationId).maybeSingle(),
+        supabase.from("quotation_items").select("*").eq("quotation_id", quotationId),
+      ]);
+      if (!q) return toast.error("Quotation not found");
+      setCustomerId(q.customer_id);
+      setDiscount(Number(q.discount ?? 0));
+      setOldGoldCredit(Number(q.old_gold_credit ?? 0));
+      setNotes(q.notes ?? "");
+      setCart((lines ?? []).map((l: any) => recompute({
+        inventory_item_id: l.inventory_item_id,
+        description: l.description,
+        metal: l.metal ?? undefined, purity: l.purity ?? undefined,
+        gross_weight: Number(l.gross_weight ?? 0),
+        stone_weight: Number(l.stone_weight ?? 0),
+        weight: Number(l.weight ?? 0),
+        rate: Number(l.rate ?? 0),
+        making_charge: Number(l.making_charge ?? 0),
+        wastage_amount: Number(l.wastage_amount ?? 0),
+        stone_value: Number(l.stone_value ?? 0),
+        quantity: Number(l.quantity ?? 1),
+        line_total: Number(l.line_total ?? 0),
+        making_input: Number(l.making_input ?? 0),
+        making_type: (l.making_type ?? "per_gram") as any,
+        wastage_input: Number(l.wastage_input ?? 0),
+        wastage_type: (l.wastage_type ?? "percentage") as any,
+      })));
+      toast.success(`Loaded quotation ${q.quote_number}`);
+    })();
+  }, [quotationId]);
+
+
+
   useEffect(() => {
     const t = setTimeout(async () => {
       const s = search.trim();
