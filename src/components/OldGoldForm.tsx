@@ -160,10 +160,10 @@ export function OldGoldForm({
             <SelectContent>{METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
           </Select></div>
         <div><Label>Purity</Label>
-          <Select value={form.purity} onValueChange={(v) => setForm({ ...form, purity: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-          </Select></div>
+          <PuritySelect value={form.purity} onChange={(v) => setForm({ ...form, purity: v })}
+            options={PURITIES} allowPercent />
+        </div>
+
         <div><Label>Gross wt (g)</Label><Input type="number" step="0.001" value={form.gross_weight ?? 0} onChange={(e) => setForm({ ...form, gross_weight: e.target.value })} /></div>
         <div><Label>Stone wt (g)</Label><Input type="number" step="0.001" value={form.stone_weight ?? 0} onChange={(e) => setForm({ ...form, stone_weight: e.target.value })} /></div>
         <div><Label>Net (auto)</Label><Input readOnly value={net.toFixed(3)} className="bg-muted" /></div>
