@@ -99,6 +99,7 @@ export default function PurchaseDetail() {
           </CardContent>
         </Card>
       </div>
+      </div>
     </AppLayout>
   );
 }
