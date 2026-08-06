@@ -21,11 +21,26 @@ export default function MetalRates() {
   const [rates, setRates] = useState<any[]>([]);
   const [form, setForm] = useState({ metal: "gold", purity: "22K", rate_per_gram: "" });
 
+  const [filter, setFilter] = useState({ metal: "all", purity: "all", search: "" });
+
   useEffect(() => { load(); }, []);
   async function load() {
     const { data } = await supabase.from("metal_rates").select("*").order("effective_date", { ascending: false }).limit(100);
     setRates(data ?? []);
   }
+
+  const filteredRates = useMemo(() => {
+    return rates.filter((r) => {
+      if (filter.metal !== "all" && r.metal !== filter.metal) return false;
+      if (filter.purity !== "all" && r.purity !== filter.purity) return false;
+      if (filter.search.trim()) {
+        const q = filter.search.toLowerCase();
+        const text = `${r.metal} ${r.purity} ${r.source ?? ""} ${r.effective_date ?? ""}`.toLowerCase();
+        if (!text.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [rates, filter]);
 
   async function add() {
     if (!form.rate_per_gram) return toast.error("Rate required");
