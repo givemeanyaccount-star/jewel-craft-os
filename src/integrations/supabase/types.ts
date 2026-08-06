@@ -110,6 +110,69 @@ export type Database = {
         }
         Relationships: []
       }
+      company_profile: {
+        Row: {
+          address: string
+          created_at: string
+          email: string
+          facebook: string
+          group_name: string
+          id: string
+          logo_url: string | null
+          name_en: string
+          name_np: string
+          pan_no: string
+          phone1: string
+          phone2: string
+          phone3: string
+          qr_url: string | null
+          reg_no: string
+          singleton: boolean
+          terms_np: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          email?: string
+          facebook?: string
+          group_name?: string
+          id?: string
+          logo_url?: string | null
+          name_en?: string
+          name_np?: string
+          pan_no?: string
+          phone1?: string
+          phone2?: string
+          phone3?: string
+          qr_url?: string | null
+          reg_no?: string
+          singleton?: boolean
+          terms_np?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          email?: string
+          facebook?: string
+          group_name?: string
+          id?: string
+          logo_url?: string | null
+          name_en?: string
+          name_np?: string
+          pan_no?: string
+          phone1?: string
+          phone2?: string
+          phone3?: string
+          qr_url?: string | null
+          reg_no?: string
+          singleton?: boolean
+          terms_np?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null

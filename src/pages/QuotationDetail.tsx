@@ -11,6 +11,7 @@ import { npr } from "@/lib/format";
 import { toast } from "sonner";
 import { lineDisplay } from "@/pages/POS";
 import logoUrl from "@/assets/logo.png";
+import { PrintDocument, printDocument } from "@/components/PrintDocument";
 
 export default function QuotationDetail() {
   const { id } = useParams();
@@ -43,26 +44,11 @@ export default function QuotationDetail() {
         {q.status !== "accepted" && (
           <Button size="sm" variant="outline" onClick={markAccepted} className="no-print"><FileCheck className="mr-1 h-4 w-4" /> Accept</Button>
         )}
-        <Button size="sm" variant="outline" onClick={() => window.print()} className="no-print"><Printer className="mr-1 h-4 w-4" /> Print</Button>
+        <Button size="sm" variant="outline" onClick={() => printDocument(`quote-print-${q.id}`)} className="no-print"><Printer className="mr-1 h-4 w-4" /> Print</Button>
       </>
     }>
-      {/* Print header */}
-      <div className="print-only mb-6 flex items-center justify-between border-b-2 border-black pb-4">
-        <div className="flex items-center gap-3">
-          <img src={logoUrl} alt="JewelMaster" className="h-14 w-14 object-contain" />
-          <div>
-            <div className="text-xl font-bold tracking-tight">JewelMaster</div>
-            <div className="text-[10px] uppercase tracking-[0.25em] text-gray-600">Fine Jewellery · Kathmandu, Nepal</div>
-            <div className="mt-1 text-[10px] text-gray-500">PAN 000000000 · +977 01-0000000</div>
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] uppercase tracking-widest text-gray-500">Quotation</div>
-          <div className="text-lg font-semibold">{q.quote_number}</div>
-          <div className="text-[10px] text-gray-600">{new Date(q.created_at).toLocaleString()}</div>
-          {q.valid_until && <div className="text-[10px] text-gray-600">Valid until: {new Date(q.valid_until).toLocaleDateString()}</div>}
-        </div>
-      </div>
+      <PrintDocument kind="estimate" doc={q} items={items} domId={`quote-print-${q.id}`} />
+
 
       <div className="print-shell space-y-4">
         <Card>
