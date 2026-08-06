@@ -285,12 +285,12 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                 </tr>
               );
             })}
-            <tr>
+            <tr className="pd-filler">
               {Array.from({ length: 14 }).map((_, i) => (
                 <td
                   key={i}
                   style={{
-                    height: items.length <= 12 ? "96px" : "0px",
+                    height: "0px",
                     borderLeft: bd,
                     borderRight: bd,
                     borderBottom: "1.5px solid #000",
