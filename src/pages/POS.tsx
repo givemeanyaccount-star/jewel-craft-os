@@ -16,6 +16,7 @@ import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
 } from "@/lib/format";
+import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import { QRScanButton } from "@/components/QRScanButton";
