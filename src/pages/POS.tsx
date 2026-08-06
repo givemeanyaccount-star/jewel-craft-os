@@ -92,6 +92,9 @@ export default function POS() {
   const canManageInventory = hasPermission("inventory_manage");
   const { settings } = useAppSettings();
   const nav = useNavigate();
+  const location = useLocation();
+  const quotationId: string | null = (location.state as any)?.quotationId ?? null;
+  const quotationNumber: string | null = (location.state as any)?.quoteNumber ?? null;
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
