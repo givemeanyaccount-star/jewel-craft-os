@@ -109,33 +109,64 @@ ${job.includeAppStyles ? appStyles() : ""}
   var MM = 96/25.4;
   var pageH = ${g.height} * MM, margin = ${g.margin} * MM;
   var usable = pageH - margin * 2;
-  function paginate(){
-    Array.prototype.forEach.call(document.querySelectorAll('.pd-page-number,.pd-page-edge'), function(n){ n.remove(); });
-    var content = document.getElementById('pd-content');
-    var h = content ? content.scrollHeight : 0;
-    var pages = Math.max(1, Math.ceil((h - 2) / usable));
-    document.body.style.height = (pages * pageH) + 'px';
-    if (${job.hidePageNumbers ? "true" : "false"} || pages < 2) return;
-    for (var i = 0; i < pages; i++){
-      var d = document.createElement('div');
-      d.className = 'pd-page-number';
-      d.textContent = 'Page ' + (i + 1) + ' of ' + pages;
-      d.style.top = (margin + i * pageH + usable + 2) + 'px';
-      document.body.appendChild(d);
-      if (i < pages - 1){
-        var e = document.createElement('div');
-        e.className = 'pd-page-edge';
-        e.style.cssText = 'position:absolute;left:0;right:0;height:0;border-top:1px dashed #d4d4d8;top:' + ((i + 1) * pageH) + 'px';
-        e.setAttribute('data-screen-only','1');
-        document.body.appendChild(e);
-      }
-    }
+  var running = false;
+  function setFiller(px){
+    var cells = document.querySelectorAll('.pd-filler td');
+    for (var i = 0; i < cells.length; i++) cells[i].style.height = px + 'px';
   }
+  function tailHeight(){
+    var t = document.querySelectorAll('.pd-tail'), h = 0;
+    for (var i = 0; i < t.length; i++) h += t[i].getBoundingClientRect().height;
+    return h;
+  }
+  function layout(){
+    if (running) return;
+    running = true;
+    try {
+      Array.prototype.forEach.call(document.querySelectorAll('.pd-page-number,.pd-page-edge'), function(n){ n.remove(); });
+      var content = document.getElementById('pd-content');
+      if (!content) return;
+      var hasFiller = !!document.querySelector('.pd-filler td');
+      if (hasFiller) {
+        // Measure with no filler, then grow it to push the tail to the page bottom.
+        setFiller(0);
+        var bare = content.scrollHeight;
+        var tail = tailHeight();
+        var used = (bare - tail) % usable;
+        var slack = usable - used - tail;
+        setFiller(slack > 4 ? slack : 0);
+      }
+      var h = content.scrollHeight;
+      var pages = Math.max(1, Math.ceil((h - 2) / usable));
+      document.body.style.height = (pages * pageH) + 'px';
+      if (${job.hidePageNumbers ? "true" : "false"} || pages < 2) return;
+      for (var i = 0; i < pages; i++){
+        var d = document.createElement('div');
+        d.className = 'pd-page-number';
+        d.textContent = 'Page ' + (i + 1) + ' of ' + pages;
+        d.style.top = (margin + i * pageH + usable + 2) + 'px';
+        document.body.appendChild(d);
+        if (i < pages - 1){
+          var e = document.createElement('div');
+          e.className = 'pd-page-edge';
+          e.style.cssText = 'position:absolute;left:0;right:0;height:0;border-top:1px dashed #d4d4d8;top:' + ((i + 1) * pageH) + 'px';
+          e.setAttribute('data-screen-only','1');
+          document.body.appendChild(e);
+        }
+      }
+    } finally { running = false; }
+  }
+  window.pdLayout = layout;
   var s = document.createElement('style');
   s.textContent = '@media print{[data-screen-only]{display:none!important}}';
   document.head.appendChild(s);
-  if (document.readyState === 'complete') paginate(); else window.addEventListener('load', paginate);
-  setTimeout(paginate, 400);
+  if (document.readyState === 'complete') layout(); else window.addEventListener('load', layout);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+  Array.prototype.forEach.call(document.images, function(im){
+    if (!im.complete) { im.addEventListener('load', layout); im.addEventListener('error', layout); }
+  });
+  setTimeout(layout, 400);
+  setTimeout(layout, 1200);
 })();
 </script>
 </body></html>`;
