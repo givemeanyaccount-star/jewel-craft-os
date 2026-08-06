@@ -446,7 +446,7 @@ export type Database = {
           cancelled_at: string | null
           created_at: string
           created_by: string | null
-          customer_id: string | null
+          customer_id: string
           discount: number
           id: string
           invoice_number: string
@@ -474,7 +474,7 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           created_by?: string | null
-          customer_id?: string | null
+          customer_id: string
           discount?: number
           id?: string
           invoice_number: string
@@ -502,7 +502,7 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           created_by?: string | null
-          customer_id?: string | null
+          customer_id?: string
           discount?: number
           id?: string
           invoice_number?: string
@@ -634,7 +634,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
-          customer_id: string | null
+          customer_id: string
           customer_name: string
           customer_phone: string | null
           customer_photo_url: string | null
@@ -661,7 +661,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
-          customer_id?: string | null
+          customer_id: string
           customer_name: string
           customer_phone?: string | null
           customer_photo_url?: string | null
@@ -688,7 +688,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
-          customer_id?: string | null
+          customer_id?: string
           customer_name?: string
           customer_phone?: string | null
           customer_photo_url?: string | null
@@ -1004,7 +1004,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
-          customer_id: string | null
+          customer_id: string
           discount: number
           id: string
           issued_at: string
@@ -1027,7 +1027,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
-          customer_id?: string | null
+          customer_id: string
           discount?: number
           id?: string
           issued_at?: string
@@ -1050,7 +1050,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
-          customer_id?: string | null
+          customer_id?: string
           discount?: number
           id?: string
           issued_at?: string
@@ -1225,7 +1225,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
-          customer_id: string | null
+          customer_id: string
           delivered_at: string | null
           expected_delivery: string | null
           id: string
@@ -1237,7 +1237,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
-          customer_id?: string | null
+          customer_id: string
           delivered_at?: string | null
           expected_delivery?: string | null
           id?: string
@@ -1249,7 +1249,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
-          customer_id?: string | null
+          customer_id?: string
           delivered_at?: string | null
           expected_delivery?: string | null
           id?: string
