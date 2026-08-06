@@ -65,11 +65,11 @@ export default function ItemDetail() {
         .foot { font-size: 6pt; color: #888; margin-top: 1mm; letter-spacing: 0.1em; text-transform: uppercase; }
       `,
       html: `<div class="tag">
-        <div class="brand"><img src="${logo}"/><span>JEWELMASTER</span></div>
-        <div class="name">${item.name}</div>
-        <div class="meta">${priceLine}</div>
-        <img class="qr" src="${dataUrl}" width="120" />
-        <div class="sku">${item.sku}</div>
+        <div class="brand"><img src="${escapeHtml(logo)}"/><span>JEWELMASTER</span></div>
+        <div class="name">${escapeHtml(item.name)}</div>
+        <div class="meta">${escapeHtml(priceLine)}</div>
+        <img class="qr" src="${escapeHtml(dataUrl)}" width="120" />
+        <div class="sku">${escapeHtml(item.sku)}</div>
         <div class="foot">Scan · Verify · Trust</div>
       </div>`,
     });
