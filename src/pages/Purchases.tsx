@@ -503,12 +503,10 @@ function Row2({ label, value }: { label: string; value: any }) {
 function printReceipt(id: string) {
   const el = document.getElementById(`ogp-print-${id}`);
   if (!el) return;
-  const w = window.open("", "_blank", "width=700,height=900");
-  if (!w) return;
-  w.document.write(`<html><head><title>Old Gold Purchase Receipt</title>
-    <style>body{font-family:sans-serif;margin:20px;} table{width:100%;border-collapse:collapse;} @page{size:A4;margin:10mm;}</style>
-  </head><body>${el.innerHTML}</body></html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { w.print(); w.close(); }, 300);
+  openPrintPreview({
+    title: "Old Gold Purchase Receipt",
+    html: el.innerHTML,
+    css: `body{font-family:sans-serif;margin:20px;} table{width:100%;border-collapse:collapse;} @page{size:A4;margin:10mm;}`,
+  });
 }
+
