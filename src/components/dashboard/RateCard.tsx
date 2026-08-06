@@ -25,7 +25,7 @@ export function RateCard({
       <CardContent className="flex items-start justify-between gap-3 p-5">
         <div className="min-w-0">
           <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">{label}</span>
-          <div className="mt-1 truncate text-2xl font-semibold tracking-tight">
+          <div className="mt-1 whitespace-nowrap text-xl font-semibold tracking-tight">
             {ratePerGram ? npr(perTola(ratePerGram)) : "—"}
             <span className="ml-1 text-xs font-normal text-muted-foreground">/ tola</span>
           </div>

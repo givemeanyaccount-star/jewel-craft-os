@@ -10,7 +10,7 @@ export interface VolumePoint {
 
 export function VolumeChart({ data }: { data: VolumePoint[] }) {
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-semibold">
           Daily Volume <span className="font-normal text-muted-foreground">(7 days)</span>

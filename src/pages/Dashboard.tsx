@@ -243,7 +243,7 @@ export default function Dashboard() {
         </div>
 
         {/* Chart + activity */}
-        <div className="grid gap-6 lg:grid-cols-5">
+        <div className="grid items-start gap-6 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <VolumeChart data={volume} />
           </div>
