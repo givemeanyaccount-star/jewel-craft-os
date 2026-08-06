@@ -445,7 +445,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                   <div className="flex flex-col items-end justify-end gap-1 text-[11px] text-muted-foreground">
                     <span>Goods refund {npr(goodsRefund)}</span>
                     {Number(taxWithheld) > 0 && <span>− tax withheld {npr(Number(taxWithheld))}</span>}
-                    {ogDeduction > 0 && <span>− old gold {npr(ogDeduction)}</span>}
+                    {ogDeduction !== 0 && <span>{ogDeduction > 0 ? "−" : "+"} old gold {npr(Math.abs(ogDeduction))}</span>}
                     <Badge variant="outline">Net refund: {npr(totalRefund)}</Badge>
                     <span>
                       Cash back {npr(Math.min(totalRefund, Number(invoice?.amount_paid ?? 0)))} · credit adjusted {npr(Math.max(0, totalRefund - Number(invoice?.amount_paid ?? 0)))}
