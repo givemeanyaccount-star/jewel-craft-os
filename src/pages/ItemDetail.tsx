@@ -10,6 +10,7 @@ import { npr, gms } from "@/lib/format";
 import { getSignedUrls } from "@/lib/storage";
 import { Printer, ArrowLeft } from "lucide-react";
 import { openPrintPreview } from "@/components/PrintPreview";
+import { escapeHtml } from "@/lib/html";
 
 
 export default function ItemDetail() {
