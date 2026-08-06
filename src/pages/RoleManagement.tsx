@@ -137,6 +137,21 @@ const RoleManagement = () => {
     setPending(null);
   };
 
+  const removeUser = async (u: UserRow) => {
+    setPending(`del:${u.id}`);
+    const { data, error } = await supabase.functions.invoke("admin-users", {
+      body: { action: "delete", user_id: u.id },
+    });
+    setPending(null);
+    setDeleteTarget(null);
+    if (error || data?.error) {
+      toast({ title: "Delete failed", description: data?.error ?? error?.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "User removed" });
+    setUsers((prev) => prev.filter((x) => x.id !== u.id));
+  };
+
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase().trim();
