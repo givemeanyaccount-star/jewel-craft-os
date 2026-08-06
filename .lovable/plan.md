@@ -18,7 +18,8 @@ Nothing is deleted.
 
 ## 2. Quotations
 
-- **Edit from the list** — an edit action on each quotation row reopens the quotation builder prefilled with its customer, lines, discount, old gold credit, notes and validity, and saves back over the same quotation (replacing its lines).
+- **Validity** — alongside the existing "valid for N days" quick input, a date picker lets staff set an exact expiry date. Picking a date overrides the day count and vice versa; the chosen date is what drives expiry.
+- **Edit from the list** — an edit action on each quotation row reopens the quotation builder prefilled with its customer, lines, discount, old gold credit, notes and validity date, and saves back over the same quotation (replacing its lines).
 - **Reserve stock** — inventory items added to a saved quotation move to `reserved`. Removing a line, editing the quotation, deleting, or letting it expire returns those items to `in_stock`. Reserved items no longer appear in the in-stock pickers, so two quotes can't hold the same piece.
 - **Accepting a quotation** opens the new sale screen prefilled with everything from the quotation (customer, all line details, discount, old gold credit, notes). Once that sale is saved, the quotation record and its lines are deleted and the items go from reserved to sold.
 - **Expiry** — quotations past their validity date are automatically marked `expired` and their reserved items are released back to stock. Expired rows show a delete button in the list so they can be cleared manually.
