@@ -89,8 +89,17 @@ Deno.serve(async (req) => {
           .from("user_roles")
           .insert(roles.map((role) => ({ user_id: newId, role })));
       }
+      await admin.from("audit_logs").insert({
+        actor_id: userData.user.id,
+        actor_email: userData.user.email ?? null,
+        action: "user_invited",
+        target_user_id: newId,
+        target_email: email,
+        details: { username, roles },
+      });
       return json({ id: newId, email, username });
     }
+
 
 
     if (action === "delete") {
@@ -108,9 +117,19 @@ Deno.serve(async (req) => {
         return json({ error: "Cannot remove the last admin" }, 400);
       }
 
+      const { data: targetUser } = await admin.auth.admin.getUserById(targetId);
       const { error: delErr } = await admin.auth.admin.deleteUser(targetId);
       if (delErr) return json({ error: delErr.message }, 400);
+      await admin.from("audit_logs").insert({
+        actor_id: userData.user.id,
+        actor_email: userData.user.email ?? null,
+        action: "user_removed",
+        target_user_id: targetId,
+        target_email: targetUser?.user?.email ?? null,
+        details: { roles: (targetRoles ?? []).map((r) => r.role) },
+      });
       return json({ ok: true });
+
     }
 
     return json({ error: "Unknown action" }, 400);
