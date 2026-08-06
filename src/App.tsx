@@ -33,6 +33,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const SALES = ["admin", "manager", "sales"] as const;
+const ALL_ROLES_R = ["admin", "manager", "sales", "karigar", "accountant", "viewer"] as const;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -44,9 +45,9 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-            <Route path="/inventory/:id" element={<ProtectedRoute><ItemDetail /></ProtectedRoute>} />
+            <Route path="/" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><Dashboard /></ProtectedRoute>} />
+            <Route path="/inventory" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><Inventory /></ProtectedRoute>} />
+            <Route path="/inventory/:id" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><ItemDetail /></ProtectedRoute>} />
             <Route path="/scan" element={<ProtectedRoute roles={[...SALES]}><ScanQR /></ProtectedRoute>} />
             <Route path="/customers" element={<ProtectedRoute roles={[...SALES]}><Customers /></ProtectedRoute>} />
             <Route path="/quotations" element={<ProtectedRoute roles={[...SALES]}><Quotations /></ProtectedRoute>} />
