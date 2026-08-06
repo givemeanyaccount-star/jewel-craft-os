@@ -15,6 +15,8 @@ import { npr, gms, computeNetWeight } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import logoUrl from "@/assets/logo.png";
+import { openPrintPreview } from "@/components/PrintPreview";
+
 import { getSignedUrls } from "@/lib/storage";
 import { STATUS_LABEL, STATUS_COLOR } from "./Repairs";
 import { KarigarSelect, useKarigars } from "@/components/KarigarSelect";
