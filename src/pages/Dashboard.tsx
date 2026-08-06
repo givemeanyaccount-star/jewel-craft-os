@@ -3,7 +3,6 @@ import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { usePermission } from "@/hooks/usePermission";
 import { useAuth } from "@/hooks/useAuth";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RateCard, RatePoint } from "@/components/dashboard/RateCard";
 import { RateTrendChart } from "@/components/dashboard/RateTrendChart";
@@ -197,7 +196,7 @@ export default function Dashboard() {
 
   return (
     <AppLayout title="Dashboard">
-      <div className="space-y-6">
+      <div className="space-y-4">
         {(rolesError || roles.length === 0) && (
           <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
@@ -215,32 +214,30 @@ export default function Dashboard() {
         )}
 
         {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="font-display text-3xl font-bold tracking-tight text-primary">Dashboard</h2>
-            <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-primary">Dashboard</h2>
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               JewelMaster OS · Kathmandu
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <ThemeSwitcher />
-            <div className="hidden h-9 w-px bg-border md:block" />
-            <QuickActions />
+          <QuickActions />
+        </div>
+
+        {/* Rates + trend side by side */}
+        <div className="grid gap-4 xl:grid-cols-12">
+          <div className="grid gap-4 sm:grid-cols-3 xl:col-span-5 xl:auto-rows-min xl:grid-cols-1">
+            <RateCard label="Gold 24K" ratePerGram={gold24?.latest ?? null} history={gold24?.history} />
+            <RateCard label="Gold 22K" ratePerGram={gold22?.latest ?? null} />
+            <RateCard label="Silver" ratePerGram={silver?.latest ?? null} history={silver?.history} />
+          </div>
+          <div className="xl:col-span-7">
+            <RateTrendChart goldHistory={gold24?.history} silverHistory={silver?.history} />
           </div>
         </div>
 
-        {/* Metal rates */}
-        <div className="grid gap-6 md:grid-cols-3">
-          <RateCard label="Gold 24K" ratePerGram={gold24?.latest ?? null} history={gold24?.history} />
-          <RateCard label="Gold 22K" ratePerGram={gold22?.latest ?? null} />
-          <RateCard label="Silver" ratePerGram={silver?.latest ?? null} history={silver?.history} />
-        </div>
-
-        {/* Rate trend */}
-        <RateTrendChart goldHistory={gold24?.history} silverHistory={silver?.history} />
-
         {/* Ops & alerts */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <OutstandingCreditCard amount={stats?.pendingBalance ?? 0} customers={stats?.creditCustomers ?? 0} />
           <RepairStagesCard counts={repairCounts} />
           <PendingCreditCard amount={stats?.pendingBalance ?? 0} customers={stats?.creditCustomers ?? 0} />
@@ -253,11 +250,11 @@ export default function Dashboard() {
         </div>
 
         {/* Chart + activity */}
-        <div className="grid items-start gap-6 lg:grid-cols-5">
-          <div className="lg:col-span-2">
+        <div className="grid items-stretch gap-4 xl:grid-cols-3">
+          <div className="xl:col-span-1">
             <VolumeChart data={volume} />
           </div>
-          <div className="lg:col-span-3">
+          <div className="xl:col-span-2">
             <ActivityLog entries={activity} />
           </div>
         </div>
