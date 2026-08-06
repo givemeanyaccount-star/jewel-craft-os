@@ -226,7 +226,7 @@ export default function Dashboard() {
 
         {/* Rates + trend side by side */}
         <div className="grid gap-4 xl:grid-cols-12">
-          <div className="grid gap-4 sm:grid-cols-3 xl:col-span-5 xl:grid-cols-1">
+          <div className="grid gap-4 sm:grid-cols-3 xl:col-span-5 xl:auto-rows-min xl:grid-cols-1">
             <RateCard label="Gold 24K" ratePerGram={gold24?.latest ?? null} history={gold24?.history} />
             <RateCard label="Gold 22K" ratePerGram={gold22?.latest ?? null} />
             <RateCard label="Silver" ratePerGram={silver?.latest ?? null} history={silver?.history} />
@@ -250,11 +250,11 @@ export default function Dashboard() {
         </div>
 
         {/* Chart + activity */}
-        <div className="grid items-stretch gap-4 xl:grid-cols-7">
-          <div className="xl:col-span-2">
+        <div className="grid items-stretch gap-4 xl:grid-cols-3">
+          <div className="xl:col-span-1">
             <VolumeChart data={volume} />
           </div>
-          <div className="xl:col-span-5">
+          <div className="xl:col-span-2">
             <ActivityLog entries={activity} />
           </div>
         </div>
