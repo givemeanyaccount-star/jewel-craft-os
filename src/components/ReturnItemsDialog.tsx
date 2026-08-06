@@ -45,12 +45,25 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
   const [printTargets, setPrintTargets] = useState<any[]>([]);
   const [receipt, setReceipt] = useState<any>(null);
 
-  // Share of the final bill that each rupee of gross line value is actually worth.
+  // Old gold trade-in linked to this sale
+  const oldGoldCredit = Number(invoice?.old_gold_credit ?? 0);
+  const [og, setOg] = useState<{ id: string | null; metal: string; fineWeight: number; derived: boolean }>(
+    { id: null, metal: "gold", fineWeight: 0, derived: true },
+  );
+  const [ogMode, setOgMode] = useState<"metal" | "revalue">("metal");
+  const [ogRate, setOgRate] = useState<number>(0);
+  const [taxWithheld, setTaxWithheld] = useState<number>(0);
+  const [taxEdited, setTaxEdited] = useState(false);
+
+  const taxTotal = Number(invoice?.vat_amount ?? 0) + Number(invoice?.sd_tax ?? 0) + Number(invoice?.luxury_tax ?? 0);
+
+  // Goods value of the bill: final total with taxes and old gold credit added back,
+  // so both are settled once, explicitly, instead of hiding inside the line share.
   const factor = useMemo(() => {
-    const gross = returnable.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
-    const net = Number(invoice?.total ?? 0);
-    if (!gross || !net) return 1;
-    return Math.max(0, Math.min(1.5, net / gross));
+    const gross = items.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
+    const goods = Number(invoice?.total ?? 0) + taxTotal + oldGoldCredit;
+    if (!gross || !goods) return 1;
+    return Math.max(0, Math.min(1.5, goods / gross));
   }, [invoice, items]);
 
   function proportional(it: any) {
@@ -60,6 +73,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
   useEffect(() => {
     if (!open) return;
     setReason(""); setRefundMethod("cash"); setPrintTargets([]); setReceipt(null);
+    setOgMode("metal"); setTaxEdited(false);
     const init: Record<string, ReturnLine> = {};
     for (const it of returnable) {
       init[it.id] = { itemId: it.id, selected: false, disposition: "restock", refundAmount: proportional(it) };
@@ -67,9 +81,49 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
     setLines(init);
   }, [open]);
 
+  // Resolve the traded-in metal / fine weight for the old gold settlement panel.
+  useEffect(() => {
+    if (!open || !invoice?.id || oldGoldCredit <= 0) return;
+    (async () => {
+      const [{ data: purchases }, rates] = await Promise.all([
+        supabase.from("old_gold_purchases").select("id, metal, fine_weight, rate_per_gram, total_amount, notes").eq("linked_invoice_id", invoice.id),
+        fetchLatestFineRates(),
+      ]);
+      const rows = (purchases ?? []) as any[];
+      if (rows.length) {
+        const metal = rows[0].metal ?? "gold";
+        const fine = rows.reduce((s, r) => s + (Number(r.fine_weight) || 0), 0);
+        setOg({ id: rows.length === 1 ? rows[0].id : null, metal, fineWeight: fine, derived: false });
+        setOgRate(Number(rows[0].rate_per_gram) || 0);
+      } else {
+        const metal = "gold";
+        const rate = billFineRate(items, metal, rates);
+        setOg({ id: null, metal, fineWeight: fineEquivalentGrams(oldGoldCredit, rate) || 0, derived: true });
+        setOgRate(rate);
+      }
+    })();
+  }, [open, invoice?.id]);
+
   const selectedLines = Object.values(lines).filter((l) => l.selected);
-  const totalRefund = selectedLines.reduce((s, l) => s + (Number(l.refundAmount) || 0), 0);
+  const goodsRefund = selectedLines.reduce((s, l) => s + (Number(l.refundAmount) || 0), 0);
   const allSelected = returnable.length > 0 && selectedLines.length === returnable.length;
+  const fullReturn = allSelected && returnable.length === items.length;
+
+  // Default tax withheld = returned lines' share of every tax on the bill.
+  const defaultTax = useMemo(() => {
+    const gross = items.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
+    const sel = selectedLines.reduce((s, l) => s + (Number(items.find((i) => i.id === l.itemId)?.line_total) || 0), 0);
+    if (!gross || !taxTotal) return 0;
+    return Math.round((taxTotal * sel / gross) * 100) / 100;
+  }, [selectedLines, items, taxTotal]);
+
+  useEffect(() => { if (!taxEdited) setTaxWithheld(defaultTax); }, [defaultTax, taxEdited]);
+
+  const ogRevalued = Math.round((og.fineWeight * (Number(ogRate) || 0)) * 100) / 100;
+  const showOgPanel = oldGoldCredit > 0 && fullReturn;
+  const ogDeduction = showOgPanel ? (ogMode === "metal" ? oldGoldCredit : ogRevalued) : 0;
+  const totalRefund = Math.max(0, Math.round((goodsRefund - (Number(taxWithheld) || 0) - ogDeduction) * 100) / 100);
+
 
   function patch(id: string, p: Partial<ReturnLine>) {
     setLines((prev) => ({ ...prev, [id]: { ...prev[id], ...p } }));
