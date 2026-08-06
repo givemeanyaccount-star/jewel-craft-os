@@ -290,7 +290,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
               {receipt.oldGold && (
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Old gold {receipt.oldGold.mode === "metal" ? "returned to customer" : `revalued @ ${npr(receipt.oldGold.rate)}/g`}</span>
-                  <span>− {npr(receipt.oldGold.deduction)}</span>
+                  <span>{receipt.oldGold.deduction >= 0 ? "−" : "+"} {npr(Math.abs(receipt.oldGold.deduction))}</span>
                 </div>
               )}
               <div className="flex justify-between"><span>Net refund</span><span className="font-medium">{npr(receipt.totalRefund)}</span></div>
