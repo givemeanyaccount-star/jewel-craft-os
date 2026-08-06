@@ -473,10 +473,14 @@ function printRefundReceipt(r: any) {
           <thead><tr><th>Returned item</th><th class="r">Bill value</th><th class="r">Refund</th></tr></thead>
           <tbody>${rows}</tbody>
           <tfoot>
-            <tr><td class="r" colspan="2">Total refund</td><td class="r"><b>${escapeHtml(npr(r.totalRefund))}</b></td></tr>
+            <tr><td class="r" colspan="2">Goods refund</td><td class="r">${escapeHtml(npr(r.goodsRefund ?? r.totalRefund))}</td></tr>
+            ${Number(r.taxWithheld) > 0 ? `<tr><td class="r" colspan="2">Less: tax withheld (non-refundable)</td><td class="r">− ${escapeHtml(npr(r.taxWithheld))}</td></tr>` : ""}
+            ${r.oldGold ? `<tr><td class="r" colspan="2">Less: old gold settlement — ${r.oldGold.mode === "metal" ? "metal returned to customer" : `${escapeHtml(r.oldGold.fineWeight.toFixed(3))} g fine ${escapeHtml(METAL_LABEL[r.oldGold.metal] ?? r.oldGold.metal)} @ ${escapeHtml(npr(r.oldGold.rate))}/g`}</td><td class="r">− ${escapeHtml(npr(r.oldGold.deduction))}</td></tr>` : ""}
+            <tr><td class="r" colspan="2">Net refund</td><td class="r"><b>${escapeHtml(npr(r.totalRefund))}</b></td></tr>
             <tr><td class="r" colspan="2">Paid back (${escapeHtml(String(r.method).replace("_", " "))})</td><td class="r">${escapeHtml(npr(r.cashRefund))}</td></tr>
             ${r.creditReleased > 0 ? `<tr><td class="r" colspan="2">Adjusted against outstanding credit</td><td class="r">${escapeHtml(npr(r.creditReleased))}</td></tr>` : ""}
           </tfoot>
+
         </table>
         ${r.factor !== 1 ? `<p class="note">Refunds are computed on each item's proportional share of the final bill, after discount and credits (${Math.round(r.factor * 10000) / 100}% of gross line value).</p>` : ""}
         ${r.reason ? `<p class="note">Reason: ${escapeHtml(r.reason)}</p>` : ""}
