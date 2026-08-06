@@ -286,16 +286,19 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
               );
             })}
             <tr>
-              <td
-                colSpan={14}
-                style={{
-                  height: items.length <= 12 ? "96px" : "0px",
-                  borderLeft: bd,
-                  borderRight: bd,
-                  borderBottom: "1.5px solid #000",
-                }}
-              ></td>
+              {Array.from({ length: 14 }).map((_, i) => (
+                <td
+                  key={i}
+                  style={{
+                    height: items.length <= 12 ? "96px" : "0px",
+                    borderLeft: bd,
+                    borderRight: bd,
+                    borderBottom: "1.5px solid #000",
+                  }}
+                ></td>
+              ))}
             </tr>
+
           </tbody>
         </table>
 
