@@ -143,15 +143,17 @@ ${job.includeAppStyles ? appStyles() : ""}
 
 export function PrintPreviewHost() {
   const [job, setJob] = useState<PrintJob | null>(null);
+  const [setup, setSetup] = useState<Setup>({ paper: "a4", orientation: "portrait", margin: 10 });
   const [busy, setBusy] = useState(false);
   const [boxWidth, setBoxWidth] = useState(0);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    listener = (j) => setJob(j);
+    listener = (j) => { setSetup(defaultSetup(j)); setJob(j); };
     return () => { listener = null; };
   }, []);
+
 
   useEffect(() => {
     if (!job) { setBoxWidth(0); return; }
