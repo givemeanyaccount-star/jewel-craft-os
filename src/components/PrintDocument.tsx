@@ -170,7 +170,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
       <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#000", border: "1.5px solid #000" }}>
 
         {/* HEADER */}
-        <div style={{ display: "flex", padding: "8px 10px", gap: "10px", alignItems: "flex-start" }}>
+        <div className="pd-keep" style={{ display: "flex", padding: "8px 10px", gap: "10px", alignItems: "flex-start" }}>
           <div style={{ width: "240px", fontSize: "11px", fontWeight: "bold", lineHeight: 2 }}>
             <div>
               PAN No:{" "}
