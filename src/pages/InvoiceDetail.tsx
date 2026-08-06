@@ -142,6 +142,8 @@ export default function InvoiceDetail() {
               {Number(inv.sd_tax) > 0 && <Row label={`SD tax ${inv.sd_tax_rate}% (gold + making − old gold)`} value={npr(inv.sd_tax)} />}
               {Number(inv.luxury_tax) > 0 && <Row label={`Luxury tax ${inv.luxury_tax_rate}% (gold + making − old gold)`} value={npr(inv.luxury_tax)} />}
               <Row label="Old gold credit" value={`- ${npr(inv.old_gold_credit)}`} />
+              {oldGoldEq && <div className="text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
+
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(inv.total)}</span></div>
               <Row label="Paid" value={npr(inv.amount_paid)} />
               <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(inv.balance_due)}</span></div>
