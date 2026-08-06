@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,16 +11,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Trash2, Search, FileText, Eye, Pencil } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, Search, FileText, Eye, Pencil, CalendarIcon, ShoppingCart } from "lucide-react";
 import {
   npr, nextNumber, computeInvoiceTaxes, discountForTargetTotal,
 } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { QRScanButton } from "@/components/QRScanButton";
 import { toast } from "sonner";
 import { CartRow, recompute, lineDisplay, Detail } from "@/pages/POS";
 import { ItemDialog } from "@/pages/Inventory";
+import { deleteQuotation, releaseQuotationItems, reserveQuotationItems, sweepExpiredQuotations } from "@/lib/quotations";
+
+const isoDate = (d: Date) => format(d, "yyyy-MM-dd");
 
 export default function Quotations() {
   const { user, hasRole } = useAuth();
@@ -27,37 +35,76 @@ export default function Quotations() {
   const canWrite = hasRole("admin") || hasRole("manager") || hasRole("sales");
   const [list, setList] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { init(); }, []);
+  async function init() {
+    await sweepExpiredQuotations();
+    load();
+  }
   async function load() {
     const { data } = await supabase.from("quotations")
       .select("*, customers(full_name)").order("created_at", { ascending: false }).limit(200);
     setList(data ?? []);
   }
 
+  async function remove(q: any) {
+    if (!confirm(`Delete quotation ${q.quote_number}? Reserved items will return to stock.`)) return;
+    try {
+      await deleteQuotation(q.id);
+      toast.success("Quotation deleted");
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  }
+
+  function convert(q: any) {
+    nav("/pos", { state: { quotationId: q.id, quoteNumber: q.quote_number } });
+  }
+
   return (
     <AppLayout title="Quotations" actions={canWrite && (
-      <Button size="sm" onClick={() => setOpen(true)}><Plus className="mr-1 h-4 w-4" /> New Quotation</Button>
+      <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="mr-1 h-4 w-4" /> New Quotation</Button>
     )}>
       <Card><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
             <TableHead>Quote #</TableHead><TableHead>Customer</TableHead><TableHead>Date</TableHead>
+            <TableHead>Valid until</TableHead>
             <TableHead>Status</TableHead><TableHead className="text-right">Total</TableHead><TableHead />
           </TableRow></TableHeader>
           <TableBody>
-            {list.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No quotations</TableCell></TableRow>
+            {list.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No quotations</TableCell></TableRow>
               : list.map((q) => (
                 <TableRow key={q.id} className="cursor-pointer" onClick={() => nav(`/quotations/${q.id}`)}>
                   <TableCell className="font-medium">{q.quote_number}</TableCell>
                   <TableCell>{q.customers?.full_name ?? "—"}</TableCell>
                   <TableCell>{new Date(q.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell className="capitalize">{q.status}</TableCell>
+                  <TableCell>{q.valid_until ? new Date(q.valid_until).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={q.status === "expired" ? "destructive" : "secondary"} className="capitalize">{q.status}</Badge>
+                  </TableCell>
                   <TableCell className="text-right">{npr(q.total)}</TableCell>
-                  <TableCell className="w-10">
-                    <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); nav(`/quotations/${q.id}`); }}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                  <TableCell className="w-40" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-end gap-0.5">
+                      <Button size="icon" variant="ghost" title="View" onClick={() => nav(`/quotations/${q.id}`)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {canWrite && q.status !== "expired" && (
+                        <>
+                          <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditing(q); setOpen(true); }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" title="Convert to sale" onClick={() => convert(q)}>
+                            <ShoppingCart className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {canWrite && q.status === "expired" && (
+                        <Button size="icon" variant="ghost" title="Delete expired quotation" onClick={() => remove(q)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -65,14 +112,15 @@ export default function Quotations() {
         </Table>
       </CardContent></Card>
 
-      <QuotationBuilder open={open} onOpenChange={setOpen} userId={user?.id ?? null}
-        onSaved={(id) => { setOpen(false); load(); if (id) nav(`/quotations/${id}`); }} />
+      <QuotationBuilder open={open} onOpenChange={setOpen} userId={user?.id ?? null} editing={editing}
+        onSaved={(id) => { setOpen(false); setEditing(null); load(); if (id) nav(`/quotations/${id}`); }} />
     </AppLayout>
   );
 }
 
-function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
-  open: boolean; onOpenChange: (v: boolean) => void; userId: string | null; onSaved: (id?: string) => void;
+function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
+  open: boolean; onOpenChange: (v: boolean) => void; userId: string | null;
+  editing: any | null; onSaved: (id?: string) => void;
 }) {
   const { settings } = useAppSettings();
   const [customers, setCustomers] = useState<any[]>([]);
@@ -88,9 +136,11 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
   const [targetTotal, setTargetTotal] = useState("");
   const [notes, setNotes] = useState("");
   const [validDays, setValidDays] = useState(7);
+  const [validUntil, setValidUntil] = useState<string>(isoDate(new Date(Date.now() + 7 * 86400000)));
   const [saving, setSaving] = useState(false);
   const [newItemOpen, setNewItemOpen] = useState(false);
   const [editItem, setEditItem] = useState<{ row: number; item: any } | null>(null);
+  const [originalItemIds, setOriginalItemIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -98,6 +148,44 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
     supabase.from("categories").select("id, name").order("name").then(({ data }) => setCategories(data ?? []));
     supabase.from("locations").select("id, name").order("name").then(({ data }) => setLocations(data ?? []));
   }, [open]);
+
+  // Load an existing quotation for editing, or reset for a new one
+  useEffect(() => {
+    if (!open) return;
+    if (!editing) {
+      setCustomerId(null); setCart([]); setDiscount(0); setOldGoldCredit(0); setNotes("");
+      setTargetTotal(""); setValidDays(7); setValidUntil(isoDate(new Date(Date.now() + 7 * 86400000)));
+      setOriginalItemIds([]);
+      return;
+    }
+    (async () => {
+      const { data: lines } = await supabase.from("quotation_items").select("*").eq("quotation_id", editing.id);
+      setCustomerId(editing.customer_id);
+      setDiscount(Number(editing.discount ?? 0));
+      setOldGoldCredit(Number(editing.old_gold_credit ?? 0));
+      setNotes(editing.notes ?? "");
+      setValidUntil(editing.valid_until ? String(editing.valid_until).slice(0, 10) : isoDate(new Date()));
+      setOriginalItemIds((lines ?? []).map((l: any) => l.inventory_item_id).filter(Boolean));
+      setCart((lines ?? []).map((l: any) => recompute({
+        inventory_item_id: l.inventory_item_id,
+        description: l.description,
+        metal: l.metal ?? undefined, purity: l.purity ?? undefined,
+        gross_weight: Number(l.gross_weight ?? 0),
+        stone_weight: Number(l.stone_weight ?? 0),
+        weight: Number(l.weight ?? 0),
+        rate: Number(l.rate ?? 0),
+        making_charge: Number(l.making_charge ?? 0),
+        wastage_amount: Number(l.wastage_amount ?? 0),
+        stone_value: Number(l.stone_value ?? 0),
+        quantity: Number(l.quantity ?? 1),
+        line_total: Number(l.line_total ?? 0),
+        making_input: Number(l.making_input ?? 0),
+        making_type: (l.making_type ?? "per_gram") as any,
+        wastage_input: Number(l.wastage_input ?? 0),
+        wastage_type: (l.wastage_type ?? "percentage") as any,
+      })));
+    })();
+  }, [open, editing]);
 
   useEffect(() => {
     if (!open) return;
@@ -174,27 +262,48 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
     toast.success(`Discount set to ${npr(d)}`);
   }
 
+  function applyValidDays(days: number) {
+    setValidDays(days);
+    if (days > 0) setValidUntil(isoDate(new Date(Date.now() + days * 86400000)));
+  }
+
   async function save() {
+    if (!customerId) return toast.error("Select a customer for this quotation");
     if (cart.length === 0) return toast.error("Add at least one item");
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate.");
     setSaving(true);
     try {
-      const num = Math.floor(Date.now() / 1000) % 100000;
-      const qNumber = nextNumber("Q", num, 5);
-      const { data: q, error } = await supabase.from("quotations").insert({
-        quote_number: qNumber, customer_id: customerId, status: "draft",
+      const payload = {
+        customer_id: customerId,
         subtotal, stones_total: stonesTotal,
         vat_rate: settings.vat_enabled ? settings.vat_rate : 0, vat_amount: tax.vat,
         sd_tax_rate: settings.sd_tax_rate, sd_tax: tax.sdTax,
         luxury_tax_rate: 0, luxury_tax: 0,
         old_gold_credit: oldGoldCredit,
         discount, total: tax.total, notes: notes || null,
-        valid_until: new Date(Date.now() + validDays * 86400000).toISOString().slice(0, 10),
-        created_by: userId,
-      } as any).select().single();
-      if (error) throw error;
+        valid_until: validUntil || null,
+      };
+
+      let quotationId = editing?.id as string | undefined;
+      let quoteNumber = editing?.quote_number as string | undefined;
+
+      if (editing) {
+        const { error } = await supabase.from("quotations").update(payload as any).eq("id", editing.id);
+        if (error) throw error;
+        const { error: dErr } = await supabase.from("quotation_items").delete().eq("quotation_id", editing.id);
+        if (dErr) throw dErr;
+      } else {
+        const num = Math.floor(Date.now() / 1000) % 100000;
+        quoteNumber = nextNumber("Q", num, 5);
+        const { data: q, error } = await supabase.from("quotations").insert({
+          ...payload, quote_number: quoteNumber, status: "draft", created_by: userId,
+        } as any).select().single();
+        if (error) throw error;
+        quotationId = q.id;
+      }
+
       const lines = cart.map((r) => ({
-        quotation_id: q.id,
+        quotation_id: quotationId,
         inventory_item_id: r.inventory_item_id,
         description: r.description,
         metal: r.metal, purity: r.purity,
@@ -206,23 +315,33 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
       }));
       const { error: lErr } = await supabase.from("quotation_items").insert(lines as any);
       if (lErr) throw lErr;
-      toast.success(`Quotation ${qNumber} saved`);
-      onSaved(q.id);
+
+      // Reserve current items, release any that were dropped while editing
+      const currentIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
+      await reserveQuotationItems(currentIds);
+      const dropped = originalItemIds.filter((id) => !currentIds.includes(id));
+      await releaseQuotationItems(dropped);
+
+      toast.success(`Quotation ${quoteNumber} saved — items reserved`);
+      onSaved(quotationId);
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> New Quotation</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2">
+          <FileText className="h-5 w-5" /> {editing ? `Edit Quotation ${editing.quote_number}` : "New Quotation"}
+        </DialogTitle></DialogHeader>
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-3 lg:col-span-2">
             <div>
-              <Label>Customer</Label>
-              <Select value={customerId ?? "walkin"} onValueChange={(v) => setCustomerId(v === "walkin" ? null : v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Customer *</Label>
+              <Select value={customerId ?? ""} onValueChange={(v) => setCustomerId(v)}>
+                <SelectTrigger className={!customerId ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Select customer (required)" />
+                </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="walkin">Walk-in / prospect</SelectItem>
                   {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} {c.phone && `· ${c.phone}`}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -351,7 +470,24 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
               </div>
               <div>
                 <Label>Valid for (days)</Label>
-                <Input type="number" value={validDays} onChange={(e) => setValidDays(Number(e.target.value) || 7)} />
+                <Input type="number" value={validDays} onChange={(e) => applyValidDays(Number(e.target.value) || 0)} />
+              </div>
+              <div>
+                <Label>Or pick expiry date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline"
+                      className={cn("w-full justify-start text-left font-normal", !validUntil && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {validUntil ? format(new Date(validUntil), "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={validUntil ? new Date(validUntil) : undefined}
+                      onSelect={(d) => d && setValidUntil(isoDate(d))}
+                      initialFocus className={cn("p-3 pointer-events-auto")} />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <Label>Notes</Label>
@@ -362,7 +498,9 @@ function QuotationBuilder({ open, onOpenChange, userId, onSaved }: {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving || cart.length === 0}>{saving ? "Saving..." : "Save Quotation"}</Button>
+          <Button onClick={save} disabled={saving || cart.length === 0 || !customerId}>
+            {saving ? "Saving..." : editing ? "Update Quotation" : "Save Quotation"}
+          </Button>
         </DialogFooter>
 
         <ItemDialog open={newItemOpen} onOpenChange={setNewItemOpen}

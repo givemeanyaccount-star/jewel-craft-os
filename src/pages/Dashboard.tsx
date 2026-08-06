@@ -13,9 +13,11 @@ import {
   MissingIdCard,
   OutstandingCreditCard,
   PendingCreditCard,
+  PendingQuotationsCard,
   RepairStagesCard,
   TodaySalesCard,
 } from "@/components/dashboard/OpsCards";
+import { pendingQuotationStats, sweepExpiredQuotations, PendingQuotationStats } from "@/lib/quotations";
 import { DailyRateDialog, todayIsoDate } from "@/components/DailyRateDialog";
 import { AlertCircle } from "lucide-react";
 
@@ -42,6 +44,7 @@ export default function Dashboard() {
   const [rateDialog, setRateDialog] = useState(false);
   const [rates, setRates] = useState<Record<string, { latest: number | null; history: RatePoint[] }>>({});
   const [volume, setVolume] = useState<VolumePoint[]>([]);
+  const [quoteStats, setQuoteStats] = useState<PendingQuotationStats>({ count: 0, value: 0, expiringSoon: 0 });
 
   useEffect(() => {
     load();
@@ -116,6 +119,8 @@ export default function Dashboard() {
     for (const r of repairs.data ?? []) rc[r.status] = (rc[r.status] ?? 0) + 1;
     setRepairCounts(rc);
     setMissingIdCount(missingId.count ?? 0);
+    await sweepExpiredQuotations();
+    setQuoteStats(await pendingQuotationStats());
     if ((todayRate.data ?? []).length === 0) setRateDialog(true);
 
     // ── metal rates ───────────────────────────────────────
@@ -235,10 +240,11 @@ export default function Dashboard() {
         <RateTrendChart goldHistory={gold24?.history} silverHistory={silver?.history} />
 
         {/* Ops & alerts */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
           <OutstandingCreditCard amount={stats?.pendingBalance ?? 0} customers={stats?.creditCustomers ?? 0} />
           <RepairStagesCard counts={repairCounts} />
           <PendingCreditCard amount={stats?.pendingBalance ?? 0} customers={stats?.creditCustomers ?? 0} />
+          <PendingQuotationsCard count={quoteStats.count} value={quoteStats.value} expiringSoon={quoteStats.expiringSoon} />
           {missingIdCount > 0 && hasPermission("old_gold_purchase") ? (
             <MissingIdCard count={missingIdCount} />
           ) : (

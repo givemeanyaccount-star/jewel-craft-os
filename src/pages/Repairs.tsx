@@ -159,6 +159,7 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
   }
 
   async function save() {
+    if (!customer?.id) return toast.error("Select a customer for this repair");
     if (items.some((it) => !it.item_description?.trim())) return toast.error("Every item needs a description");
     if (items.some((it) => !it.issue_description?.trim())) return toast.error("Every item needs an issue description");
     setSaving(true);
@@ -167,7 +168,7 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
       const repairNo = nextNumber("REP", num, 5);
       const { data: repair, error } = await supabase.from("repairs").insert({
         repair_no: repairNo,
-        customer_id: customer?.id || null,
+        customer_id: customer.id,
         expected_delivery: header.expected_delivery || null,
         special_notes: header.special_notes || null,
         created_by: user?.id,

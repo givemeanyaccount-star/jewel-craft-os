@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { ItemDialog } from "@/pages/Inventory";
 import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
 import { PickedCustomer } from "@/components/CustomerSelector";
+
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
 
@@ -91,6 +92,9 @@ export default function POS() {
   const canManageInventory = hasPermission("inventory_manage");
   const { settings } = useAppSettings();
   const nav = useNavigate();
+  const location = useLocation();
+  const quotationId: string | null = (location.state as any)?.quotationId ?? null;
+  const quotationNumber: string | null = (location.state as any)?.quoteNumber ?? null;
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
@@ -128,6 +132,43 @@ export default function POS() {
     supabase.from("metal_rates").select("metal, purity, rate_per_gram, effective_date, source")
       .eq("effective_date", today).order("metal").then(({ data }) => setTodayRates(data ?? []));
   }, []);
+
+  // Prefill from an accepted quotation
+  useEffect(() => {
+    if (!quotationId) return;
+    (async () => {
+      const [{ data: q }, { data: lines }] = await Promise.all([
+        supabase.from("quotations").select("*").eq("id", quotationId).maybeSingle(),
+        supabase.from("quotation_items").select("*").eq("quotation_id", quotationId),
+      ]);
+      if (!q) return toast.error("Quotation not found");
+      setCustomerId(q.customer_id);
+      setDiscount(Number(q.discount ?? 0));
+      setOldGoldCredit(Number(q.old_gold_credit ?? 0));
+      setNotes(q.notes ?? "");
+      setCart((lines ?? []).map((l: any) => recompute({
+        inventory_item_id: l.inventory_item_id,
+        description: l.description,
+        metal: l.metal ?? undefined, purity: l.purity ?? undefined,
+        gross_weight: Number(l.gross_weight ?? 0),
+        stone_weight: Number(l.stone_weight ?? 0),
+        weight: Number(l.weight ?? 0),
+        rate: Number(l.rate ?? 0),
+        making_charge: Number(l.making_charge ?? 0),
+        wastage_amount: Number(l.wastage_amount ?? 0),
+        stone_value: Number(l.stone_value ?? 0),
+        quantity: Number(l.quantity ?? 1),
+        line_total: Number(l.line_total ?? 0),
+        making_input: Number(l.making_input ?? 0),
+        making_type: (l.making_type ?? "per_gram") as any,
+        wastage_input: Number(l.wastage_input ?? 0),
+        wastage_type: (l.wastage_type ?? "percentage") as any,
+      })));
+      toast.success(`Loaded quotation ${q.quote_number}`);
+    })();
+  }, [quotationId]);
+
+
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -231,6 +272,7 @@ export default function POS() {
   }
 
   async function checkout() {
+    if (!customerId) return toast.error("Select a customer for this sale");
     if (cart.length === 0) return toast.error("Add at least one item");
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
     setSaving(true);
@@ -294,6 +336,13 @@ export default function POS() {
         await supabase.from("customers").update({ balance: Number(cust?.balance ?? 0) + balance }).eq("id", customerId);
       }
 
+      if (quotationId) {
+        // items are already marked sold above — remove the quotation without releasing stock
+        await supabase.from("quotation_items").delete().eq("quotation_id", quotationId);
+        await supabase.from("quotations").delete().eq("id", quotationId);
+      }
+
+
       toast.success(`Invoice ${invNumber} created`);
       nav(`/invoices/${inv.id}`);
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
@@ -307,10 +356,11 @@ export default function POS() {
             <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
             <CardContent>
               <div className="flex gap-2">
-                <Select value={customerId ?? "walkin"} onValueChange={(v) => setCustomerId(v === "walkin" ? null : v)}>
-                  <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                <Select value={customerId ?? ""} onValueChange={(v) => setCustomerId(v)}>
+                  <SelectTrigger className={`flex-1 ${!customerId ? "border-destructive" : ""}`}>
+                    <SelectValue placeholder="Select customer (required)" />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="walkin">Walk-in customer</SelectItem>
                     {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} {c.phone && `· ${c.phone}`}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -318,8 +368,15 @@ export default function POS() {
                   <UserPlus className="mr-1 h-4 w-4" /> New
                 </Button>
               </div>
+              {!customerId && <p className="mt-1.5 text-xs text-muted-foreground">Every sale must be linked to a customer.</p>}
+              {quotationNumber && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Converting quotation <strong>{quotationNumber}</strong> — it will be removed once this sale is completed.
+                </p>
+              )}
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -514,7 +571,7 @@ export default function POS() {
               <Label>Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
-            <Button className="w-full" onClick={checkout} disabled={saving || cart.length === 0}>
+            <Button className="w-full" onClick={checkout} disabled={saving || cart.length === 0 || !customerId}>
               {saving ? "Processing..." : "Complete Sale"}
             </Button>
           </CardContent>
