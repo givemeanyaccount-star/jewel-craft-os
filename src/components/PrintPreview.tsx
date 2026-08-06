@@ -180,7 +180,7 @@ export function PrintPreviewHost() {
       // px per page slice, derived from the rendered canvas width.
       const pxPerMm = canvas.width / g.width;
       const pageHeightPx = Math.floor(g.height * pxPerMm);
-      const pages = Math.max(1, Math.ceil(canvas.height / pageHeightPx));
+      const pages = Math.max(1, Math.ceil((canvas.height - 4) / pageHeightPx));
       for (let i = 0; i < pages; i++) {
         const sliceH = Math.min(pageHeightPx, canvas.height - i * pageHeightPx);
         const slice = document.createElement("canvas");
