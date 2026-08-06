@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { npr, gms } from "@/lib/format";
 import { getSignedUrls } from "@/lib/storage";
 import { Printer, ArrowLeft } from "lucide-react";
+import { openPrintPreview } from "@/components/PrintPreview";
+
 
 export default function ItemDetail() {
   const { id } = useParams();

@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Printer } from "lucide-react";
 import { npr, gms } from "@/lib/format";
 import logoUrl from "@/assets/logo.png";
+import { openPrintPreview } from "@/components/PrintPreview";
+
 
 export default function PurchaseDetail() {
   const { id } = useParams();
