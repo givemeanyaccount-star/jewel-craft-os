@@ -35,6 +35,8 @@ import {
   DEFAULT_ROLE_PERMISSIONS,
   RolePermissionMatrix,
 } from "@/lib/permissions";
+import { logAudit } from "@/lib/audit";
+import AuditLog from "@/components/AuditLog";
 import { Loader2, Plus, Trash2, RotateCcw } from "lucide-react";
 
 interface UserRow {
@@ -101,6 +103,7 @@ const RoleManagement = () => {
 
   const toggle = async (userId: string, role: AppRole, hasRole: boolean) => {
     const key = `${userId}:${role}`;
+    const target = users.find((u) => u.id === userId);
     setPending(key);
     if (hasRole) {
       const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role);
@@ -109,6 +112,12 @@ const RoleManagement = () => {
       } else {
         setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, roles: u.roles.filter((r) => r !== role) } : u)));
         toast({ title: `Revoked ${role}` });
+        await logAudit({
+          action: "role_revoked",
+          target_user_id: userId,
+          target_email: target?.email ?? null,
+          details: { role },
+        });
       }
     } else {
       const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
@@ -117,25 +126,17 @@ const RoleManagement = () => {
       } else {
         setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, roles: [...u.roles, role] } : u)));
         toast({ title: `Assigned ${role}` });
+        await logAudit({
+          action: "role_granted",
+          target_user_id: userId,
+          target_email: target?.email ?? null,
+          details: { role },
+        });
       }
     }
     setPending(null);
   };
 
-  const removeUser = async (u: UserRow) => {
-    setPending(`del:${u.id}`);
-    const { data, error } = await supabase.functions.invoke("admin-users", {
-      body: { action: "delete", user_id: u.id },
-    });
-    setPending(null);
-    setDeleteTarget(null);
-    if (error || data?.error) {
-      toast({ title: "Delete failed", description: data?.error ?? error?.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "User removed" });
-    setUsers((prev) => prev.filter((x) => x.id !== u.id));
-  };
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase().trim();
