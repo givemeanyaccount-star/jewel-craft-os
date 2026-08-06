@@ -15,6 +15,8 @@ import { npr, gms, computeNetWeight } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import logoUrl from "@/assets/logo.png";
+import { openPrintPreview } from "@/components/PrintPreview";
+
 import { getSignedUrls } from "@/lib/storage";
 import { STATUS_LABEL, STATUS_COLOR } from "./Repairs";
 import { KarigarSelect, useKarigars } from "@/components/KarigarSelect";
@@ -381,12 +383,10 @@ function ReceiptDialog({ docType, onOpenChange, repair, items }: any) {
 function printArea(elementId: string) {
   const el = document.getElementById(elementId);
   if (!el) return;
-  const w = window.open("", "_blank", "width=800,height=900");
-  if (!w) return;
-  w.document.write(`<html><head><title>Repair Receipt</title>
-    <style>body{font-family:sans-serif;margin:20px;} table{width:100%;border-collapse:collapse;} @page{size:A4;margin:10mm;}</style>
-  </head><body>${el.innerHTML}</body></html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { w.print(); w.close(); }, 300);
+  openPrintPreview({
+    title: "Repair Receipt",
+    html: el.innerHTML,
+    css: `body{font-family:sans-serif;margin:20px;} table{width:100%;border-collapse:collapse;} @page{size:A4;margin:10mm;}`,
+  });
 }
+

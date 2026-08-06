@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Printer } from "lucide-react";
 import { npr, gms } from "@/lib/format";
 import logoUrl from "@/assets/logo.png";
+import { openPrintPreview } from "@/components/PrintPreview";
+
 
 export default function PurchaseDetail() {
   const { id } = useParams();
@@ -26,15 +28,29 @@ export default function PurchaseDetail() {
     setItems(it.data ?? []);
   }
 
+  function printReceipt() {
+    const el = document.getElementById("purchase-print");
+    if (!el) return;
+    openPrintPreview({
+      title: `Purchase ${purchase?.purchase_no ?? ""}`,
+      html: el.innerHTML,
+      includeAppStyles: true,
+      css: `.no-print{display:none!important} .print-only{display:block!important} @page{size:A4;margin:10mm}`,
+    });
+  }
+
   if (!purchase) return <AppLayout><p>Loading...</p></AppLayout>;
+
+
 
   return (
     <AppLayout title={purchase.purchase_no} actions={
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)} className="no-print"><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
-        <Button size="sm" variant="outline" onClick={() => window.print()} className="no-print"><Printer className="mr-1 h-4 w-4" /> Print</Button>
+        <Button size="sm" variant="outline" onClick={printReceipt} className="no-print"><Printer className="mr-1 h-4 w-4" /> Print</Button>
       </>
     }>
+      <div id="purchase-print">
       <div className="print-only mb-6 flex items-center justify-between border-b-2 border-black pb-4">
         <div className="flex items-center gap-3">
           <img src={logoUrl} alt="JewelMaster" className="h-14 w-14 object-contain" />
@@ -96,6 +112,7 @@ export default function PurchaseDetail() {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </AppLayout>
   );

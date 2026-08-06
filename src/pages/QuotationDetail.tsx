@@ -42,7 +42,7 @@ export default function QuotationDetail() {
         {q.status !== "expired" && (
           <Button size="sm" onClick={acceptAndSell} className="no-print"><FileCheck className="mr-1 h-4 w-4" /> Accept &amp; create sale</Button>
         )}
-        <Button size="sm" variant="outline" onClick={() => printDocument(`quote-print-${q.id}`)} className="no-print"><Printer className="mr-1 h-4 w-4" /> Print</Button>
+        <Button size="sm" variant="outline" onClick={() => printDocument(`quote-print-${q.id}`, `Estimate ${q.quote_number}`)} className="no-print"><Printer className="mr-1 h-4 w-4" /> Print</Button>
       </>
     }>
       <PrintDocument kind="estimate" doc={q} items={items} domId={`quote-print-${q.id}`} />

@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { npr } from "@/lib/format";
+import { openPrintPreview } from "@/components/PrintPreview";
+
 import { Printer, Undo2 } from "lucide-react";
 
 const REFUND_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
@@ -256,20 +258,14 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
 }
 
 function printTag(item: { sku: string; name: string }) {
-  const w = window.open("", "_blank", "width=400,height=300");
-  if (!w) return;
-  w.document.write(`<html><head><title>Tag</title>
-    <style>
-      body{font-family:sans-serif;margin:0;padding:8mm;}
+  openPrintPreview({
+    title: `Tag ${item.sku}`,
+    html: `<div class="tag"><div class="name">${item.name}</div><div class="sku">${item.sku}</div></div>`,
+    css: `body{font-family:sans-serif;margin:0;padding:8mm;}
       .tag{border:1px dashed #999;padding:6mm;width:60mm;}
       .name{font-size:11px;font-weight:600;}
       .sku{font-size:9px;color:#555;margin-top:2mm;}
-      @page{size:auto;margin:5mm;}
-    </style>
-  </head><body>
-    <div class="tag"><div class="name">${item.name}</div><div class="sku">${item.sku}</div></div>
-  </body></html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { w.print(); w.close(); }, 300);
+      @page{size:auto;margin:5mm;}`,
+  });
 }
+

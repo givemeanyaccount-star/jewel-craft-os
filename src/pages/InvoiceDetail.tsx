@@ -82,7 +82,7 @@ export default function InvoiceDetail() {
     <AppLayout title={inv.invoice_number} actions={
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
-        <Button size="sm" variant="outline" onClick={() => printDocument(`invoice-print-${inv.id}`)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
+        <Button size="sm" variant="outline" onClick={() => printDocument(`invoice-print-${inv.id}`, `Invoice ${inv.invoice_number}`)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
         {cancellable && hasPermission("invoice_cancel_refund") && (
           <Button size="sm" variant="outline" onClick={() => setReturnOpen(true)}>
             <Undo2 className="mr-1 h-4 w-4" /> Return item(s)

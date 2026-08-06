@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { npr, gms } from "@/lib/format";
 import { getSignedUrls } from "@/lib/storage";
 import { Printer, ArrowLeft } from "lucide-react";
+import { openPrintPreview } from "@/components/PrintPreview";
+
 
 export default function ItemDetail() {
   const { id } = useParams();
@@ -43,14 +45,13 @@ export default function ItemDetail() {
   function printTag() {
     const canvas = qrRef.current; if (!canvas) return;
     const dataUrl = canvas.toDataURL("image/png");
-    const w = window.open("", "_blank"); if (!w) return;
     const logo = `${window.location.origin}/logo.png`;
     const priceLine = `${item.metal.toUpperCase()} · ${item.purity} · ${Number(item.net_weight).toFixed(3)}g net`;
-    w.document.write(`<html><head><title>Tag ${item.sku}</title>
-      <style>
+    openPrintPreview({
+      title: `Tag ${item.sku}`,
+      css: `
         @page { size: 55mm 85mm; margin: 3mm; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Helvetica Neue', system-ui, sans-serif; margin: 0; color: #111; }
+        body { font-family: 'Helvetica Neue', system-ui, sans-serif; margin: 0; padding: 3mm; color: #111; }
         .tag { width: 49mm; padding: 3mm; border: 0.4mm solid #111; border-radius: 2mm; text-align: center; }
         .brand { display:flex; align-items:center; justify-content:center; gap:2mm; border-bottom: 0.2mm solid #ddd; padding-bottom:2mm; }
         .brand img { width: 8mm; height: 8mm; object-fit: contain; }
@@ -60,19 +61,18 @@ export default function ItemDetail() {
         .qr { margin: 1mm auto; }
         .sku { font-family: 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.05em; margin-top: 1mm; }
         .foot { font-size: 6pt; color: #888; margin-top: 1mm; letter-spacing: 0.1em; text-transform: uppercase; }
-      </style>
-      </head><body><div class="tag">
+      `,
+      html: `<div class="tag">
         <div class="brand"><img src="${logo}"/><span>JEWELMASTER</span></div>
         <div class="name">${item.name}</div>
         <div class="meta">${priceLine}</div>
         <img class="qr" src="${dataUrl}" width="120" />
         <div class="sku">${item.sku}</div>
         <div class="foot">Scan · Verify · Trust</div>
-      </div>
-      <script>window.onload=()=>{setTimeout(()=>window.print(),100);};<\/script>
-      </body></html>`);
-    w.document.close();
+      </div>`,
+    });
   }
+
 
   return (
     <AppLayout title={item.name} actions={
