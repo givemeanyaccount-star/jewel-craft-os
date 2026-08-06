@@ -1,9 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { nprShort, npr } from "@/lib/format";
+import { ChartTooltipRow, ChartTooltipShell, formatFullDate } from "./ChartTooltip";
 
 export interface VolumePoint {
   day: string;
+  date?: string;
   sales: number;
   purchases: number;
 }
@@ -40,13 +42,22 @@ export function VolumeChart({ data }: { data: VolumePoint[] }) {
               />
               <Tooltip
                 cursor={{ fill: "hsl(var(--muted))" }}
-                contentStyle={{
-                  background: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "var(--radius)",
-                  fontSize: 12,
+                wrapperStyle={{ outline: "none", zIndex: 30 }}
+                isAnimationActive={false}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const p = payload[0].payload as VolumePoint;
+                  const total = (p.sales || 0) + (p.purchases || 0);
+                  return (
+                    <ChartTooltipShell title={p.date ? formatFullDate(p.date) : p.day}>
+                      <ChartTooltipRow color="hsl(var(--primary))" label="Sales" value={npr(p.sales || 0)} />
+                      <ChartTooltipRow color="hsl(var(--accent))" label="Purchases" value={npr(p.purchases || 0)} />
+                      <div className="mt-1 border-t border-border pt-1">
+                        <ChartTooltipRow label="Total" value={npr(total)} />
+                      </div>
+                    </ChartTooltipShell>
+                  );
                 }}
-                formatter={(v: number, name: string) => [npr(v), name === "sales" ? "Sales" : "Purchases"]}
               />
               <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[2, 2, 0, 0]} maxBarSize={14} />
               <Bar dataKey="purchases" fill="hsl(var(--accent))" radius={[2, 2, 0, 0]} maxBarSize={14} />

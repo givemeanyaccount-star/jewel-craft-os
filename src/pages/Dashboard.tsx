@@ -134,7 +134,7 @@ export default function Dashboard() {
       const d = new Date(today.getTime() - i * DAY);
       const k = dayKey(d);
       order.push(k);
-      buckets[k] = { day: d.toLocaleDateString(undefined, { weekday: "short" }), sales: 0, purchases: 0 };
+      buckets[k] = { day: d.toLocaleDateString(undefined, { weekday: "short" }), date: k, sales: 0, purchases: 0 };
     }
     for (const inv of weekInvoices.data ?? []) {
       const k = dayKey(new Date(inv.issued_at));
