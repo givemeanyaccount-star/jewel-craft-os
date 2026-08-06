@@ -122,7 +122,11 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
 
   const ogRevalued = Math.round((og.fineWeight * (Number(ogRate) || 0)) * 100) / 100;
   const showOgPanel = oldGoldCredit > 0 && fullReturn;
-  const ogDeduction = showOgPanel ? (ogMode === "metal" ? oldGoldCredit : ogRevalued) : 0;
+  // Metal handed back → the whole credit is cancelled. Revalued → only the rate difference
+  // (credit − today's value) is deducted; a higher rate today increases the refund.
+  const ogDeduction = showOgPanel
+    ? Math.round((ogMode === "metal" ? oldGoldCredit : oldGoldCredit - ogRevalued) * 100) / 100
+    : 0;
   const totalRefund = Math.max(0, Math.round((goodsRefund - (Number(taxWithheld) || 0) - ogDeduction) * 100) / 100);
 
 
