@@ -24,9 +24,11 @@ const PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
 export default function Purchases() {
+  const [params] = useSearchParams();
+  const initialTab = params.get("tab") === "oldgold" || params.get("missingId") === "1" ? "oldgold" : "stock";
   return (
     <AppLayout title="Purchases">
-      <Tabs defaultValue="stock">
+      <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="stock">Stock Purchases</TabsTrigger>
           <TabsTrigger value="oldgold">Old Gold Purchases</TabsTrigger>
