@@ -25,7 +25,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { ItemDialog } from "@/pages/Inventory";
 import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
 import { PickedCustomer } from "@/components/CustomerSelector";
-import { deleteQuotation } from "@/lib/quotations";
+
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
 
