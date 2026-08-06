@@ -74,6 +74,7 @@ export default function Dashboard() {
     const rc: Record<string, number> = {};
     for (const r of repairs.data ?? []) rc[r.status] = (rc[r.status] ?? 0) + 1;
     setRepairCounts(rc);
+    setMissingIdCount(missingId.count ?? 0);
     if ((todayRate.data ?? []).length === 0) setRateDialog(true);
   }
 
