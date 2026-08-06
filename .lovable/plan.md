@@ -5,15 +5,15 @@ Rebuilds the dashboard main content in the chosen "Heritage luxury" direction: P
 ## New layout (top to bottom)
 
 1. **Header row** — "Dashboard" in Playfair Display with a subdued uppercase subtitle, and on the right: a discreet palette switcher (small colour dots in a pill) followed by the quick action buttons **New Sale**, **New Purchase**, **New Repair**. New Sale is solid emerald with a thin gold underline; the other two are outlined. Each button appears only for roles that have the matching permission.
-2. **Metal rates band** — three cards: Gold 24K, Gold 22K, Silver. Each shows the rate per tola (large) and per 10 g (small), with a 7-day sparkline on the right, green when rising and red when falling.
+2. **Metal rates band** — cards for Gold 24K, Gold 22K and Silver, each showing the rate per tola (large) and per 10 g (small). Only **Gold 24K** and **Silver** carry a 7-day sparkline; the 22K card shows figures only. Sparklines are green when rising and red when falling.
 3. **Ops & alerts row** — four cards:
    - Outstanding credit — dark emerald card, gold figure, thin progress bar
    - Repairs by stage — In workshop / Quality check / Ready to pickup with counts
    - Pending credit — count of customers with dues plus outstanding total
    - Missing-ID old gold alert — soft red card linking to the filtered purchases list (only rendered when count > 0; otherwise the slot shows today's sales)
-4. **Main area (2/3 + 1/3)**
-   - Daily volume bar chart — sales vs purchases, last 7 days, emerald and gold paired bars
-   - Activity log — combined recent invoices, purchases and old gold entries with type badges, scrollable, "View all" footer
+4. **Main area** — split so the activity list gets more room than the chart (roughly 40% chart / 60% list on desktop, stacked on mobile)
+   - Daily volume bar chart — sales vs purchases, last 7 days, emerald and gold paired bars, in the narrower left column
+   - Activity log — wider right column with combined recent invoices, purchases and old gold entries, type badges, more rows visible, "View all" footer
 5. Existing secondary counts (items in stock, customers, items sold today) are folded into small labels inside the relevant cards so the page stays uncluttered.
 
 ## Colour palette switcher
