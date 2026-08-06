@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { npr } from "@/lib/format";
+import { npr, fineEquivalentGrams } from "@/lib/format";
+import { fetchLatestFineRates, billFineRate, METAL_LABEL } from "@/lib/fineEquivalent";
 import { openPrintPreview } from "@/components/PrintPreview";
 import { escapeHtml } from "@/lib/html";
 
@@ -45,12 +46,25 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
   const [printTargets, setPrintTargets] = useState<any[]>([]);
   const [receipt, setReceipt] = useState<any>(null);
 
-  // Share of the final bill that each rupee of gross line value is actually worth.
+  // Old gold trade-in linked to this sale
+  const oldGoldCredit = Number(invoice?.old_gold_credit ?? 0);
+  const [og, setOg] = useState<{ id: string | null; metal: string; fineWeight: number; derived: boolean }>(
+    { id: null, metal: "gold", fineWeight: 0, derived: true },
+  );
+  const [ogMode, setOgMode] = useState<"metal" | "revalue">("metal");
+  const [ogRate, setOgRate] = useState<number>(0);
+  const [taxWithheld, setTaxWithheld] = useState<number>(0);
+  const [taxEdited, setTaxEdited] = useState(false);
+
+  const taxTotal = Number(invoice?.vat_amount ?? 0) + Number(invoice?.sd_tax ?? 0) + Number(invoice?.luxury_tax ?? 0);
+
+  // Goods value of the bill: final total with taxes and old gold credit added back,
+  // so both are settled once, explicitly, instead of hiding inside the line share.
   const factor = useMemo(() => {
-    const gross = returnable.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
-    const net = Number(invoice?.total ?? 0);
-    if (!gross || !net) return 1;
-    return Math.max(0, Math.min(1.5, net / gross));
+    const gross = items.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
+    const goods = Number(invoice?.total ?? 0) + taxTotal + oldGoldCredit;
+    if (!gross || !goods) return 1;
+    return Math.max(0, Math.min(1.5, goods / gross));
   }, [invoice, items]);
 
   function proportional(it: any) {
@@ -60,6 +74,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
   useEffect(() => {
     if (!open) return;
     setReason(""); setRefundMethod("cash"); setPrintTargets([]); setReceipt(null);
+    setOgMode("metal"); setTaxEdited(false);
     const init: Record<string, ReturnLine> = {};
     for (const it of returnable) {
       init[it.id] = { itemId: it.id, selected: false, disposition: "restock", refundAmount: proportional(it) };
@@ -67,9 +82,49 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
     setLines(init);
   }, [open]);
 
+  // Resolve the traded-in metal / fine weight for the old gold settlement panel.
+  useEffect(() => {
+    if (!open || !invoice?.id || oldGoldCredit <= 0) return;
+    (async () => {
+      const [{ data: purchases }, rates] = await Promise.all([
+        supabase.from("old_gold_purchases").select("id, metal, fine_weight, rate_per_gram, total_amount, notes").eq("linked_invoice_id", invoice.id),
+        fetchLatestFineRates(),
+      ]);
+      const rows = (purchases ?? []) as any[];
+      if (rows.length) {
+        const metal = rows[0].metal ?? "gold";
+        const fine = rows.reduce((s, r) => s + (Number(r.fine_weight) || 0), 0);
+        setOg({ id: rows.length === 1 ? rows[0].id : null, metal, fineWeight: fine, derived: false });
+        setOgRate(Number(rows[0].rate_per_gram) || 0);
+      } else {
+        const metal = "gold";
+        const rate = billFineRate(items, metal, rates);
+        setOg({ id: null, metal, fineWeight: fineEquivalentGrams(oldGoldCredit, rate) || 0, derived: true });
+        setOgRate(rate);
+      }
+    })();
+  }, [open, invoice?.id]);
+
   const selectedLines = Object.values(lines).filter((l) => l.selected);
-  const totalRefund = selectedLines.reduce((s, l) => s + (Number(l.refundAmount) || 0), 0);
+  const goodsRefund = selectedLines.reduce((s, l) => s + (Number(l.refundAmount) || 0), 0);
   const allSelected = returnable.length > 0 && selectedLines.length === returnable.length;
+  const fullReturn = allSelected && returnable.length === items.length;
+
+  // Default tax withheld = returned lines' share of every tax on the bill.
+  const defaultTax = useMemo(() => {
+    const gross = items.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
+    const sel = selectedLines.reduce((s, l) => s + (Number(items.find((i) => i.id === l.itemId)?.line_total) || 0), 0);
+    if (!gross || !taxTotal) return 0;
+    return Math.round((taxTotal * sel / gross) * 100) / 100;
+  }, [selectedLines, items, taxTotal]);
+
+  useEffect(() => { if (!taxEdited) setTaxWithheld(defaultTax); }, [defaultTax, taxEdited]);
+
+  const ogRevalued = Math.round((og.fineWeight * (Number(ogRate) || 0)) * 100) / 100;
+  const showOgPanel = oldGoldCredit > 0 && fullReturn;
+  const ogDeduction = showOgPanel ? (ogMode === "metal" ? oldGoldCredit : ogRevalued) : 0;
+  const totalRefund = Math.max(0, Math.round((goodsRefund - (Number(taxWithheld) || 0) - ogDeduction) * 100) / 100);
+
 
   function patch(id: string, p: Partial<ReturnLine>) {
     setLines((prev) => ({ ...prev, [id]: { ...prev[id], ...p } }));
@@ -169,10 +224,18 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
         });
       }
 
+      // Old gold settled only on a full return.
+      if (showOgPanel && og.id) {
+        const note = ogMode === "metal"
+          ? `Old gold returned to customer on sales return of invoice ${invoice.invoice_number} (${new Date().toLocaleDateString()})`
+          : `Old gold revalued at ${ogRate}/g on sales return of invoice ${invoice.invoice_number} (${new Date().toLocaleDateString()})`;
+        const { data: p } = await supabase.from("old_gold_purchases").select("notes").eq("id", og.id).maybeSingle();
+        await supabase.from("old_gold_purchases").update({ notes: [p?.notes, note].filter(Boolean).join(" | ") }).eq("id", og.id);
+      }
+
       const newTotal = Math.max(0, Number(invoice.total) - totalRefund);
       const newPaid = Math.max(0, paid - refundAmt);
       const newBalance = Math.max(0, newTotal - newPaid);
-      const fullReturn = selectedLines.length === returnable.length;
       await supabase.from("invoices").update({
         total: newTotal, amount_paid: newPaid, balance_due: newBalance,
         status: fullReturn && newTotal === 0 ? "refunded" : newBalance > 0 ? "partial" : newPaid > 0 ? "paid" : "refunded",
@@ -190,10 +253,16 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
         customer: invoice.customers?.full_name ?? "",
         at: new Date(),
         lines: receiptLines,
+        goodsRefund, taxWithheld: Number(taxWithheld) || 0,
+        oldGold: showOgPanel ? {
+          mode: ogMode, credit: oldGoldCredit, fineWeight: og.fineWeight,
+          metal: og.metal, rate: Number(ogRate) || 0, revalued: ogRevalued, deduction: ogDeduction,
+        } : null,
         totalRefund, cashRefund: refundAmt, creditReleased,
         method: refundMethod, reason,
         factor,
       });
+
       setPrintTargets(createdInventory);
       onDone();
     } catch (e: any) {
@@ -211,8 +280,18 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
           </DialogHeader>
           <div className="space-y-2">
             <div className="rounded border p-3 text-sm">
-              <div className="flex justify-between"><span>Refund total</span><span className="font-medium">{npr(receipt.totalRefund)}</span></div>
+              {Number(receipt.taxWithheld) > 0 && (
+                <div className="flex justify-between text-xs text-muted-foreground"><span>Tax withheld (non-refundable)</span><span>− {npr(receipt.taxWithheld)}</span></div>
+              )}
+              {receipt.oldGold && (
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Old gold {receipt.oldGold.mode === "metal" ? "returned to customer" : `revalued @ ${npr(receipt.oldGold.rate)}/g`}</span>
+                  <span>− {npr(receipt.oldGold.deduction)}</span>
+                </div>
+              )}
+              <div className="flex justify-between"><span>Net refund</span><span className="font-medium">{npr(receipt.totalRefund)}</span></div>
               <div className="flex justify-between text-xs text-muted-foreground"><span>Cash / method refund</span><span>{npr(receipt.cashRefund)}</span></div>
+
               {receipt.creditReleased > 0 && (
                 <div className="flex justify-between text-xs text-muted-foreground"><span>Credit written off</span><span>{npr(receipt.creditReleased)}</span></div>
               )}
@@ -296,6 +375,57 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
 
             {selectedLines.length > 0 && (
               <>
+                {taxTotal > 0 && (
+                  <div className="rounded border p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <Label className="text-xs">Tax withheld (non-refundable)</Label>
+                        <p className="text-[11px] text-muted-foreground">VAT + SD + luxury tax share of the returned items. Editable.</p>
+                      </div>
+                      <Input type="number" className="w-40" value={taxWithheld}
+                        onChange={(e) => { setTaxEdited(true); setTaxWithheld(Number(e.target.value) || 0); }} />
+                    </div>
+                  </div>
+                )}
+
+                {oldGoldCredit > 0 && (
+                  showOgPanel ? (
+                    <div className="rounded border p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Old gold settlement</Label>
+                        <span className="text-[11px] text-muted-foreground">
+                          Original credit {npr(oldGoldCredit)} · {og.fineWeight.toFixed(3)} g fine {METAL_LABEL[og.metal] ?? og.metal}
+                          {og.derived ? " (derived from the bill rate)" : ""}
+                        </span>
+                      </div>
+                      <Select value={ogMode} onValueChange={(v: any) => setOgMode(v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="metal">Return the metal to the customer — cancel the original credit</SelectItem>
+                          <SelectItem value="revalue">Keep the metal — revalue in cash at today's rate</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {ogMode === "revalue" && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Rate today (per g fine)</Label>
+                            <Input type="number" value={ogRate} onChange={(e) => setOgRate(Number(e.target.value) || 0)} />
+                          </div>
+                          <div className="flex flex-col justify-end text-xs text-muted-foreground">
+                            <span>Revalued: {npr(ogRevalued)}</span>
+                            <span>vs original: {ogRevalued >= oldGoldCredit ? "+" : "−"}{npr(Math.abs(ogRevalued - oldGoldCredit))}</span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="text-[11px] text-muted-foreground">Deducted from the refund: {npr(ogDeduction)}</div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      Old gold credit of {npr(oldGoldCredit)} is settled only when the complete sale is returned.
+                    </p>
+                  )
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Refund via</Label>
@@ -304,13 +434,17 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                       <SelectContent>{REFUND_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="flex flex-col items-end justify-end gap-1">
-                    <Badge variant="outline">Total refund: {npr(totalRefund)}</Badge>
-                    <span className="text-[11px] text-muted-foreground">
+                  <div className="flex flex-col items-end justify-end gap-1 text-[11px] text-muted-foreground">
+                    <span>Goods refund {npr(goodsRefund)}</span>
+                    {Number(taxWithheld) > 0 && <span>− tax withheld {npr(Number(taxWithheld))}</span>}
+                    {ogDeduction > 0 && <span>− old gold {npr(ogDeduction)}</span>}
+                    <Badge variant="outline">Net refund: {npr(totalRefund)}</Badge>
+                    <span>
                       Cash back {npr(Math.min(totalRefund, Number(invoice?.amount_paid ?? 0)))} · credit adjusted {npr(Math.max(0, totalRefund - Number(invoice?.amount_paid ?? 0)))}
                     </span>
                   </div>
                 </div>
+
                 <div><Label className="text-xs">Reason</Label><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Customer changed mind, defect..." /></div>
               </>
             )}
@@ -349,10 +483,14 @@ function printRefundReceipt(r: any) {
           <thead><tr><th>Returned item</th><th class="r">Bill value</th><th class="r">Refund</th></tr></thead>
           <tbody>${rows}</tbody>
           <tfoot>
-            <tr><td class="r" colspan="2">Total refund</td><td class="r"><b>${escapeHtml(npr(r.totalRefund))}</b></td></tr>
+            <tr><td class="r" colspan="2">Goods refund</td><td class="r">${escapeHtml(npr(r.goodsRefund ?? r.totalRefund))}</td></tr>
+            ${Number(r.taxWithheld) > 0 ? `<tr><td class="r" colspan="2">Less: tax withheld (non-refundable)</td><td class="r">− ${escapeHtml(npr(r.taxWithheld))}</td></tr>` : ""}
+            ${r.oldGold ? `<tr><td class="r" colspan="2">Less: old gold settlement — ${r.oldGold.mode === "metal" ? "metal returned to customer" : `${escapeHtml(r.oldGold.fineWeight.toFixed(3))} g fine ${escapeHtml(METAL_LABEL[r.oldGold.metal] ?? r.oldGold.metal)} @ ${escapeHtml(npr(r.oldGold.rate))}/g`}</td><td class="r">− ${escapeHtml(npr(r.oldGold.deduction))}</td></tr>` : ""}
+            <tr><td class="r" colspan="2">Net refund</td><td class="r"><b>${escapeHtml(npr(r.totalRefund))}</b></td></tr>
             <tr><td class="r" colspan="2">Paid back (${escapeHtml(String(r.method).replace("_", " "))})</td><td class="r">${escapeHtml(npr(r.cashRefund))}</td></tr>
             ${r.creditReleased > 0 ? `<tr><td class="r" colspan="2">Adjusted against outstanding credit</td><td class="r">${escapeHtml(npr(r.creditReleased))}</td></tr>` : ""}
           </tfoot>
+
         </table>
         ${r.factor !== 1 ? `<p class="note">Refunds are computed on each item's proportional share of the final bill, after discount and credits (${Math.round(r.factor * 10000) / 100}% of gross line value).</p>` : ""}
         ${r.reason ? `<p class="note">Reason: ${escapeHtml(r.reason)}</p>` : ""}
