@@ -464,10 +464,9 @@ function ReceiptDialog({ purchase, onOpenChange }: { purchase: any; onOpenChange
           <div className="mt-3 text-right text-base font-semibold">Total paid: {npr(purchase.total_amount)}</div>
           {purchase.notes && <div className="mt-2 text-xs text-gray-600">Notes: {purchase.notes}</div>}
 
-          {(photoUrls[purchase.id_doc_image_url] || photoUrls[purchase.customer_photo_url]) && (
+          {photoUrls[purchase.id_doc_image_url] && (
             <div className="mt-4 flex gap-3">
-              {photoUrls[purchase.id_doc_image_url] && <div><div className="mb-1 text-[9px] text-gray-500">ID</div><img src={photoUrls[purchase.id_doc_image_url]} className="h-20 w-20 rounded object-cover" /></div>}
-              {photoUrls[purchase.customer_photo_url] && <div><div className="mb-1 text-[9px] text-gray-500">Customer</div><img src={photoUrls[purchase.customer_photo_url]} className="h-20 w-20 rounded object-cover" /></div>}
+              <div><div className="mb-1 text-[9px] text-gray-500">ID</div><img src={photoUrls[purchase.id_doc_image_url]} className="h-20 w-20 rounded object-cover" /></div>
             </div>
           )}
         </div>
