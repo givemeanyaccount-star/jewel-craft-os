@@ -77,6 +77,7 @@ export default function InvoiceDetail() {
   if (!inv) return <AppLayout><p>Loading...</p></AppLayout>;
 
   const cancellable = inv.status === "issued" || inv.status === "partial";
+  const returnableInvoice = cancellable || inv.status === "paid";
 
   return (
     <AppLayout title={inv.invoice_number} actions={
