@@ -29,10 +29,8 @@ export default function QuotationDetail() {
     setQ(qr.data); setItems(it.data ?? []);
   }
 
-  async function markAccepted() {
-    const { error } = await supabase.from("quotations").update({ status: "accepted" }).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Marked accepted"); load();
+  function acceptAndSell() {
+    nav("/pos", { state: { quotationId: q.id, quoteNumber: q.quote_number } });
   }
 
   if (!q) return <AppLayout><p>Loading...</p></AppLayout>;
@@ -41,8 +39,8 @@ export default function QuotationDetail() {
     <AppLayout title={q.quote_number} actions={
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)} className="no-print"><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
-        {q.status !== "accepted" && (
-          <Button size="sm" variant="outline" onClick={markAccepted} className="no-print"><FileCheck className="mr-1 h-4 w-4" /> Accept</Button>
+        {q.status !== "expired" && (
+          <Button size="sm" onClick={acceptAndSell} className="no-print"><FileCheck className="mr-1 h-4 w-4" /> Accept &amp; create sale</Button>
         )}
         <Button size="sm" variant="outline" onClick={() => printDocument(`quote-print-${q.id}`)} className="no-print"><Printer className="mr-1 h-4 w-4" /> Print</Button>
       </>
