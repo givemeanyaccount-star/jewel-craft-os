@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { PrintDocument, printDocument } from "@/components/PrintDocument";
 import { npr } from "@/lib/format";
+import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
