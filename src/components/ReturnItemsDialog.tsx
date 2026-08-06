@@ -58,11 +58,11 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
 
   const taxTotal = Number(invoice?.vat_amount ?? 0) + Number(invoice?.sd_tax ?? 0) + Number(invoice?.luxury_tax ?? 0);
 
-  // Goods value of the bill: final total with taxes and old gold credit added back,
-  // so both are settled once, explicitly, instead of hiding inside the line share.
+  // Goods value of the bill = subtotal − discount (taxes and old gold credit taken out),
+  // so tax and old gold are settled once, explicitly, instead of hiding inside the line share.
   const factor = useMemo(() => {
     const gross = items.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
-    const goods = Number(invoice?.total ?? 0) + taxTotal + oldGoldCredit;
+    const goods = Number(invoice?.total ?? 0) - taxTotal + oldGoldCredit;
     if (!gross || !goods) return 1;
     return Math.max(0, Math.min(1.5, goods / gross));
   }, [invoice, items]);
