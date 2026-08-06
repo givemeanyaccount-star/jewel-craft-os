@@ -356,10 +356,11 @@ export default function POS() {
             <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
             <CardContent>
               <div className="flex gap-2">
-                <Select value={customerId ?? "walkin"} onValueChange={(v) => setCustomerId(v === "walkin" ? null : v)}>
-                  <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                <Select value={customerId ?? ""} onValueChange={(v) => setCustomerId(v)}>
+                  <SelectTrigger className={`flex-1 ${!customerId ? "border-destructive" : ""}`}>
+                    <SelectValue placeholder="Select customer (required)" />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="walkin">Walk-in customer</SelectItem>
                     {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} {c.phone && `· ${c.phone}`}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -367,8 +368,15 @@ export default function POS() {
                   <UserPlus className="mr-1 h-4 w-4" /> New
                 </Button>
               </div>
+              {!customerId && <p className="mt-1.5 text-xs text-muted-foreground">Every sale must be linked to a customer.</p>}
+              {quotationNumber && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Converting quotation <strong>{quotationNumber}</strong> — it will be removed once this sale is completed.
+                </p>
+              )}
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
