@@ -9,18 +9,21 @@
    - If several gold lines exist, the highest-value gold line's rate is used as the bill reference; if the bill has no gold line, the latest 24K/999 gold rate from Metal Rates is used.
    - Equivalent grams = old gold credit amount ÷ fine gold rate, displayed to 3 decimals.
 
-3. **Custom purity with percentage for old gold purchases.** The old gold purchase form gets the same purity picker used elsewhere, plus a percentage option: type `91.6` and it is stored as `91.6%` and used directly as the purity factor in the fine weight calculation. This applies both to the standalone Old Gold Purchases screen and the old gold trade-in during a sale.
+3. **Metal-aware equivalent for non-gold trade-ins.** When the traded-in metal is silver (or platinum), the equivalent weight is computed against that metal's fine rate instead of gold — latest fine rate for that metal from Metal Rates, or the bill's line rate for that metal converted to fine. The note then reads e.g. `≈ 128.400 g fine silver`. If no rate exists for that metal, the note is omitted rather than showing a wrong number.
+
+4. **Custom purity everywhere in the old gold module.** The shared old gold purchase form gets the standard purity picker plus a percentage option: type `91.6` and it is stored as `91.6%` and used directly as the purity factor for net → fine weight. Because the form is shared, this applies to every entry point — the standalone Old Gold Purchases screen, the trade-in during a sale, and any other place the form is used. Old gold listings and receipts display the custom purity as entered.
 
 ## Where it shows
 
-- Printed invoice and estimate (PrintDocument): small grey `≈ X.XXX g fine` note under/next to the old gold amount in the totals block.
+- Printed invoice and estimate (PrintDocument): small grey `≈ X.XXX g fine <metal>` note under/next to the old gold amount in the totals block.
 - Invoice detail on-screen totals row: same note next to the old gold credit line.
 - POS sale builder: the same note under the old gold credit input, so staff see the equivalent before finalising.
 
+
 ## Technical notes
 
-- `src/lib/format.ts`: extend `purityFactor` to accept a trailing `%` (e.g. `"91.6%"` → 0.916); add a helper `fineEquivalentGrams(amount, fineRatePerGram)` and `fineRateFromLine(rate, purity)`.
-- `src/components/PrintDocument.tsx`: derive the bill's fine rate from the item lines (fallback prop for a latest 24K rate) and render the note in the totals section; no schema change — the value is derived, not stored.
-- `src/pages/InvoiceDetail.tsx`, `src/pages/QuotationDetail.tsx`: pass the fallback fine rate (latest gold rate query) to `PrintDocument` and show the note in the on-screen totals.
-- `src/pages/POS.tsx`: compute and show the equivalent under the old gold credit field.
-- `src/components/OldGoldForm.tsx`: replace the fixed purity `Select` with `PuritySelect` plus a percentage entry mode; existing `purity` text column stores values like `91.6%`, so no migration is needed.
+- `src/lib/format.ts`: extend `purityFactor` to accept a trailing `%` (e.g. `"91.6%"` → 0.916); add helpers `fineEquivalentGrams(amount, fineRatePerGram)` and `fineRateFromLine(rate, purity)`.
+- `src/components/PrintDocument.tsx`: derive the bill's fine rate for the traded metal from the item lines (fallback prop with latest fine rates per metal) and render the note in the totals section; no schema change — the value is derived, not stored.
+- `src/pages/InvoiceDetail.tsx`, `src/pages/QuotationDetail.tsx`: query latest `metal_rates` per metal, pass as fallback to `PrintDocument`, and show the note in the on-screen totals.
+- `src/pages/POS.tsx`: compute and show the equivalent under the old gold credit field, using the traded metal recorded on the linked old gold purchase.
+- `src/components/OldGoldForm.tsx` (shared by all old gold entry points): replace the fixed purity `Select` with `PuritySelect` plus a percentage entry mode; the existing `purity` text column stores values like `91.6%`, so no migration is needed.
