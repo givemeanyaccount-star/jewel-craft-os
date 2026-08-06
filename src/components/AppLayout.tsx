@@ -3,16 +3,19 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Users, FileText, Receipt,
   Settings, LogOut, Menu, ShieldCheck, TrendingUp,
-  Wrench, Truck, ShoppingCart
+  Wrench, Truck, ShoppingCart, Home
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import logoUrl from "@/assets/logo.png";
 import { AppPermission } from "@/lib/permissions";
 import { usePermission } from "@/hooks/usePermission";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { useEscapeBack } from "@/hooks/useEscapeBack";
+
 
 interface NavItem {
   to: string;
