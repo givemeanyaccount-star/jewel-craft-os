@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { RecalcTaxesDialog } from "@/components/RecalcTaxesDialog";
+import { CompanyProfileCard } from "@/components/CompanyProfileCard";
 
 
 export default function Settings() {
@@ -20,10 +21,12 @@ export default function Settings() {
   return (
     <AppLayout title="Settings">
       <div className="grid gap-4 md:grid-cols-2">
+        <CompanyProfileCard />
         <TaxationCard />
         <CategoriesEditor />
         <SimpleList table="locations" title="Showcase Locations" />
       </div>
+
     </AppLayout>
   );
 }
