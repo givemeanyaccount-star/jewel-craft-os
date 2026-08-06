@@ -77,7 +77,7 @@ ${job.includeAppStyles ? appStyles() : ""}
   html{background:#e9e9ec}
   body{background:#fff;color:#000;margin:0 auto;position:relative;
        width:${g.width}mm;min-height:${g.height}mm;padding:${g.margin}mm;
-       font-family:Arial,Helvetica,sans-serif;
+       font-family:Arial,Helvetica,sans-serif;line-height:1.25;
        -webkit-print-color-adjust:exact;print-color-adjust:exact}
   ${PAGINATION_CSS}
   @page{size:${g.width}mm ${g.height}mm;margin:0}
