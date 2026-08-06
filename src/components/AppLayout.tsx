@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import logoUrl from "@/assets/logo.png";
 import { AppPermission } from "@/lib/permissions";
 import { usePermission } from "@/hooks/usePermission";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 interface NavItem {
   to: string;
