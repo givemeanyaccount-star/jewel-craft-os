@@ -323,9 +323,13 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                   {oldGold > 0 && (
                     <tr>
                       <td style={{ border: bd, padding: "3px 6px" }}>Old Gold</td>
-                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(oldGold)}</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>
+                        {n2(oldGold)}
+                        {oldGoldEq && <div style={{ fontSize: "8px", color: "#777" }}>{oldGoldEq}</div>}
+                      </td>
                     </tr>
                   )}
+
                 </tbody>
               </table>
             </div>
