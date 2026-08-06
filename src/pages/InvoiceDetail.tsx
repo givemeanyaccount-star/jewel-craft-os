@@ -77,15 +77,16 @@ export default function InvoiceDetail() {
   if (!inv) return <AppLayout><p>Loading...</p></AppLayout>;
 
   const cancellable = inv.status === "issued" || inv.status === "partial";
+  const returnableInvoice = cancellable || inv.status === "paid";
 
   return (
     <AppLayout title={inv.invoice_number} actions={
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
         <Button size="sm" variant="outline" onClick={() => printDocument(`invoice-print-${inv.id}`, `Invoice ${inv.invoice_number}`)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
-        {cancellable && hasPermission("invoice_cancel_refund") && (
+        {returnableInvoice && hasPermission("invoice_cancel_refund") && (
           <Button size="sm" variant="outline" onClick={() => setReturnOpen(true)}>
-            <Undo2 className="mr-1 h-4 w-4" /> Return item(s)
+            <Undo2 className="mr-1 h-4 w-4" /> Sales return
           </Button>
         )}
         {cancellable && hasPermission("invoice_cancel_refund") && (

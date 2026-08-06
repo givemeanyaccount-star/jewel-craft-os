@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { npr } from "@/lib/format";
 import { openPrintPreview } from "@/components/PrintPreview";
 import { escapeHtml } from "@/lib/html";
 
-import { Printer, Undo2 } from "lucide-react";
+import { Printer, Undo2, Receipt } from "lucide-react";
 
 const REFUND_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
@@ -25,10 +25,9 @@ interface ReturnLine {
 }
 
 /**
- * Return specific item(s) from an otherwise-valid invoice. The rest of the invoice
- * stays intact; only the selected line(s) are reversed. For each returned item, staff
- * chooses whether it goes back to inventory as-is (offering a tag re-print) or is
- * treated as raw material and listed as a brand-new inventory item.
+ * Return item(s) — or the whole sale — from an invoice. Refund values default to each
+ * line's proportional share of the final bill, so discounts, taxes and old-gold credit
+ * are spread across the returned lines instead of refunding the gross line total.
  */
 export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, onDone }: {
   open: boolean;
@@ -44,22 +43,44 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
   const [refundMethod, setRefundMethod] = useState("cash");
   const [busy, setBusy] = useState(false);
   const [printTargets, setPrintTargets] = useState<any[]>([]);
+  const [receipt, setReceipt] = useState<any>(null);
+
+  // Share of the final bill that each rupee of gross line value is actually worth.
+  const factor = useMemo(() => {
+    const gross = returnable.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
+    const net = Number(invoice?.total ?? 0);
+    if (!gross || !net) return 1;
+    return Math.max(0, Math.min(1.5, net / gross));
+  }, [invoice, items]);
+
+  function proportional(it: any) {
+    return Math.round((Number(it.line_total) || 0) * factor * 100) / 100;
+  }
 
   useEffect(() => {
     if (!open) return;
-    setReason(""); setRefundMethod("cash"); setPrintTargets([]);
+    setReason(""); setRefundMethod("cash"); setPrintTargets([]); setReceipt(null);
     const init: Record<string, ReturnLine> = {};
     for (const it of returnable) {
-      init[it.id] = { itemId: it.id, selected: false, disposition: "restock", refundAmount: Number(it.line_total) || 0 };
+      init[it.id] = { itemId: it.id, selected: false, disposition: "restock", refundAmount: proportional(it) };
     }
     setLines(init);
   }, [open]);
 
   const selectedLines = Object.values(lines).filter((l) => l.selected);
   const totalRefund = selectedLines.reduce((s, l) => s + (Number(l.refundAmount) || 0), 0);
+  const allSelected = returnable.length > 0 && selectedLines.length === returnable.length;
 
   function patch(id: string, p: Partial<ReturnLine>) {
     setLines((prev) => ({ ...prev, [id]: { ...prev[id], ...p } }));
+  }
+
+  function toggleAll(v: boolean) {
+    setLines((prev) => {
+      const next: Record<string, ReturnLine> = {};
+      for (const [k, l] of Object.entries(prev)) next[k] = { ...l, selected: v };
+      return next;
+    });
   }
 
   async function confirm() {
@@ -69,17 +90,19 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
     try {
       const paid = Number(invoice.amount_paid ?? 0);
       const refundAmt = Math.min(totalRefund, paid);
+      const creditReleased = Math.max(0, totalRefund - refundAmt);
 
       if (refundAmt > 0) {
         const { error } = await supabase.from("payments").insert({
           invoice_id: invoice.id, customer_id: invoice.customer_id,
           amount: -refundAmt, method: refundMethod as any,
-          reference: "Partial return refund", notes: reason || null, created_by: userId,
+          reference: "Sales return refund", notes: reason || null, created_by: userId,
         } as any);
         if (error) throw error;
       }
 
       const createdInventory: any[] = [];
+      const receiptLines: any[] = [];
 
       for (const line of selectedLines) {
         const it = items.find((i) => i.id === line.itemId);
@@ -89,6 +112,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
 
         if (line.disposition === "restock") {
           if (it.inventory_item_id) {
+            // Same piece, same SKU/code — simply put it back on the shelf.
             await supabase.from("inventory_items").update({ status: "in_stock" }).eq("id", it.inventory_item_id);
             const { data: inv } = await supabase.from("inventory_items").select("id, sku, name").eq("id", it.inventory_item_id).single();
             if (inv) createdInventory.push(inv);
@@ -101,7 +125,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
               net_weight: Number(it.weight ?? 0), fine_weight: Number(it.weight ?? 0),
               making_charge: Number(it.making_input ?? 0), making_charge_type: it.making_type ?? "per_gram",
               wastage_type: (it.wastage_type ?? "percentage") as any, wastage_value: Number(it.wastage_input ?? 0),
-              stone_value: Number(it.stone_value ?? 0), status: "returned" as any,
+              stone_value: Number(it.stone_value ?? 0), status: "in_stock" as any,
               received_from: `Returned from invoice ${invoice.invoice_number}`, created_by: userId,
             } as any).select("id, sku, name").single();
             if (cErr) throw cErr;
@@ -121,7 +145,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
             net_weight: Number(it.weight ?? 0), fine_weight: Number(it.weight ?? 0),
             making_charge: 0, making_charge_type: "per_gram",
             wastage_type: "percentage" as any, wastage_value: 0, stone_value: 0,
-            status: "returned" as any, received_from: `Returned as raw material — invoice ${invoice.invoice_number}`,
+            status: "in_stock" as any, received_from: `Returned as raw material — invoice ${invoice.invoice_number}`,
             created_by: userId,
           } as any).select("id, sku, name").single();
           if (cErr) throw cErr;
@@ -136,14 +160,22 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
           refund_amount: line.refundAmount,
           new_inventory_item_id: newInvItemId,
         }).eq("id", it.id);
+
+        receiptLines.push({
+          description: it.description, metal: it.metal, purity: it.purity,
+          weight: Number(it.weight ?? 0), gross: Number(it.line_total ?? 0),
+          refund: Number(line.refundAmount) || 0,
+          disposition: line.disposition,
+        });
       }
 
       const newTotal = Math.max(0, Number(invoice.total) - totalRefund);
       const newPaid = Math.max(0, paid - refundAmt);
       const newBalance = Math.max(0, newTotal - newPaid);
+      const fullReturn = selectedLines.length === returnable.length;
       await supabase.from("invoices").update({
         total: newTotal, amount_paid: newPaid, balance_due: newBalance,
-        status: newBalance > 0 ? "partial" : newPaid > 0 ? "paid" : "refunded",
+        status: fullReturn && newTotal === 0 ? "refunded" : newBalance > 0 ? "partial" : newPaid > 0 ? "paid" : "refunded",
       } as any).eq("id", invoice.id);
 
       if (invoice.customer_id) {
@@ -153,6 +185,15 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
       }
 
       toast.success(`${selectedLines.length} item(s) returned`);
+      setReceipt({
+        invoiceNumber: invoice.invoice_number,
+        customer: invoice.customers?.full_name ?? "",
+        at: new Date(),
+        lines: receiptLines,
+        totalRefund, cashRefund: refundAmt, creditReleased,
+        method: refundMethod, reason,
+        factor,
+      });
       setPrintTargets(createdInventory);
       onDone();
     } catch (e: any) {
@@ -160,12 +201,25 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
     } finally { setBusy(false); }
   }
 
-  if (printTargets.length > 0) {
+  if (receipt) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Return complete</DialogTitle><DialogDescription>Print tags for the returned item(s) now, or later from Inventory / Tag Print.</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Return complete</DialogTitle>
+            <DialogDescription>Print the refund receipt and, if needed, tags for the returned item(s).</DialogDescription>
+          </DialogHeader>
           <div className="space-y-2">
+            <div className="rounded border p-3 text-sm">
+              <div className="flex justify-between"><span>Refund total</span><span className="font-medium">{npr(receipt.totalRefund)}</span></div>
+              <div className="flex justify-between text-xs text-muted-foreground"><span>Cash / method refund</span><span>{npr(receipt.cashRefund)}</span></div>
+              {receipt.creditReleased > 0 && (
+                <div className="flex justify-between text-xs text-muted-foreground"><span>Credit written off</span><span>{npr(receipt.creditReleased)}</span></div>
+              )}
+              <Button size="sm" className="mt-3 w-full" onClick={() => printRefundReceipt(receipt)}>
+                <Receipt className="mr-1 h-3.5 w-3.5" /> Print refund receipt
+              </Button>
+            </div>
             {printTargets.map((t) => (
               <div key={t.id} className="flex items-center justify-between rounded border p-2 text-sm">
                 <div><div className="font-medium">{t.name}</div><div className="text-xs text-muted-foreground">{t.sku}</div></div>
@@ -183,17 +237,25 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Undo2 className="h-5 w-5" /> Return item(s) — {invoice?.invoice_number}</DialogTitle>
-          <DialogDescription>Only the items you select are reversed. The rest of the invoice stays as-is.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2"><Undo2 className="h-5 w-5" /> Sales return — {invoice?.invoice_number}</DialogTitle>
+          <DialogDescription>
+            Return single items or the whole sale. Refunds default to each line's share of the final bill
+            {factor < 1 ? ` (${Math.round((1 - factor) * 1000) / 10}% discount/credit applied proportionally)` : ""}.
+          </DialogDescription>
         </DialogHeader>
 
         {returnable.length === 0 ? (
           <p className="text-sm text-muted-foreground">All items on this invoice have already been returned.</p>
         ) : (
           <div className="space-y-3">
+            <div className="flex items-center gap-2 rounded border p-2">
+              <Checkbox id="allsel" checked={allSelected} onCheckedChange={(v) => toggleAll(!!v)} />
+              <Label htmlFor="allsel" className="text-sm">Return the complete sale ({returnable.length} item{returnable.length > 1 ? "s" : ""})</Label>
+            </div>
             {returnable.map((it) => {
               const line = lines[it.id];
               if (!line) return null;
+              const gross = Number(it.line_total) || 0;
               return (
                 <div key={it.id} className="rounded border p-3">
                   <div className="flex items-start gap-2">
@@ -201,9 +263,12 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <div className="font-medium">{it.description}</div>
-                        <div className="text-sm">{npr(it.line_total)}</div>
+                        <div className="text-sm">{npr(gross)}</div>
                       </div>
-                      <div className="text-xs text-muted-foreground capitalize">{it.metal} {it.purity} · {Number(it.weight).toFixed(3)}g {it.inventory_item_id ? "· linked to inventory" : "· not linked to inventory"}</div>
+                      <div className="text-xs text-muted-foreground capitalize">
+                        {it.metal} {it.purity} · {Number(it.weight).toFixed(3)}g {it.inventory_item_id ? "· linked to inventory" : "· not linked to inventory"}
+                        {factor !== 1 && ` · share of bill ${npr(proportional(it))}`}
+                      </div>
 
                       {line.selected && (
                         <div className="mt-2 grid grid-cols-2 gap-2">
@@ -212,7 +277,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                             <Select value={line.disposition} onValueChange={(v: any) => patch(it.id, { disposition: v })}>
                               <SelectTrigger><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="restock">Return to inventory as-is (offer tag print)</SelectItem>
+                                <SelectItem value="restock">Return to inventory with same code/details</SelectItem>
                                 <SelectItem value="new_inventory">Treat as raw material — list as new item</SelectItem>
                               </SelectContent>
                             </Select>
@@ -239,8 +304,11 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                       <SelectContent>{REFUND_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-end justify-end">
+                  <div className="flex flex-col items-end justify-end gap-1">
                     <Badge variant="outline">Total refund: {npr(totalRefund)}</Badge>
+                    <span className="text-[11px] text-muted-foreground">
+                      Cash back {npr(Math.min(totalRefund, Number(invoice?.amount_paid ?? 0)))} · credit adjusted {npr(Math.max(0, totalRefund - Number(invoice?.amount_paid ?? 0)))}
+                    </span>
                   </div>
                 </div>
                 <div><Label className="text-xs">Reason</Label><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Customer changed mind, defect..." /></div>
@@ -258,6 +326,51 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
   );
 }
 
+function printRefundReceipt(r: any) {
+  const rows = r.lines.map((l: any) => `
+    <tr>
+      <td>${escapeHtml(l.description ?? "")}<div class="sub">${escapeHtml(`${l.metal ?? ""} ${l.purity ?? ""}`.trim())} · ${Number(l.weight).toFixed(3)}g · ${l.disposition === "restock" ? "back to stock" : "raw material"}</div></td>
+      <td class="r">${escapeHtml(npr(l.gross))}</td>
+      <td class="r">${escapeHtml(npr(l.refund))}</td>
+    </tr>`).join("");
+
+  openPrintPreview({
+    title: `Refund receipt — ${r.invoiceNumber}`,
+    fileName: `Refund-${r.invoiceNumber}`,
+    html: `
+      <div class="doc">
+        <h1>Refund / Sales Return Receipt</h1>
+        <div class="meta">
+          <div>Against invoice: <b>${escapeHtml(r.invoiceNumber)}</b></div>
+          <div>Customer: ${escapeHtml(r.customer || "-")}</div>
+          <div>Date: ${escapeHtml(r.at.toLocaleString())}</div>
+        </div>
+        <table>
+          <thead><tr><th>Returned item</th><th class="r">Bill value</th><th class="r">Refund</th></tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr><td class="r" colspan="2">Total refund</td><td class="r"><b>${escapeHtml(npr(r.totalRefund))}</b></td></tr>
+            <tr><td class="r" colspan="2">Paid back (${escapeHtml(String(r.method).replace("_", " "))})</td><td class="r">${escapeHtml(npr(r.cashRefund))}</td></tr>
+            ${r.creditReleased > 0 ? `<tr><td class="r" colspan="2">Adjusted against outstanding credit</td><td class="r">${escapeHtml(npr(r.creditReleased))}</td></tr>` : ""}
+          </tfoot>
+        </table>
+        ${r.factor !== 1 ? `<p class="note">Refunds are computed on each item's proportional share of the final bill, after discount and credits (${Math.round(r.factor * 10000) / 100}% of gross line value).</p>` : ""}
+        ${r.reason ? `<p class="note">Reason: ${escapeHtml(r.reason)}</p>` : ""}
+        <div class="sign"><div>Customer signature</div><div>Authorised signature</div></div>
+      </div>`,
+    css: `.doc{font-family:system-ui,sans-serif;font-size:12px;color:#111;}
+      h1{font-size:16px;margin:0 0 6mm;text-align:center;letter-spacing:.5px;}
+      .meta{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4mm;}
+      table{width:100%;border-collapse:collapse;}
+      th,td{border:1px solid #999;padding:2mm 2.5mm;text-align:left;vertical-align:top;}
+      th{background:#f2f2f2;font-size:11px;}
+      .r{text-align:right;}
+      .sub{font-size:9px;color:#666;margin-top:1mm;}
+      .note{font-size:10px;color:#555;margin-top:4mm;}
+      .sign{display:flex;justify-content:space-between;margin-top:18mm;font-size:10px;color:#444;}`,
+  });
+}
+
 function printTag(item: { sku: string; name: string }) {
   openPrintPreview({
     title: `Tag ${item.sku}`,
@@ -270,4 +383,3 @@ function printTag(item: { sku: string; name: string }) {
       .sku{font-size:9px;color:#555;margin-top:2mm;}`,
   });
 }
-
