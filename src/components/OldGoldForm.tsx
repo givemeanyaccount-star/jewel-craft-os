@@ -111,7 +111,7 @@ export function OldGoldForm({
       if (error) throw error;
       toast.success(`Receipt ${receipt} created`);
       reset();
-      onSaved({ id: data.id, receiptNumber: receipt, total });
+      onSaved({ id: data.id, receiptNumber: receipt, total, metal: form.metal, purity: form.purity });
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
 
