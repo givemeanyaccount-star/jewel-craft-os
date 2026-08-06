@@ -11,12 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, ShoppingCart, Eye, Printer } from "lucide-react";
-import { npr, gms, computeNetWeight, nextNumber } from "@/lib/format";
+import { Plus, Trash2, ShoppingCart, Eye, Printer, Pencil, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { npr, gms, computeNetWeight, computeFineWeight, nextNumber } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadImage, getSignedUrls } from "@/lib/storage";
 import { toast } from "sonner";
 import { OldGoldForm } from "@/components/OldGoldForm";
+import { ImageCaptureButton } from "@/components/ImageCapture";
+import { PuritySelect } from "@/components/PuritySelect";
 import logoUrl from "@/assets/logo.png";
 
 const METALS = ["gold", "silver", "platinum"];
