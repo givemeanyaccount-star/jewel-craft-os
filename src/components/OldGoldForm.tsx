@@ -13,6 +13,7 @@ import { uploadImage } from "@/lib/storage";
 import { toast } from "sonner";
 import { ImageCaptureButton } from "@/components/ImageCapture";
 import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
+import { PuritySelect } from "@/components/PuritySelect";
 
 const METALS = ["gold", "silver", "platinum"];
 const PURITIES = ["24K", "22K", "20K", "18K", "14K", "9K", "999", "925"];
