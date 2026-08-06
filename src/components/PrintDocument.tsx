@@ -374,6 +374,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
           ({toNepaliDigits(1)} तोला = {toNepaliDigits(TOLA_IN_GRAMS.toFixed(3))} ग्राम)
           {tolaRate ? ` · 24 क्यारेट 1 तोला सुनको मुल्य: ${Math.round(tolaRate).toLocaleString("en-IN")}` : ""}
         </div>
+        </div>
       </div>
     </div>
   );
