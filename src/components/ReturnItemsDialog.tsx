@@ -421,7 +421,11 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                           </div>
                         </div>
                       )}
-                      <div className="text-[11px] text-muted-foreground">Deducted from the refund: {npr(ogDeduction)}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {ogDeduction >= 0
+                          ? `Deducted from the refund: ${npr(ogDeduction)}`
+                          : `Added to the refund: ${npr(Math.abs(ogDeduction))} (metal is dearer today)`}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-[11px] text-muted-foreground">
