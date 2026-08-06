@@ -22,8 +22,8 @@
 
 ## Technical notes
 
-- `src/lib/format.ts`: extend `purityFactor` to accept a trailing `%` (e.g. `"91.6%"` → 0.916); add a helper `fineEquivalentGrams(amount, fineRatePerGram)` and `fineRateFromLine(rate, purity)`.
-- `src/components/PrintDocument.tsx`: derive the bill's fine rate from the item lines (fallback prop for a latest 24K rate) and render the note in the totals section; no schema change — the value is derived, not stored.
-- `src/pages/InvoiceDetail.tsx`, `src/pages/QuotationDetail.tsx`: pass the fallback fine rate (latest gold rate query) to `PrintDocument` and show the note in the on-screen totals.
-- `src/pages/POS.tsx`: compute and show the equivalent under the old gold credit field.
-- `src/components/OldGoldForm.tsx`: replace the fixed purity `Select` with `PuritySelect` plus a percentage entry mode; existing `purity` text column stores values like `91.6%`, so no migration is needed.
+- `src/lib/format.ts`: extend `purityFactor` to accept a trailing `%` (e.g. `"91.6%"` → 0.916); add helpers `fineEquivalentGrams(amount, fineRatePerGram)` and `fineRateFromLine(rate, purity)`.
+- `src/components/PrintDocument.tsx`: derive the bill's fine rate for the traded metal from the item lines (fallback prop with latest fine rates per metal) and render the note in the totals section; no schema change — the value is derived, not stored.
+- `src/pages/InvoiceDetail.tsx`, `src/pages/QuotationDetail.tsx`: query latest `metal_rates` per metal, pass as fallback to `PrintDocument`, and show the note in the on-screen totals.
+- `src/pages/POS.tsx`: compute and show the equivalent under the old gold credit field, using the traded metal recorded on the linked old gold purchase.
+- `src/components/OldGoldForm.tsx` (shared by all old gold entry points): replace the fixed purity `Select` with `PuritySelect` plus a percentage entry mode; the existing `purity` text column stores values like `91.6%`, so no migration is needed.
