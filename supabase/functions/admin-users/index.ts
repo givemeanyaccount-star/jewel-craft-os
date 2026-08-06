@@ -89,8 +89,17 @@ Deno.serve(async (req) => {
           .from("user_roles")
           .insert(roles.map((role) => ({ user_id: newId, role })));
       }
+      await admin.from("audit_logs").insert({
+        actor_id: userData.user.id,
+        actor_email: userData.user.email ?? null,
+        action: "user_invited",
+        target_user_id: newId,
+        target_email: email,
+        details: { username, roles },
+      });
       return json({ id: newId, email, username });
     }
+
 
 
     if (action === "delete") {
