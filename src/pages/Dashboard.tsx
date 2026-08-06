@@ -124,6 +124,20 @@ export default function Dashboard() {
         })}
       </div>
 
+      {missingIdCount > 0 && hasPermission("old_gold_purchase") && (
+        <Link to="/purchases?tab=oldgold&missingId=1" className="mt-4 block">
+          <Card className="border-amber-500/50 bg-amber-500/5 transition hover:shadow-md">
+            <CardContent className="flex items-center gap-3 p-4">
+              <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
+              <div className="text-sm">
+                <div className="font-medium text-amber-700">{missingIdCount} old gold purchase(s) missing ID information</div>
+                <p className="text-muted-foreground">Click to review and add the customer ID details.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
+
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Recent Invoices</CardTitle>
