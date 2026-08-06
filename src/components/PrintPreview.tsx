@@ -174,7 +174,6 @@ export function PrintPreviewHost() {
       doc.body.style.boxShadow = "none";
       // foreignObject rendering cannot fetch external images: inline them first.
       const imgs = Array.from(doc.querySelectorAll("img"));
-      const originals = imgs.map((im) => im.src);
       await Promise.all(
         imgs.map(async (im) => {
           if (im.src.startsWith("data:")) return;
