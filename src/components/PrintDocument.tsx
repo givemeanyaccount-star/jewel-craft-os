@@ -227,7 +227,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
         </div>
 
         {/* ITEMS */}
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", borderTop: "1.5px solid #000" }}>
+        <table className="pd-items" style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", borderTop: "1.5px solid #000" }}>
           <thead>
             <tr>
               <th style={{ ...th, width: "26px" }}>SN</th>
