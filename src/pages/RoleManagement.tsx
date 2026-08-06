@@ -180,6 +180,7 @@ const RoleManagement = () => {
 
       <main className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
         <PermissionMatrix matrix={permissionMatrix} reload={reloadPermissions} />
+        <AuditLog />
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
@@ -426,6 +427,7 @@ function PermissionMatrix({
       return;
     }
     await reload();
+    await logAudit({ action: "permission_changed", details: { role, permission, allowed } });
   };
 
   const resetDefaults = async () => {
@@ -444,6 +446,7 @@ function PermissionMatrix({
       return;
     }
     await reload();
+    await logAudit({ action: "permissions_reset", details: {} });
     toast({ title: "Permissions reset to defaults" });
   };
 

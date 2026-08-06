@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { logAudit } from "@/lib/audit";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -29,13 +30,21 @@ const ResetPassword = () => {
     if (password !== confirm) return toast.error("Passwords do not match");
     if (password.length < 6) return toast.error("Password must be at least 6 characters");
     setBusy(true);
+    const { data: userData } = await supabase.auth.getUser();
     const { error } = await supabase.auth.updateUser({ password });
     setBusy(false);
     if (error) return toast.error(error.message);
+    await logAudit({
+      action: "password_set",
+      target_user_id: userData.user?.id ?? null,
+      target_email: userData.user?.email ?? null,
+      details: { self_service: true },
+    });
     toast.success("Password updated — please sign in");
     await supabase.auth.signOut();
     navigate("/auth", { replace: true });
   };
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
