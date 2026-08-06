@@ -18,6 +18,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { uploadImage, getSignedUrls } from "@/lib/storage";
 import { toast } from "sonner";
 import { OldGoldForm } from "@/components/OldGoldForm";
+import { openPrintPreview } from "@/components/PrintPreview";
+
 import { ImageCaptureButton } from "@/components/ImageCapture";
 import { PuritySelect } from "@/components/PuritySelect";
 import logoUrl from "@/assets/logo.png";
