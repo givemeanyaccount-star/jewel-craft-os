@@ -418,7 +418,7 @@ function ReceiptDialog({ purchase, onOpenChange }: { purchase: any; onOpenChange
 
   useEffect(() => {
     if (!purchase) return;
-    const paths = [purchase.id_doc_image_url, purchase.customer_photo_url].filter(Boolean);
+    const paths = [purchase.id_doc_image_url].filter(Boolean);
     if (paths.length) getSignedUrls("customer-docs", paths).then(setPhotoUrls);
   }, [purchase]);
 
