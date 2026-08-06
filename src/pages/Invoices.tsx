@@ -29,9 +29,11 @@ export function InvoiceSubNav({ active }: { active: "sales" | "oldgold" }) {
 }
 
 export default function Invoices() {
+  const { hasPermission } = usePermission();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
+
 
   useEffect(() => { load(); }, []);
   async function load() {
