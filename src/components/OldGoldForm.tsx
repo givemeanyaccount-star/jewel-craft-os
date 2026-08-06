@@ -119,8 +119,8 @@ export function OldGoldForm({
       <CustomerSelector value={customer} onChange={setCustomer} />
 
       <div className="grid gap-3 md:grid-cols-2">
-        <div>
-          <Label className="mb-1 block">ID document {!hasIdOnFile && <span className="text-destructive">*</span>}</Label>
+        <div className="md:col-span-2">
+          <Label className="mb-1 block">ID document <span className="text-xs font-normal text-muted-foreground">(recommended)</span></Label>
           {hasIdOnFile ? (
             <div className="flex items-center gap-2 rounded border px-2 py-1.5 text-xs text-muted-foreground">
               On file: {customerRecord.id_doc_type?.replace("_", " ")} {customerRecord.id_doc_number}
@@ -136,22 +136,12 @@ export function OldGoldForm({
               </div>
               <div className="flex items-center gap-2">
                 {idFile && <img src={URL.createObjectURL(idFile)} className="h-12 w-12 rounded object-cover" />}
-                <ImageCaptureButton label={idFile ? "Retake ID Photo" : "Capture ID Photo *"} title="Add ID Photo" onCapture={setIdFile} />
+                <ImageCaptureButton label={idFile ? "Retake ID Photo" : "Capture ID Photo"} title="Add ID Photo" onCapture={setIdFile} />
               </div>
             </div>
           )}
         </div>
-        <div>
-          <Label className="mb-1 block">Customer photo {!hasPhotoOnFile && <span className="text-destructive">*</span>}</Label>
-          {hasPhotoOnFile ? (
-            <div className="flex items-center gap-2 rounded border px-2 py-1.5 text-xs text-muted-foreground">Photo already on file for this customer</div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {photoFile && <img src={URL.createObjectURL(photoFile)} className="h-12 w-12 rounded object-cover" />}
-              <ImageCaptureButton label={photoFile ? "Retake" : "Capture Customer Photo *"} title="Add Customer Photo" onCapture={setPhotoFile} />
-            </div>
-          )}
-        </div>
+
 
         <div><Label>Metal</Label>
           <Select value={form.metal} onValueChange={(v) => setForm({ ...form, metal: v })}>
