@@ -47,23 +47,17 @@ export function docRowMath(r: any) {
   return { netWt, rate, wastageWt, totalWt, goldAmt, stoneAmt, making, qty, grossWt, stoneWt, rowTotal };
 }
 
-/** Opens a print window rendering the element with the given DOM id. */
-export function printDocument(domId: string) {
+/** Opens a print preview for the element with the given DOM id. */
+export function printDocument(domId: string, title = "Document") {
   const el = document.getElementById(domId);
   if (!el) return;
-  const w = window.open("", "_blank", "width=1000,height=1200");
-  if (!w) return;
-  w.document.write(`<html><head><title>Print</title><meta charset="utf-8">
-    <style>
-      *{box-sizing:border-box}
-      body{margin:0;padding:6mm;font-family:Arial,Helvetica,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-      @page{size:A4 landscape;margin:6mm}
-      tr,img{page-break-inside:avoid}
-    </style></head><body>${el.innerHTML}</body></html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { w.print(); w.close(); }, 700);
+  openPrintPreview({
+    title,
+    html: el.innerHTML,
+    css: `@page{size:A4 landscape;margin:6mm}`,
+  });
 }
+
 
 export function useCompanyProfile() {
   const [profile, setProfile] = useState<CompanyProfile>(FALLBACK_PROFILE);
