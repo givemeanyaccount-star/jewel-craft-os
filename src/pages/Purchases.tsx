@@ -238,6 +238,7 @@ function OldGoldPurchasesTab() {
   const [list, setList] = useState<any[]>([]);
   const [detail, setDetail] = useState<any>(null);
   const [editing, setEditing] = useState<any>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [onlyMissing, setOnlyMissing] = useState(params.get("missingId") === "1");
   const { hasRole } = useAuth();
   const canWrite = hasRole("admin") || hasRole("manager") || hasRole("sales");
@@ -253,8 +254,21 @@ function OldGoldPurchasesTab() {
 
   return (
     <div>
-      <p className="mb-3 text-sm text-muted-foreground">Cash buyback: customer sells gold/silver to the shop. Automatically linked to your Customer CRM.</p>
-      {canWrite && <div className="mb-4"><OldGoldForm onSaved={() => load()} /></div>}
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Cash buyback: customer sells gold/silver to the shop. Automatically linked to your Customer CRM.</p>
+        {canWrite && (
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus className="mr-1 h-4 w-4" /> New Old Gold Purchase
+          </Button>
+        )}
+      </div>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>New Old Gold Purchase</DialogTitle></DialogHeader>
+          <OldGoldForm compact onSaved={() => { load(); setAddOpen(false); }} />
+        </DialogContent>
+      </Dialog>
 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-muted-foreground">Purchase History</h3>
