@@ -224,10 +224,18 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
         });
       }
 
+      // Old gold settled only on a full return.
+      if (showOgPanel && og.id) {
+        const note = ogMode === "metal"
+          ? `Old gold returned to customer on sales return of invoice ${invoice.invoice_number} (${new Date().toLocaleDateString()})`
+          : `Old gold revalued at ${ogRate}/g on sales return of invoice ${invoice.invoice_number} (${new Date().toLocaleDateString()})`;
+        const { data: p } = await supabase.from("old_gold_purchases").select("notes").eq("id", og.id).maybeSingle();
+        await supabase.from("old_gold_purchases").update({ notes: [p?.notes, note].filter(Boolean).join(" | ") }).eq("id", og.id);
+      }
+
       const newTotal = Math.max(0, Number(invoice.total) - totalRefund);
       const newPaid = Math.max(0, paid - refundAmt);
       const newBalance = Math.max(0, newTotal - newPaid);
-      const fullReturn = selectedLines.length === returnable.length;
       await supabase.from("invoices").update({
         total: newTotal, amount_paid: newPaid, balance_due: newBalance,
         status: fullReturn && newTotal === 0 ? "refunded" : newBalance > 0 ? "partial" : newPaid > 0 ? "paid" : "refunded",
@@ -245,10 +253,16 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
         customer: invoice.customers?.full_name ?? "",
         at: new Date(),
         lines: receiptLines,
+        goodsRefund, taxWithheld: Number(taxWithheld) || 0,
+        oldGold: showOgPanel ? {
+          mode: ogMode, credit: oldGoldCredit, fineWeight: og.fineWeight,
+          metal: og.metal, rate: Number(ogRate) || 0, revalued: ogRevalued, deduction: ogDeduction,
+        } : null,
         totalRefund, cashRefund: refundAmt, creditReleased,
         method: refundMethod, reason,
         factor,
       });
+
       setPrintTargets(createdInventory);
       onDone();
     } catch (e: any) {
