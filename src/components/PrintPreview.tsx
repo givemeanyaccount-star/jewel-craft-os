@@ -125,12 +125,27 @@ ${job.includeAppStyles ? appStyles() : ""}
 export function PrintPreviewHost() {
   const [job, setJob] = useState<PrintJob | null>(null);
   const [busy, setBusy] = useState(false);
+  const [boxWidth, setBoxWidth] = useState(0);
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     listener = (j) => setJob(j);
     return () => { listener = null; };
   }, []);
+
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setBoxWidth(el.clientWidth));
+    ro.observe(el);
+    setBoxWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, [job]);
+
+  const pageWidthPx = job ? Math.round(geometry(job).width * (96 / 25.4)) : 0;
+  const frameWidth = Math.max(pageWidthPx + 24, 320);
+  const scale = boxWidth && frameWidth > boxWidth ? boxWidth / frameWidth : 1;
 
   const doPrint = useCallback(() => {
     const win = frameRef.current?.contentWindow;
