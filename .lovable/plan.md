@@ -9,13 +9,16 @@
    - If several gold lines exist, the highest-value gold line's rate is used as the bill reference; if the bill has no gold line, the latest 24K/999 gold rate from Metal Rates is used.
    - Equivalent grams = old gold credit amount ÷ fine gold rate, displayed to 3 decimals.
 
-3. **Custom purity with percentage for old gold purchases.** The old gold purchase form gets the same purity picker used elsewhere, plus a percentage option: type `91.6` and it is stored as `91.6%` and used directly as the purity factor in the fine weight calculation. This applies both to the standalone Old Gold Purchases screen and the old gold trade-in during a sale.
+3. **Metal-aware equivalent for non-gold trade-ins.** When the traded-in metal is silver (or platinum), the equivalent weight is computed against that metal's fine rate instead of gold — latest fine rate for that metal from Metal Rates, or the bill's line rate for that metal converted to fine. The note then reads e.g. `≈ 128.400 g fine silver`. If no rate exists for that metal, the note is omitted rather than showing a wrong number.
+
+4. **Custom purity everywhere in the old gold module.** The shared old gold purchase form gets the standard purity picker plus a percentage option: type `91.6` and it is stored as `91.6%` and used directly as the purity factor for net → fine weight. Because the form is shared, this applies to every entry point — the standalone Old Gold Purchases screen, the trade-in during a sale, and any other place the form is used. Old gold listings and receipts display the custom purity as entered.
 
 ## Where it shows
 
-- Printed invoice and estimate (PrintDocument): small grey `≈ X.XXX g fine` note under/next to the old gold amount in the totals block.
+- Printed invoice and estimate (PrintDocument): small grey `≈ X.XXX g fine <metal>` note under/next to the old gold amount in the totals block.
 - Invoice detail on-screen totals row: same note next to the old gold credit line.
 - POS sale builder: the same note under the old gold credit input, so staff see the equivalent before finalising.
+
 
 ## Technical notes
 
