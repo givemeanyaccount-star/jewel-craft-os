@@ -337,6 +337,10 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
             {tot("Total", n2(afterDiscount), { borderBottom: bd })}
             {tot("Non Taxable Amt", n2(stones))}
             {tot("Customer Old Gold", n2(oldGold))}
+            {oldGoldEq && (
+              <div style={{ padding: "0 8px 3px", fontSize: "8.5px", color: "#777", textAlign: "right" }}>{oldGoldEq}</div>
+            )}
+
             {vat > 0 && tot(`VAT ${doc.vat_rate}% (stones)`, n2(vat))}
             {tot("SD Taxable Amt", n2(sdTaxable))}
             {tot(`SD Tax (${sdRate}%)`, n2(sdTax))}
