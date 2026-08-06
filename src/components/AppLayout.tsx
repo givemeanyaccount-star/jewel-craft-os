@@ -1,9 +1,9 @@
 import { ReactNode } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Package, Users, FileText, Receipt,
   Settings, LogOut, Menu, ShieldCheck, TrendingUp,
-  Wrench, Truck, ShoppingCart
+  Wrench, Truck, ShoppingCart, Home
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
