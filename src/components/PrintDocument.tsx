@@ -126,6 +126,17 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
       });
   }, []);
 
+  // Latest fine (pure) rate per metal, used for the trade-in equivalent weight.
+  useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
+
+  // Which metal was traded in (the linked old gold/metal purchase); defaults to gold.
+  useEffect(() => {
+    if (kind !== "invoice" || !doc?.id) return;
+    supabase.from("old_gold_purchases").select("metal, total_amount")
+      .eq("linked_invoice_id", doc.id).order("total_amount", { ascending: false }).limit(1)
+      .then(({ data }) => { if (data?.[0]?.metal) setTradeMetal(data[0].metal as string); });
+  }, [kind, doc?.id]);
+
   const isInvoice = kind === "invoice";
   const cust = doc.customers;
   const docNo = isInvoice ? doc.invoice_number : doc.quote_number;
@@ -141,6 +152,10 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const sdTaxable = Math.max(0, afterDiscount - stones - oldGold);
   const vat = Number(doc.vat_amount ?? 0);
   const netTotal = Number(doc.total ?? 0);
+  const oldGoldEq = oldGold > 0
+    ? fineEquivalentNote(oldGold, billFineRate(items, tradeMetal, fineRates), tradeMetal)
+    : null;
+
 
   const bd = "1px solid #000";
   const cell: React.CSSProperties = { borderLeft: bd, borderRight: bd, padding: "4px 3px", verticalAlign: "top" };
