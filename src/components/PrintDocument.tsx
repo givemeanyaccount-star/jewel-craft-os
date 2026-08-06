@@ -5,6 +5,8 @@ import { toBS, toADDate, toADDateTime, toNepaliDigits } from "@/lib/nepaliDate";
 import { amountInWords } from "@/lib/numberToWords";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import logoAsset from "@/assets/logo.png";
+import { openPrintPreview } from "@/components/PrintPreview";
+
 
 export const TOLA_IN_GRAMS = 11.664;
 
