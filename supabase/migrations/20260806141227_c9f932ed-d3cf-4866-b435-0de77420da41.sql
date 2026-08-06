@@ -1,0 +1,10 @@
+ALTER TABLE public.metal_rates DROP CONSTRAINT metal_rates_created_by_fkey, ADD CONSTRAINT metal_rates_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.inventory_items DROP CONSTRAINT inventory_items_created_by_fkey, ADD CONSTRAINT inventory_items_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.customers DROP CONSTRAINT customers_created_by_fkey, ADD CONSTRAINT customers_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.quotations DROP CONSTRAINT quotations_created_by_fkey, ADD CONSTRAINT quotations_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.invoices DROP CONSTRAINT invoices_created_by_fkey, ADD CONSTRAINT invoices_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.payments DROP CONSTRAINT payments_created_by_fkey, ADD CONSTRAINT payments_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.old_gold_purchases DROP CONSTRAINT old_gold_purchases_created_by_fkey, ADD CONSTRAINT old_gold_purchases_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.repairs DROP CONSTRAINT repairs_created_by_fkey, ADD CONSTRAINT repairs_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.purchases DROP CONSTRAINT purchases_created_by_fkey, ADD CONSTRAINT purchases_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.repair_item_status_log DROP CONSTRAINT repair_item_status_log_changed_by_fkey, ADD CONSTRAINT repair_item_status_log_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES auth.users(id) ON DELETE SET NULL;
