@@ -227,7 +227,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
         </div>
 
         {/* ITEMS */}
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", borderTop: "1.5px solid #000" }}>
+        <table className="pd-items" style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px", borderTop: "1.5px solid #000" }}>
           <thead>
             <tr>
               <th style={{ ...th, width: "26px" }}>SN</th>
@@ -285,12 +285,12 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                 </tr>
               );
             })}
-            <tr>
+            <tr className="pd-filler">
               {Array.from({ length: 14 }).map((_, i) => (
                 <td
                   key={i}
                   style={{
-                    height: items.length <= 12 ? "96px" : "0px",
+                    height: "0px",
                     borderLeft: bd,
                     borderRight: bd,
                     borderBottom: "1.5px solid #000",
@@ -303,7 +303,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
         </table>
 
         {/* FOOTER BAND */}
-        <div className="pd-keep" style={{ display: "table", width: "100%", tableLayout: "fixed", fontSize: "10px" }}>
+        <div className="pd-keep pd-tail" style={{ display: "table", width: "100%", tableLayout: "fixed", fontSize: "10px" }}>
           <div style={{ display: "table-cell", verticalAlign: "top", padding: "6px 10px", borderRight: bd }}>
             <div><b>In Words:</b> {amountInWords(netTotal)}</div>
             {thumbs.length > 0 && (
@@ -363,7 +363,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
         </div>
 
         {/* TERMS + SIGNATURES */}
-        <div className="pd-keep">
+        <div className="pd-keep pd-tail">
         <div style={{ textAlign: "center", fontSize: "10px", padding: "6px", borderTop: "1.5px solid #000" }}>
           {isInvoice
             ? profile.terms_np
