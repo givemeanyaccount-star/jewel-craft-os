@@ -13,9 +13,11 @@ import {
   MissingIdCard,
   OutstandingCreditCard,
   PendingCreditCard,
+  PendingQuotationsCard,
   RepairStagesCard,
   TodaySalesCard,
 } from "@/components/dashboard/OpsCards";
+import { pendingQuotationStats, sweepExpiredQuotations, PendingQuotationStats } from "@/lib/quotations";
 import { DailyRateDialog, todayIsoDate } from "@/components/DailyRateDialog";
 import { AlertCircle } from "lucide-react";
 
