@@ -169,7 +169,7 @@ export function PrintPreviewHost() {
     return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); };
   }, [job]);
 
-  const pageWidthPx = job ? Math.round(geometry(job).width * (96 / 25.4)) : 0;
+  const pageWidthPx = job ? Math.round(geometry(job, setup).width * (96 / 25.4)) : 0;
   const frameWidth = Math.max(pageWidthPx + 24, 320);
   const scale = boxWidth && frameWidth > boxWidth ? boxWidth / frameWidth : 1;
 
@@ -212,7 +212,7 @@ export function PrintPreviewHost() {
           }
         }),
       );
-      const g = geometry(job);
+      const g = geometry(job, setup);
       const canvas = await html2canvas(doc.body, {
         scale: 2,
         backgroundColor: "#ffffff",
@@ -284,7 +284,7 @@ export function PrintPreviewHost() {
                 transform: `scale(${scale})`,
                 transformOrigin: "top left",
               }}
-              srcDoc={buildSrcDoc(job)}
+              srcDoc={buildSrcDoc(job, setup)}
             />
           )}
         </div>
