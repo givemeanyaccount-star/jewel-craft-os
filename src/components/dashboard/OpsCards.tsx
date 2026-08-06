@@ -93,3 +93,20 @@ export function TodaySalesCard({ amount, items }: { amount: number; items: numbe
     </Link>
   );
 }
+
+export function PendingQuotationsCard({ count, value, expiringSoon }: { count: number; value: number; expiringSoon: number }) {
+  return (
+    <Link to="/quotations">
+      <Card className="h-full transition hover:shadow-md">
+        <CardContent className="p-6">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Pending quotations</p>
+          <p className="text-xl font-semibold">{count} open</p>
+          <p className="mt-1 text-xs text-muted-foreground">{npr(value)} quoted · items reserved</p>
+          {expiringSoon > 0 && (
+            <p className="mt-1 text-xs font-medium text-destructive">{expiringSoon} expiring within 3 days</p>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
