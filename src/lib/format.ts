@@ -71,6 +71,26 @@ export function discountForTargetTotal(opts: {
   return Math.round(best * 100) / 100;
 }
 
+/** 1 tola = 11.6638 grams (Nepali bullion standard). */
+export const TOLA_GRAMS = 11.6638;
+
+export function perTola(ratePerGram: number | null | undefined) {
+  return Number(ratePerGram ?? 0) * TOLA_GRAMS;
+}
+
+export function perTenGrams(ratePerGram: number | null | undefined) {
+  return Number(ratePerGram ?? 0) * 10;
+}
+
+/** Compact NPR for tight card layouts: रू 1.24L / रू 2.4Cr */
+export function nprShort(n: number | null | undefined) {
+  const v = Number(n ?? 0);
+  const a = Math.abs(v);
+  if (a >= 1e7) return `रू ${(v / 1e7).toFixed(2)}Cr`;
+  if (a >= 1e5) return `रू ${(v / 1e5).toFixed(2)}L`;
+  return npr(v);
+}
+
 
 export function npr(n: number | null | undefined, opts: { withSymbol?: boolean } = { withSymbol: true }) {
   const v = Number(n ?? 0);
