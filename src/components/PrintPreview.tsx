@@ -135,12 +135,17 @@ export function PrintPreviewHost() {
   }, []);
 
   useEffect(() => {
-    const el = boxRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setBoxWidth(el.clientWidth));
-    ro.observe(el);
-    setBoxWidth(el.clientWidth);
-    return () => ro.disconnect();
+    if (!job) { setBoxWidth(0); return; }
+    let raf = 0;
+    const measure = () => {
+      const el = boxRef.current;
+      if (el && el.clientWidth) setBoxWidth(el.clientWidth);
+      else raf = requestAnimationFrame(measure);
+    };
+    measure();
+    const onResize = () => { const el = boxRef.current; if (el?.clientWidth) setBoxWidth(el.clientWidth); };
+    window.addEventListener("resize", onResize);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); };
   }, [job]);
 
   const pageWidthPx = job ? Math.round(geometry(job).width * (96 / 25.4)) : 0;
