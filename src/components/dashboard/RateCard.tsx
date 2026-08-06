@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Line, LineChart, ResponsiveContainer } from "recharts";
+import { Line, LineChart, ResponsiveContainer, Tooltip } from "recharts";
 import { npr, perTenGrams, perTola } from "@/lib/format";
+import { ChartTooltipRow, ChartTooltipShell, formatFullDate } from "./ChartTooltip";
 
 export interface RatePoint {
   date: string;
@@ -37,8 +38,31 @@ export function RateCard({
         {points.length > 1 && (
           <div className="h-10 w-20 shrink-0">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={points}>
-                <Line type="monotone" dataKey="rate" stroke={stroke} strokeWidth={2} dot={false} isAnimationActive={false} />
+              <LineChart data={points} margin={{ top: 4, right: 2, bottom: 4, left: 2 }}>
+                <Tooltip
+                  cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+                  wrapperStyle={{ outline: "none", zIndex: 30 }}
+                  isAnimationActive={false}
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const p = payload[0].payload as RatePoint;
+                    return (
+                      <ChartTooltipShell title={formatFullDate(p.date)}>
+                        <ChartTooltipRow color={stroke} label={label} value={`${npr(perTola(p.rate))} / tola`} />
+                        <ChartTooltipRow label="Per 10 g" value={npr(perTenGrams(p.rate))} muted />
+                      </ChartTooltipShell>
+                    );
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="rate"
+                  stroke={stroke}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 3, fill: stroke, stroke: "hsl(var(--background))", strokeWidth: 1 }}
+                  isAnimationActive={false}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
