@@ -205,12 +205,19 @@ export function PrintPreviewHost() {
             </Button>
           </div>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-auto rounded border bg-muted/40">
+        <div ref={boxRef} className="min-h-0 flex-1 overflow-auto rounded border bg-muted/40">
           {job && (
             <iframe
               ref={frameRef}
               title="Print preview"
-              className="h-full w-full bg-white"
+              className="bg-white"
+              style={{
+                width: `${frameWidth}px`,
+                height: `${100 / scale}%`,
+                border: 0,
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+              }}
               srcDoc={buildSrcDoc(job)}
             />
           )}
