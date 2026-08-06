@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { npr } from "@/lib/format";
+import { npr, fineEquivalentGrams } from "@/lib/format";
+import { fetchLatestFineRates, billFineRate, METAL_LABEL } from "@/lib/fineEquivalent";
 import { openPrintPreview } from "@/components/PrintPreview";
 import { escapeHtml } from "@/lib/html";
 
