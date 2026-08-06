@@ -84,7 +84,7 @@ ${job.includeAppStyles ? appStyles() : ""}
   @media print{html{background:#fff}body{margin:0;box-shadow:none}}
   @media screen{body{box-shadow:0 0 0 1px #d4d4d8,0 6px 24px rgba(0,0,0,.12);margin-top:12px;margin-bottom:12px}}
   ${job.css ?? ""}
-</style></head><body>${job.html}
+</style></head><body><div id="pd-content">${job.html}</div>
 <script>
 (function(){
   var MM = 96/25.4;
@@ -92,9 +92,10 @@ ${job.includeAppStyles ? appStyles() : ""}
   var usable = pageH - margin * 2;
   function paginate(){
     Array.prototype.forEach.call(document.querySelectorAll('.pd-page-number,.pd-page-edge'), function(n){ n.remove(); });
-    var h = document.body.scrollHeight - margin * 2;
-    var pages = Math.max(1, Math.ceil((h - 1) / usable));
-    document.body.style.minHeight = (pages * pageH) + 'px';
+    var content = document.getElementById('pd-content');
+    var h = content ? content.scrollHeight : 0;
+    var pages = Math.max(1, Math.ceil((h - 2) / usable));
+    document.body.style.height = (pages * pageH) + 'px';
     if (${job.hidePageNumbers ? "true" : "false"} || pages < 2) return;
     for (var i = 0; i < pages; i++){
       var d = document.createElement('div');
