@@ -1295,6 +1295,170 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_return_items: {
+        Row: {
+          created_at: string
+          description: string
+          discount: number
+          disposition: string
+          id: string
+          inventory_item_id: string | null
+          invoice_item_id: string | null
+          net: number
+          new_inventory_item_id: string | null
+          original: number
+          purity: string | null
+          qty: number
+          return_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          discount?: number
+          disposition?: string
+          id?: string
+          inventory_item_id?: string | null
+          invoice_item_id?: string | null
+          net?: number
+          new_inventory_item_id?: string | null
+          original?: number
+          purity?: string | null
+          qty?: number
+          return_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          discount?: number
+          disposition?: string
+          id?: string
+          inventory_item_id?: string | null
+          invoice_item_id?: string | null
+          net?: number
+          new_inventory_item_id?: string | null
+          original?: number
+          purity?: string | null
+          qty?: number
+          return_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_return_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_return_items_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_return_items_new_inventory_item_id_fkey"
+            columns: ["new_inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "sales_returns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_returns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          credit_note_number: string | null
+          customer_id: string | null
+          discount: number
+          gross: number
+          id: string
+          invoice_id: string
+          method: string
+          processed_at: string | null
+          processed_by: string | null
+          reason: string | null
+          refund_paid: number
+          status: Database["public"]["Enums"]["return_status"]
+          tax_retained: number
+          total: number
+          updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          credit_note_number?: string | null
+          customer_id?: string | null
+          discount?: number
+          gross?: number
+          id?: string
+          invoice_id: string
+          method?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string | null
+          refund_paid?: number
+          status?: Database["public"]["Enums"]["return_status"]
+          tax_retained?: number
+          total?: number
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          credit_note_number?: string | null
+          customer_id?: string | null
+          discount?: number
+          gross?: number
+          id?: string
+          invoice_id?: string
+          method?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string | null
+          refund_paid?: number
+          status?: Database["public"]["Enums"]["return_status"]
+          tax_retained?: number
+          total?: number
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_returns_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_returns_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null
@@ -1414,6 +1578,7 @@ export type Database = {
         | "quality_check"
         | "ready"
         | "delivered"
+      return_status: "draft" | "processed" | "voided"
       wastage_type: "percentage" | "weight" | "fixed"
     }
     CompositeTypes: {
@@ -1600,6 +1765,7 @@ export const Constants = {
         "ready",
         "delivered",
       ],
+      return_status: ["draft", "processed", "voided"],
       wastage_type: ["percentage", "weight", "fixed"],
     },
   },
