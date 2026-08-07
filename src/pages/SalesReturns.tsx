@@ -233,7 +233,10 @@ export default function SalesReturns() {
     async (code: string) => {
       setScanning(true);
       try {
-        const res = await resolveScannedCode(code, { items, online, hasInvoice: Boolean(invoice) });
+        // Prefer a line that is still open and unselected when an item repeats
+        const rank = (i: any) => (i.returned_at ? 2 : lines[i.id]?.selected ? 1 : 0);
+        const ordered = [...items].sort((a, b) => rank(a) - rank(b));
+        const res = await resolveScannedCode(code, { items: ordered, online, hasInvoice: Boolean(invoice) });
         if (res.kind === "none") return toast.error(res.reason);
         if (res.kind === "invoice") {
           toast.success(`Opening invoice ${res.label}`);
