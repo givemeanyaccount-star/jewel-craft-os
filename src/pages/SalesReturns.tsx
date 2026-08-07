@@ -44,6 +44,8 @@ import {
   searchCachedInvoices,
   type QueuedReturn,
 } from "@/lib/offlineReturns";
+import { fetchLineCodes, resolveScannedCode, withCodes } from "@/lib/scanMatch";
+import { QRScanButton } from "@/components/QRScanButton";
 
 const REFUND_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
@@ -155,8 +157,24 @@ export default function SalesReturns() {
     []
   );
 
+  // Scan → highlight helpers
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashLine = useCallback((id: string) => {
+    setHighlightId(id);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setHighlightId(null), 2200);
+    setTimeout(() => rowRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+  }, []);
+
+  useEffect(() => () => { if (flashTimer.current) clearTimeout(flashTimer.current); }, []);
+
+
   const loadInvoice = useCallback(
-    async (id: string, opts?: { draftId?: string; restore?: Record<string, LineState> }) => {
+    async (id: string, opts?: { draftId?: string; restore?: Record<string, LineState>; selectItemId?: string }) => {
       let inv: any = null;
       let its: any[] = [];
 
@@ -167,7 +185,12 @@ export default function SalesReturns() {
         ]);
         inv = i;
         its = rows ?? [];
-        if (inv) await cacheInvoice(inv, its);
+        if (inv) {
+          try {
+            its = withCodes(its, await fetchLineCodes(its));
+          } catch { /* codes are best-effort */ }
+          await cacheInvoice(inv, its);
+        }
       }
 
       if (!inv) {
@@ -191,10 +214,54 @@ export default function SalesReturns() {
       }
 
       applyLoaded(inv, its, restored, opts?.draftId ?? null);
+      if (opts?.selectItemId) {
+        const target = its.find((i: any) => i.id === opts.selectItemId);
+        if (target && !target.returned_at) {
+          setLines((p) => ({ ...p, [target.id]: { disposition: p[target.id]?.disposition ?? "restock", selected: true } }));
+          flashLine(target.id);
+          toast.success(`Selected ${target.description}`);
+        }
+      }
       void refreshOfflineState();
+      return its as any[];
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [online, applyLoaded, refreshOfflineState]
   );
+
+  const handleScan = useCallback(
+    async (code: string) => {
+      setScanning(true);
+      try {
+        // Prefer a line that is still open and unselected when an item repeats
+        const rank = (i: any) => (i.returned_at ? 2 : lines[i.id]?.selected ? 1 : 0);
+        const ordered = [...items].sort((a, b) => rank(a) - rank(b));
+        const res = await resolveScannedCode(code, { items: ordered, online, hasInvoice: Boolean(invoice) });
+        if (res.kind === "none") return toast.error(res.reason);
+        if (res.kind === "invoice") {
+          toast.success(`Opening invoice ${res.label}`);
+          await loadInvoice(res.invoiceId);
+          return;
+        }
+        const it = items.find((i) => i.id === res.itemId);
+        if (!it) return toast.error("That line is no longer on this invoice");
+        if (it.returned_at) return toast.warning(`${it.description} has already been returned`);
+        if (lines[it.id]?.selected) {
+          flashLine(it.id);
+          return toast.info(`${it.description} is already selected`);
+        }
+        setLines((p) => ({ ...p, [it.id]: { disposition: p[it.id]?.disposition ?? "restock", selected: true } }));
+        flashLine(it.id);
+        toast.success(`Selected ${it.description}`);
+      } catch (e: any) {
+        toast.error(e?.message ?? "Could not read that code");
+      } finally {
+        setScanning(false);
+      }
+    },
+    [items, lines, invoice, online, loadInvoice, flashLine]
+  );
+
 
   // Preload an invoice from the URL, otherwise restore the last local selection
   const bootstrapped = useRef(false);
@@ -554,11 +621,17 @@ export default function SalesReturns() {
                     <CardTitle className="flex items-center gap-2 text-base"><Search className="h-4 w-4" /> Find the original invoice</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Input
-                      placeholder={online ? "Search by invoice number or customer name…" : "Search cached invoices…"}
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder={online ? "Search by invoice number or customer name…" : "Search cached invoices…"}
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                      <QRScanButton onScan={handleScan} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Scan an invoice QR or a product tag — a tag opens the invoice it was sold on.
+                    </p>
                     {searching && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Searching…</div>}
                     {!online && <p className="text-xs text-muted-foreground">Offline — searching the {cachedCount} invoices cached on this device.</p>}
                     {results.length > 0 && (
@@ -612,18 +685,26 @@ export default function SalesReturns() {
                         <Stat label="Tax charged" value={npr(taxTotal)} />
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="text-sm font-medium">Line items</div>
-                        {returnable.length > 0 && (
-                          <div className="flex items-center gap-2 text-xs">
-                            <Checkbox
-                              id="all"
-                              checked={selected.length === returnable.length && returnable.length > 0}
-                              onCheckedChange={(v) => toggleAll(Boolean(v))}
-                            />
-                            <Label htmlFor="all" className="cursor-pointer">Select all</Label>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {returnable.length > 0 && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <Checkbox
+                                id="all"
+                                checked={selected.length === returnable.length && returnable.length > 0}
+                                onCheckedChange={(v) => toggleAll(Boolean(v))}
+                              />
+                              <Label htmlFor="all" className="cursor-pointer">Select all</Label>
+                            </div>
+                          )}
+                          <QRScanButton
+                            onScan={handleScan}
+                            size="sm"
+                            variant="outline"
+                            label={scanning ? "Scanning…" : "Scan tag"}
+                          />
+                        </div>
                       </div>
 
                       <div className="divide-y rounded-md border">
@@ -632,7 +713,13 @@ export default function SalesReturns() {
                           const st = lines[it.id];
                           const { original, discount, net } = netFor(it);
                           return (
-                            <div key={it.id} className={`p-3 ${done ? "opacity-60" : ""}`}>
+                            <div
+                              key={it.id}
+                              ref={(el) => { rowRefs.current[it.id] = el; }}
+                              className={`p-3 transition-colors ${done ? "opacity-60" : ""} ${
+                                highlightId === it.id ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""
+                              }`}
+                            >
                               <div className="flex items-start gap-3">
                                 <Checkbox
                                   className="mt-1"
