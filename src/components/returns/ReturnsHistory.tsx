@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { History, Loader2, RefreshCw } from "lucide-react";
+import { CloudUpload, History, Loader2, RefreshCw } from "lucide-react";
 import { npr } from "@/lib/format";
 import type { ReturnStatus } from "@/lib/returns";
+import type { QueuedReturn } from "@/lib/offlineReturns";
 
 export interface ReturnRecord {
   id: string;
