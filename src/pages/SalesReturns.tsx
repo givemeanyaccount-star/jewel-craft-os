@@ -11,11 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Undo2, Printer, RotateCcw, Loader2, Save } from "lucide-react";
+import { Search, Undo2, Printer, RotateCcw, Loader2, Save, Wifi, WifiOff, CloudUpload } from "lucide-react";
 import { toast } from "sonner";
 import { npr } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { openPrintPreview } from "@/components/PrintPreview";
 import { CreditNote, type CreditNoteData, type CreditNoteLine } from "@/components/returns/CreditNote";
 import { ReturnsHistory, type ReturnRecord } from "@/components/returns/ReturnsHistory";
@@ -26,8 +27,23 @@ import {
   refundCalc,
   saveDraft,
   voidReturn,
+  creditNoteNumberFor,
   type Disposition,
 } from "@/lib/returns";
+import {
+  cacheInvoice,
+  clearLocalSelection,
+  enqueueReturn,
+  getCachedInvoice,
+  getLocalSelection,
+  getQueue,
+  listInvoiceSnapshots,
+  markQueuedError,
+  removeQueued,
+  saveLocalSelection,
+  searchCachedInvoices,
+  type QueuedReturn,
+} from "@/lib/offlineReturns";
 
 const REFUND_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
@@ -38,6 +54,7 @@ export default function SalesReturns() {
   const { hasPermission } = usePermission();
   const canProcess = hasPermission("invoice_cancel_refund");
   const [params] = useSearchParams();
+  const online = useOnlineStatus();
 
   const [tab, setTab] = useState<"new" | "history">("new");
   const [historyKey, setHistoryKey] = useState(0);
@@ -46,6 +63,7 @@ export default function SalesReturns() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
 
   const [invoice, setInvoice] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
@@ -54,6 +72,7 @@ export default function SalesReturns() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<CreditNoteData | null>(null);
+  const [queuedNotice, setQueuedNotice] = useState<string | null>(null);
   const [company, setCompany] = useState<any>(null);
 
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -61,18 +80,38 @@ export default function SalesReturns() {
   const [savingDraft, setSavingDraft] = useState(false);
   const skipAutosave = useRef(false);
 
+  const [queue, setQueue] = useState<QueuedReturn[]>([]);
+  const [cachedCount, setCachedCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const flushing = useRef(false);
+
+  const refreshOfflineState = useCallback(async () => {
+    setQueue(await getQueue());
+    setCachedCount((await listInvoiceSnapshots()).length);
+  }, []);
+
   useEffect(() => {
     supabase.from("company_profile").select("name_en, address, phone1, pan_no").maybeSingle()
       .then(({ data }) => setCompany(data));
-  }, []);
+    void refreshOfflineState();
+  }, [refreshOfflineState]);
 
-  // Search invoices by number or customer name
+  // Search invoices — server when online, local cache when offline
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) { setResults([]); return; }
+    if (q.length < 2) { setResults([]); setFromCache(false); return; }
     let cancelled = false;
     setSearching(true);
     const t = setTimeout(async () => {
+      if (!online) {
+        const snaps = await searchCachedInvoices(q);
+        if (!cancelled) {
+          setResults(snaps.map((s) => ({ ...s.invoice, __cachedAt: s.cachedAt })));
+          setFromCache(true);
+          setSearching(false);
+        }
+        return;
+      }
       const { data } = await supabase
         .from("invoices")
         .select("id, invoice_number, issued_at, total, status, customers(full_name, phone)")
@@ -91,50 +130,88 @@ export default function SalesReturns() {
           .limit(25);
         rows = byName ?? [];
       }
-      if (!cancelled) { setResults(rows as any[]); setSearching(false); }
+      if (!cancelled) { setResults(rows as any[]); setFromCache(false); setSearching(false); }
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [query]);
+  }, [query, online]);
 
-  const loadInvoice = useCallback(async (id: string, resume?: { draftId: string }) => {
-    const [{ data: inv }, { data: its }] = await Promise.all([
-      supabase.from("invoices").select("*, customers(full_name, phone)").eq("id", id).maybeSingle(),
-      supabase.from("invoice_items").select("*").eq("invoice_id", id).order("created_at"),
-    ]);
-    if (!inv) return toast.error("Invoice not found");
-
-    let restored: Record<string, LineState> | null = null;
-    if (resume) {
-      const { data: dItems } = await supabase
-        .from("sales_return_items")
-        .select("invoice_item_id, disposition")
-        .eq("return_id", resume.draftId);
-      restored = {};
-      for (const d of dItems ?? []) {
-        if (d.invoice_item_id) restored[d.invoice_item_id] = { selected: true, disposition: (d.disposition as Disposition) ?? "restock" };
+  const applyLoaded = useCallback(
+    (inv: any, its: any[], restored: Record<string, LineState> | null, resumeDraftId: string | null) => {
+      skipAutosave.current = true;
+      setInvoice(inv);
+      setItems(its);
+      const init: Record<string, LineState> = {};
+      for (const it of its.filter((i: any) => !i.returned_at)) {
+        init[it.id] = restored?.[it.id] ?? { selected: false, disposition: "restock" };
       }
-    }
+      setLines(init);
+      setDraftId(resumeDraftId);
+      setDraftSavedAt(null);
+      setNote(null);
+      setQueuedNotice(null);
+      setResults([]);
+      setQuery("");
+    },
+    []
+  );
 
-    skipAutosave.current = true;
-    setInvoice(inv);
-    setItems(its ?? []);
-    const init: Record<string, LineState> = {};
-    for (const it of (its ?? []).filter((i: any) => !i.returned_at)) {
-      init[it.id] = restored?.[it.id] ?? { selected: false, disposition: "restock" };
-    }
-    setLines(init);
-    setDraftId(resume?.draftId ?? null);
-    setDraftSavedAt(null);
-    setNote(null);
-    setResults([]);
-    setQuery("");
-  }, []);
+  const loadInvoice = useCallback(
+    async (id: string, opts?: { draftId?: string; restore?: Record<string, LineState> }) => {
+      let inv: any = null;
+      let its: any[] = [];
 
-  // Preload an invoice passed from the invoice detail page
+      if (online) {
+        const [{ data: i }, { data: rows }] = await Promise.all([
+          supabase.from("invoices").select("*, customers(full_name, phone)").eq("id", id).maybeSingle(),
+          supabase.from("invoice_items").select("*").eq("invoice_id", id).order("created_at"),
+        ]);
+        inv = i;
+        its = rows ?? [];
+        if (inv) await cacheInvoice(inv, its);
+      }
+
+      if (!inv) {
+        const snap = await getCachedInvoice(id);
+        if (!snap) return toast.error(online ? "Invoice not found" : "This invoice is not available offline");
+        inv = snap.invoice;
+        its = snap.items;
+        if (!online) toast.info(`Loaded from the offline cache (${new Date(snap.cachedAt).toLocaleString()})`);
+      }
+
+      let restored = opts?.restore ?? null;
+      if (opts?.draftId && online) {
+        const { data: dItems } = await supabase
+          .from("sales_return_items")
+          .select("invoice_item_id, disposition")
+          .eq("return_id", opts.draftId);
+        restored = {};
+        for (const d of dItems ?? []) {
+          if (d.invoice_item_id) restored[d.invoice_item_id] = { selected: true, disposition: (d.disposition as Disposition) ?? "restock" };
+        }
+      }
+
+      applyLoaded(inv, its, restored, opts?.draftId ?? null);
+      void refreshOfflineState();
+    },
+    [online, applyLoaded, refreshOfflineState]
+  );
+
+  // Preload an invoice from the URL, otherwise restore the last local selection
+  const bootstrapped = useRef(false);
   useEffect(() => {
     const id = params.get("invoice");
-    if (id) loadInvoice(id);
-  }, [params, loadInvoice]);
+    if (id) { void loadInvoice(id); bootstrapped.current = true; return; }
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
+    (async () => {
+      const sel = await getLocalSelection();
+      if (!sel) return;
+      await loadInvoice(sel.invoiceId, { draftId: sel.draftId ?? undefined, restore: sel.lines });
+      setMethod(sel.method ?? "cash");
+      setReason(sel.reason ?? "");
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   const returnable = items.filter((i) => !i.returned_at);
   const grossAll = items.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
@@ -155,13 +232,15 @@ export default function SalesReturns() {
     return lineNet(it.line_total, discountRatio);
   }
 
-  // Auto-save the in-progress return as a draft
+  // Mirror the selection locally, and save the server draft when online
   useEffect(() => {
     if (note || !invoice || !canProcess) return;
     if (skipAutosave.current) { skipAutosave.current = false; return; }
     if (selected.length === 0 && !draftId) return;
 
     const handle = setTimeout(async () => {
+      await saveLocalSelection({ invoiceId: invoice.id, lines, method, reason, draftId });
+      if (!online) { setDraftSavedAt(new Date().toISOString()); return; }
       try {
         setSavingDraft(true);
         const id = await saveDraft({
@@ -188,8 +267,7 @@ export default function SalesReturns() {
         setDraftId(id);
         setDraftSavedAt(new Date().toISOString());
         setHistoryKey((k) => k + 1);
-      } catch (e: any) {
-        // A failing draft save should never block the return itself
+      } catch (e) {
         console.error("draft save failed", e);
       } finally {
         setSavingDraft(false);
@@ -197,7 +275,7 @@ export default function SalesReturns() {
     }, 800);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invoice?.id, JSON.stringify(lines), method, reason, note, canProcess]);
+  }, [invoice?.id, JSON.stringify(lines), method, reason, note, canProcess, online]);
 
   function toggleAll(v: boolean) {
     setLines((prev) => {
@@ -211,11 +289,34 @@ export default function SalesReturns() {
     if (!invoice || selected.length === 0) return toast.error("Select at least one item to return");
     setBusy(true);
     try {
+      const dispositions = Object.fromEntries(Object.entries(lines).map(([k, v]) => [k, v.disposition])) as Record<string, Disposition>;
+
+      if (!online) {
+        await enqueueReturn({
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.invoice_number,
+          customerName: invoice.customers?.full_name ?? "",
+          snapshot: { invoice, items, cachedAt: new Date().toISOString() },
+          selectedIds: selected.map((s) => s.id),
+          dispositions,
+          calc,
+          discountRatio,
+          method,
+          reason,
+          draftId,
+        });
+        await clearLocalSelection();
+        await refreshOfflineState();
+        setQueuedNotice(creditNoteNumberFor());
+        toast.success("Queued — this return will process as soon as you're back online");
+        return;
+      }
+
       const { number, noteLines } = await processReturn({
         draftId,
         invoice,
         selected,
-        dispositions: Object.fromEntries(Object.entries(lines).map(([k, v]) => [k, v.disposition])),
+        dispositions,
         calc,
         discountRatio,
         method,
@@ -225,6 +326,7 @@ export default function SalesReturns() {
         itemCount: items.length,
       });
 
+      await clearLocalSelection();
       setDraftId(null);
       setDraftSavedAt(null);
       setHistoryKey((k) => k + 1);
@@ -246,6 +348,68 @@ export default function SalesReturns() {
     } finally { setBusy(false); }
   }
 
+  /** Submit queued returns one by one, oldest first. */
+  const flushQueue = useCallback(async () => {
+    if (flushing.current || !online || !canProcess) return;
+    const pending = await getQueue();
+    if (!pending.length) return;
+    flushing.current = true;
+    setSyncing(true);
+    try {
+      for (const q of pending) {
+        try {
+          const { data: inv } = await supabase
+            .from("invoices").select("*, customers(full_name, phone)").eq("id", q.invoiceId).maybeSingle();
+          const { data: its } = await supabase
+            .from("invoice_items").select("*").eq("invoice_id", q.invoiceId).order("created_at");
+          if (!inv) throw new Error("Invoice no longer exists");
+
+          const rows = its ?? [];
+          const stillOpen = rows.filter((r: any) => q.selectedIds.includes(r.id) && !r.returned_at);
+          if (!stillOpen.length) {
+            await removeQueued(q.clientId);
+            toast.info(`Queued return for ${q.invoiceNumber} was already processed elsewhere`);
+            continue;
+          }
+
+          const gAll = rows.reduce((s: number, i: any) => s + (Number(i.line_total) || 0), 0);
+          const tax = Number(inv.vat_amount ?? 0) + Number(inv.sd_tax ?? 0) + Number(inv.luxury_tax ?? 0);
+          const sub = Number(inv.subtotal ?? gAll);
+          const ratio = sub > 0 ? Math.max(0, Math.min(1, Number(inv.discount ?? 0) / sub)) : 0;
+          const c = refundCalc(stillOpen, { discountRatio: ratio, taxTotal: tax, grossAll: gAll });
+
+          const { number } = await processReturn({
+            draftId: q.draftId,
+            invoice: inv,
+            selected: stillOpen,
+            dispositions: q.dispositions,
+            calc: c,
+            discountRatio: ratio,
+            method: q.method,
+            reason: q.reason,
+            userId: user?.id ?? null,
+            returnableCount: rows.filter((r: any) => !r.returned_at).length,
+            itemCount: rows.length,
+          });
+          await removeQueued(q.clientId);
+          toast.success(`Queued return synced · ${number}`);
+        } catch (e: any) {
+          await markQueuedError(q.clientId, e.message ?? "Sync failed");
+          toast.error(`Could not sync return for ${q.invoiceNumber}: ${e.message ?? "unknown error"}`);
+        }
+      }
+      await refreshOfflineState();
+      setHistoryKey((k) => k + 1);
+    } finally {
+      flushing.current = false;
+      setSyncing(false);
+    }
+  }, [online, canProcess, user?.id, refreshOfflineState]);
+
+  useEffect(() => {
+    if (online) void flushQueue();
+  }, [online, flushQueue]);
+
   function printNote() {
     const el = document.getElementById("credit-note-print");
     if (!el) return;
@@ -260,8 +424,9 @@ export default function SalesReturns() {
 
   function reset() {
     skipAutosave.current = true;
-    setNote(null); setInvoice(null); setItems([]); setLines({});
+    setNote(null); setQueuedNotice(null); setInvoice(null); setItems([]); setLines({});
     setReason(""); setMethod("cash"); setDraftId(null); setDraftSavedAt(null);
+    void clearLocalSelection();
   }
 
   // ---- History actions ----
@@ -328,8 +493,29 @@ export default function SalesReturns() {
     setTab("new");
   }
 
+  async function handleRemoveQueued(q: QueuedReturn) {
+    if (!window.confirm(`Remove the queued return for ${q.invoiceNumber}? It will not be processed.`)) return;
+    await removeQueued(q.clientId);
+    await refreshOfflineState();
+    toast.success("Queued return removed");
+  }
+
   return (
     <AppLayout title="Sales Return Management">
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <Badge variant={online ? "secondary" : "destructive"} className="gap-1">
+          {online ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+          {online ? "Online" : "Offline"}
+        </Badge>
+        <span>{cachedCount} invoice{cachedCount === 1 ? "" : "s"} cached for offline lookup</span>
+        {queue.length > 0 && (
+          <Badge variant="outline" className="gap-1">
+            <CloudUpload className="h-3 w-3" /> {queue.length} queued
+          </Badge>
+        )}
+        {syncing && <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Syncing…</span>}
+      </div>
+
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="space-y-4">
         <TabsList>
           <TabsTrigger value="new">New return</TabsTrigger>
@@ -337,7 +523,20 @@ export default function SalesReturns() {
         </TabsList>
 
         <TabsContent value="new" className="space-y-4">
-          {note ? (
+          {queuedNotice ? (
+            <Card>
+              <CardContent className="space-y-3 p-6 text-sm">
+                <div className="flex items-center gap-2 text-base font-semibold">
+                  <CloudUpload className="h-4 w-4" /> Queued — will process when you're back online
+                </div>
+                <p className="text-muted-foreground">
+                  The return for invoice {invoice?.invoice_number} is saved on this device. Provisional reference{" "}
+                  <span className="font-medium">{queuedNotice}</span>. The final credit note number is issued when it syncs.
+                </p>
+                <Button variant="outline" onClick={reset}><RotateCcw className="mr-1 h-4 w-4" /> New return</Button>
+              </CardContent>
+            </Card>
+          ) : note ? (
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2 print:hidden">
                 <Button onClick={printNote}><Printer className="mr-1 h-4 w-4" /> Print Credit Note</Button>
@@ -356,11 +555,12 @@ export default function SalesReturns() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <Input
-                      placeholder="Search by invoice number or customer name…"
+                      placeholder={online ? "Search by invoice number or customer name…" : "Search cached invoices…"}
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                     />
                     {searching && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Searching…</div>}
+                    {!online && <p className="text-xs text-muted-foreground">Offline — searching the {cachedCount} invoices cached on this device.</p>}
                     {results.length > 0 && (
                       <div className="divide-y rounded-md border">
                         {results.map((r) => (
@@ -370,9 +570,13 @@ export default function SalesReturns() {
                             className="flex w-full items-center justify-between gap-3 p-3 text-left text-sm hover:bg-muted/60"
                           >
                             <div>
-                              <div className="font-medium">{r.invoice_number}</div>
+                              <div className="flex items-center gap-2 font-medium">
+                                {r.invoice_number}
+                                {fromCache && <Badge variant="outline" className="text-[10px]">Cached</Badge>}
+                              </div>
                               <div className="text-xs text-muted-foreground">
                                 {r.customers?.full_name ?? "—"} · {new Date(r.issued_at).toLocaleDateString()}
+                                {r.__cachedAt ? ` · saved ${new Date(r.__cachedAt).toLocaleDateString()}` : ""}
                               </div>
                             </div>
                             <div className="text-right">
@@ -478,10 +682,10 @@ export default function SalesReturns() {
                   <CardHeader className="pb-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <CardTitle className="flex items-center gap-2 text-base"><Undo2 className="h-4 w-4" /> Refund calculation</CardTitle>
-                      {(draftId || savingDraft) && (
+                      {(draftId || savingDraft || draftSavedAt) && (
                         <Badge variant="secondary" className="gap-1 text-[11px]">
                           {savingDraft ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                          {savingDraft ? "Saving draft" : "Draft saved"}
+                          {savingDraft ? "Saving draft" : online ? "Draft saved" : "Saved on device"}
                         </Badge>
                       )}
                     </div>
@@ -516,8 +720,8 @@ export default function SalesReturns() {
                       disabled={!canProcess || busy || selected.length === 0}
                       onClick={process}
                     >
-                      {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Undo2 className="mr-1 h-4 w-4" />}
-                      Process Return &amp; Generate Credit Note
+                      {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : online ? <Undo2 className="mr-1 h-4 w-4" /> : <CloudUpload className="mr-1 h-4 w-4" />}
+                      {online ? "Process Return & Generate Credit Note" : "Queue return for sync"}
                     </Button>
                     {!canProcess && (
                       <p className="text-xs text-muted-foreground">You do not have permission to process returns.</p>
@@ -537,6 +741,10 @@ export default function SalesReturns() {
             refreshKey={historyKey}
             busyId={rowBusy}
             canWrite={canProcess}
+            queued={queue}
+            syncing={syncing}
+            onSyncNow={flushQueue}
+            onRemoveQueued={handleRemoveQueued}
             onResume={handleResume}
             onView={handleView}
             onVoid={handleVoid}
