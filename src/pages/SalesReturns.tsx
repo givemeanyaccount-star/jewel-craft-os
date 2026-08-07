@@ -44,6 +44,8 @@ import {
   searchCachedInvoices,
   type QueuedReturn,
 } from "@/lib/offlineReturns";
+import { fetchLineCodes, resolveScannedCode, withCodes } from "@/lib/scanMatch";
+import { QRScanButton } from "@/components/QRScanButton";
 
 const REFUND_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
