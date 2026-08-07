@@ -157,6 +157,22 @@ export default function SalesReturns() {
     []
   );
 
+  // Scan → highlight helpers
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashLine = useCallback((id: string) => {
+    setHighlightId(id);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setHighlightId(null), 2200);
+    setTimeout(() => rowRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+  }, []);
+
+  useEffect(() => () => { if (flashTimer.current) clearTimeout(flashTimer.current); }, []);
+
+
   const loadInvoice = useCallback(
     async (id: string, opts?: { draftId?: string; restore?: Record<string, LineState>; selectItemId?: string }) => {
       let inv: any = null;
