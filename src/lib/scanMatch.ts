@@ -71,12 +71,15 @@ export async function resolveScannedCode(
   }
 
   // 2. Resolve the code to an inventory item.
-  const { data: inv } = await supabase
-    .from("inventory_items")
-    .select("id, name, sku")
-    .or(`sku.eq.${raw},barcode.eq.${raw},qr_code.eq.${raw}`)
-    .limit(1)
-    .maybeSingle();
+  const safe = raw.replace(/[,()"]/g, " ").trim();
+  const { data: inv } = safe
+    ? await supabase
+        .from("inventory_items")
+        .select("id, name, sku")
+        .or(`sku.eq.${safe},barcode.eq.${safe},qr_code.eq.${safe}`)
+        .limit(1)
+        .maybeSingle()
+    : { data: null as any };
 
   if (inv) {
     const onInvoice = opts.items.find((it) => it.inventory_item_id === inv.id);
