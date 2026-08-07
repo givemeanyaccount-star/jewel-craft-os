@@ -229,6 +229,37 @@ export default function SalesReturns() {
     [online, applyLoaded, refreshOfflineState]
   );
 
+  const handleScan = useCallback(
+    async (code: string) => {
+      setScanning(true);
+      try {
+        const res = await resolveScannedCode(code, { items, online, hasInvoice: Boolean(invoice) });
+        if (res.kind === "none") return toast.error(res.reason);
+        if (res.kind === "invoice") {
+          toast.success(`Opening invoice ${res.label}`);
+          await loadInvoice(res.invoiceId);
+          return;
+        }
+        const it = items.find((i) => i.id === res.itemId);
+        if (!it) return toast.error("That line is no longer on this invoice");
+        if (it.returned_at) return toast.warning(`${it.description} has already been returned`);
+        if (lines[it.id]?.selected) {
+          flashLine(it.id);
+          return toast.info(`${it.description} is already selected`);
+        }
+        setLines((p) => ({ ...p, [it.id]: { disposition: p[it.id]?.disposition ?? "restock", selected: true } }));
+        flashLine(it.id);
+        toast.success(`Selected ${it.description}`);
+      } catch (e: any) {
+        toast.error(e?.message ?? "Could not read that code");
+      } finally {
+        setScanning(false);
+      }
+    },
+    [items, lines, invoice, online, loadInvoice, flashLine]
+  );
+
+
   // Preload an invoice from the URL, otherwise restore the last local selection
   const bootstrapped = useRef(false);
   useEffect(() => {
