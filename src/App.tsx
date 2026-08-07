@@ -20,6 +20,7 @@ import QuotationDetail from "./pages/QuotationDetail";
 import POS from "./pages/POS";
 import Invoices from "./pages/Invoices";
 import InvoicesOldGold from "./pages/InvoicesOldGold";
+import SalesReturns from "./pages/SalesReturns";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import Purchases from "./pages/Purchases";
 import MetalRates from "./pages/MetalRates";
@@ -58,7 +59,9 @@ const App = () => (
             <Route path="/pos" element={<ProtectedRoute roles={[...SALES]}><POS /></ProtectedRoute>} />
             <Route path="/invoices" element={<ProtectedRoute roles={["admin", "manager", "sales", "accountant", "viewer"]}><Invoices /></ProtectedRoute>} />
             <Route path="/invoices/old-gold" element={<ProtectedRoute roles={[...SALES]}><InvoicesOldGold /></ProtectedRoute>} />
+            <Route path="/returns" element={<ProtectedRoute roles={["admin", "manager", "sales"]}><SalesReturns /></ProtectedRoute>} />
             <Route path="/credit" element={<ProtectedRoute roles={["admin", "manager", "accountant"]}><CreditLedger /></ProtectedRoute>} />
+
             <Route path="/invoices/:id" element={<ProtectedRoute roles={["admin", "manager", "sales", "accountant", "viewer"]}><InvoiceDetail /></ProtectedRoute>} />
             <Route path="/purchases" element={<ProtectedRoute roles={["admin", "manager"]}><Purchases /></ProtectedRoute>} />
             <Route path="/rates" element={<ProtectedRoute roles={["admin", "manager", "accountant"]}><MetalRates /></ProtectedRoute>} />
