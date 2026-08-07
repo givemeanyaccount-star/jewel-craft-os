@@ -18,7 +18,6 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import { CancelInvoiceDialog } from "@/components/CancelInvoiceDialog";
-import { ReturnItemsDialog } from "@/components/ReturnItemsDialog";
 import logoUrl from "@/assets/logo.png";
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
@@ -46,7 +45,6 @@ export default function InvoiceDetail() {
   const [payments, setPayments] = useState<any[]>([]);
   const [payOpen, setPayOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [returnOpen, setReturnOpen] = useState(false);
   const [fineRates, setFineRates] = useState<FineRates>({});
   const [tradeMetal, setTradeMetal] = useState<string>("gold");
 
@@ -85,7 +83,7 @@ export default function InvoiceDetail() {
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
         <Button size="sm" variant="outline" onClick={() => printDocument(`invoice-print-${inv.id}`, `Invoice ${inv.invoice_number}`)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
         {returnableInvoice && hasPermission("invoice_cancel_refund") && (
-          <Button size="sm" variant="outline" onClick={() => setReturnOpen(true)}>
+          <Button size="sm" variant="outline" onClick={() => nav(`/returns?invoice=${inv.id}`)}>
             <Undo2 className="mr-1 h-4 w-4" /> Sales return
           </Button>
         )}
@@ -199,8 +197,6 @@ export default function InvoiceDetail() {
 
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} invoice={inv} userId={user?.id ?? null} onSaved={() => { setPayOpen(false); load(); }} />
       <CancelInvoiceDialog open={cancelOpen} onOpenChange={setCancelOpen} invoice={inv} items={items}
-        userId={user?.id ?? null} onDone={load} />
-      <ReturnItemsDialog open={returnOpen} onOpenChange={setReturnOpen} invoice={inv} items={items}
         userId={user?.id ?? null} onDone={load} />
     </AppLayout>
   );
