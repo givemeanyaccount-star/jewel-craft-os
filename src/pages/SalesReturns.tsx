@@ -198,8 +198,18 @@ export default function SalesReturns() {
       }
 
       applyLoaded(inv, its, restored, opts?.draftId ?? null);
+      if (opts?.selectItemId) {
+        const target = its.find((i: any) => i.id === opts.selectItemId);
+        if (target && !target.returned_at) {
+          setLines((p) => ({ ...p, [target.id]: { disposition: p[target.id]?.disposition ?? "restock", selected: true } }));
+          flashLine(target.id);
+          toast.success(`Selected ${target.description}`);
+        }
+      }
       void refreshOfflineState();
+      return its as any[];
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [online, applyLoaded, refreshOfflineState]
   );
 
