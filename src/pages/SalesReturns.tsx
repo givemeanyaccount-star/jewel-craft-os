@@ -156,7 +156,7 @@ export default function SalesReturns() {
   );
 
   const loadInvoice = useCallback(
-    async (id: string, opts?: { draftId?: string; restore?: Record<string, LineState> }) => {
+    async (id: string, opts?: { draftId?: string; restore?: Record<string, LineState>; selectItemId?: string }) => {
       let inv: any = null;
       let its: any[] = [];
 
@@ -167,7 +167,12 @@ export default function SalesReturns() {
         ]);
         inv = i;
         its = rows ?? [];
-        if (inv) await cacheInvoice(inv, its);
+        if (inv) {
+          try {
+            its = withCodes(its, await fetchLineCodes(its));
+          } catch { /* codes are best-effort */ }
+          await cacheInvoice(inv, its);
+        }
       }
 
       if (!inv) {
