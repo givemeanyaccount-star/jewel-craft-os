@@ -43,9 +43,17 @@ export function ReturnsHistory({
   onVoid,
   onDiscard,
   canWrite,
+  queued = [],
+  syncing,
+  onSyncNow,
+  onRemoveQueued,
 }: {
   refreshKey: number;
   busyId?: string | null;
+  queued?: QueuedReturn[];
+  syncing?: boolean;
+  onSyncNow?: () => void;
+  onRemoveQueued?: (q: QueuedReturn) => void;
   onResume: (r: ReturnRecord) => void;
   onView: (r: ReturnRecord) => void;
   onVoid: (r: ReturnRecord) => void;
