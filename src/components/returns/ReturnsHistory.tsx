@@ -121,6 +121,47 @@ export function ReturnsHistory({
           </Select>
         </div>
 
+        {queued.length > 0 && (
+          <div className="space-y-2 rounded-md border border-dashed p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CloudUpload className="h-4 w-4" /> Waiting to sync ({queued.length})
+              </div>
+              {onSyncNow && (
+                <Button size="sm" variant="outline" onClick={onSyncNow} disabled={syncing}>
+                  {syncing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CloudUpload className="mr-1 h-4 w-4" />} Sync now
+                </Button>
+              )}
+            </div>
+            <div className="divide-y">
+              {queued.map((q) => (
+                <div key={q.clientId} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{q.invoiceNumber}</span>
+                      <Badge variant={q.error ? "destructive" : "outline"} className="text-[10px]">
+                        {q.error ? "Needs attention" : "Queued"}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {q.customerName || "—"} · {q.selectedIds.length} item{q.selectedIds.length === 1 ? "" : "s"} ·{" "}
+                      {new Date(q.queuedAt).toLocaleString()}
+                      {q.error ? ` · ${q.error}` : ""}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{npr(q.calc.total)}</span>
+                    {onRemoveQueued && (
+                      <Button size="sm" variant="ghost" onClick={() => onRemoveQueued(q)} disabled={!canWrite}>Remove</Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+
         {loading ? (
           <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading…
