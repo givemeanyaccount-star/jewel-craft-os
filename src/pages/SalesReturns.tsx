@@ -621,11 +621,17 @@ export default function SalesReturns() {
                     <CardTitle className="flex items-center gap-2 text-base"><Search className="h-4 w-4" /> Find the original invoice</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Input
-                      placeholder={online ? "Search by invoice number or customer name…" : "Search cached invoices…"}
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder={online ? "Search by invoice number or customer name…" : "Search cached invoices…"}
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                      <QRScanButton onScan={handleScan} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Scan an invoice QR or a product tag — a tag opens the invoice it was sold on.
+                    </p>
                     {searching && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Searching…</div>}
                     {!online && <p className="text-xs text-muted-foreground">Offline — searching the {cachedCount} invoices cached on this device.</p>}
                     {results.length > 0 && (
