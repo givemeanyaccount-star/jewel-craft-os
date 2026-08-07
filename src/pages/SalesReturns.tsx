@@ -685,18 +685,26 @@ export default function SalesReturns() {
                         <Stat label="Tax charged" value={npr(taxTotal)} />
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="text-sm font-medium">Line items</div>
-                        {returnable.length > 0 && (
-                          <div className="flex items-center gap-2 text-xs">
-                            <Checkbox
-                              id="all"
-                              checked={selected.length === returnable.length && returnable.length > 0}
-                              onCheckedChange={(v) => toggleAll(Boolean(v))}
-                            />
-                            <Label htmlFor="all" className="cursor-pointer">Select all</Label>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {returnable.length > 0 && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <Checkbox
+                                id="all"
+                                checked={selected.length === returnable.length && returnable.length > 0}
+                                onCheckedChange={(v) => toggleAll(Boolean(v))}
+                              />
+                              <Label htmlFor="all" className="cursor-pointer">Select all</Label>
+                            </div>
+                          )}
+                          <QRScanButton
+                            onScan={handleScan}
+                            size="sm"
+                            variant="outline"
+                            label={scanning ? "Scanning…" : "Scan tag"}
+                          />
+                        </div>
                       </div>
 
                       <div className="divide-y rounded-md border">
@@ -705,7 +713,13 @@ export default function SalesReturns() {
                           const st = lines[it.id];
                           const { original, discount, net } = netFor(it);
                           return (
-                            <div key={it.id} className={`p-3 ${done ? "opacity-60" : ""}`}>
+                            <div
+                              key={it.id}
+                              ref={(el) => { rowRefs.current[it.id] = el; }}
+                              className={`p-3 transition-colors ${done ? "opacity-60" : ""} ${
+                                highlightId === it.id ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""
+                              }`}
+                            >
                               <div className="flex items-start gap-3">
                                 <Checkbox
                                   className="mt-1"
