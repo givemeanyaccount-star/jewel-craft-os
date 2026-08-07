@@ -20,6 +20,7 @@ import QuotationDetail from "./pages/QuotationDetail";
 import POS from "./pages/POS";
 import Invoices from "./pages/Invoices";
 import InvoicesOldGold from "./pages/InvoicesOldGold";
+import SalesReturns from "./pages/SalesReturns";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import Purchases from "./pages/Purchases";
 import MetalRates from "./pages/MetalRates";
