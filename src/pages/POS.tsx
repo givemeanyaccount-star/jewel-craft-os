@@ -455,16 +455,16 @@ export default function POS() {
                           <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input type="number" className="h-8 w-20 text-right" value={r.weight}
-                            onChange={(e) => updateRow(i, { weight: Number(e.target.value) || 0 })} />
+                          <NumberField decimals={3} className="h-8 w-20 text-right" value={r.weight}
+                            onChange={(v) => updateRow(i, { weight: v })} />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input type="number" className={`h-8 w-28 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
-                            value={r.rate} onChange={(e) => updateRow(i, { rate: Number(e.target.value) || 0 })} />
+                          <NumberField className={`h-8 w-28 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
+                            value={r.rate} onChange={(v) => updateRow(i, { rate: v })} />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input type="number" className="h-8 w-24 text-right" value={r.stone_value}
-                            onChange={(e) => updateRow(i, { stone_value: Number(e.target.value) || 0 })} />
+                          <NumberField className="h-8 w-24 text-right" value={r.stone_value}
+                            onChange={(v) => updateRow(i, { stone_value: v })} />
                         </TableCell>
                         <TableCell className="text-right font-medium">{npr(r.line_total)}</TableCell>
                         <TableCell className="flex gap-0.5">
