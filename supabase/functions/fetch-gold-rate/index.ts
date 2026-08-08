@@ -5,11 +5,10 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const PURITY_FACTORS: Record<string, number> = {
-  "24K": 24 / 24,
-  "22K": 22 / 24,
-  "20K": 20 / 24,
-  "18K": 18 / 24,
-  "14K": 14 / 24,
+  "24K": 1,
+  "22K": 0.916,
+  "18K": 0.75,
+  "14K": 0.585,
   "999": 0.999,
   "925": 0.925,
 };
@@ -91,8 +90,8 @@ Deno.serve(async (req) => {
 
     const today = new Date().toISOString().slice(0, 10);
     const rows: any[] = [];
-    // Gold rows: 24K, 22K, 20K, 18K, 14K, 999
-    for (const purity of ["999", "24K", "22K", "20K", "18K", "14K"]) {
+    // Gold rows: 24K (fine), 22K (916), 18K (750), 14K (585)
+    for (const purity of ["24K", "22K", "18K", "14K"]) {
       const factor = PURITY_FACTORS[purity];
       rows.push({
         metal: "gold",
