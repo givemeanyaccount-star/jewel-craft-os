@@ -13,14 +13,17 @@ import { Plus, TrendingUp, Download, Search, X } from "lucide-react";
 import { npr } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 
-const METALS = ["gold", "silver", "platinum"];
-const PURITIES = ["24K", "22K", "20K", "18K", "14K", "999", "925"];
+const METALS = ["gold", "silver"];
+const PURITIES = ALL_PURITIES;
 
 export default function MetalRates() {
   const { hasRole, user } = useAuth();
   const canWrite = hasRole("admin") || hasRole("manager") || hasRole("accountant");
   const [rates, setRates] = useState<any[]>([]);
-  const [form, setForm] = useState({ metal: "gold", purity: "22K", rate_per_gram: "" });
+  const [metal, setMetal] = useState("gold");
+  const [fine, setFine] = useState("");
+  const [derived, setDerived] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   const [filter, setFilter] = useState({ metal: "all", purity: "all", search: "" });
 
@@ -30,29 +33,37 @@ export default function MetalRates() {
     setRates(data ?? []);
   }
 
-  const filteredRates = useMemo(() => {
-    return rates.filter((r) => {
-      if (filter.metal !== "all" && r.metal !== filter.metal) return false;
-      if (filter.purity !== "all" && r.purity !== filter.purity) return false;
-      if (filter.search.trim()) {
-        const q = filter.search.toLowerCase();
-        const text = `${r.metal} ${r.purity} ${r.source ?? ""} ${r.effective_date ?? ""}`.toLowerCase();
-        if (!text.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [rates, filter]);
+  const list = metal === "silver" ? [...SILVER_PURITIES] : [...GOLD_PURITIES];
+  const finePurity = metal === "silver" ? "999" : "24K";
+
+  function setFineRate(v: string) {
+    setFine(v);
+    const base = Number(v) || 0;
+    const next: Record<string, string> = {};
+    for (const p of list) {
+      if (p === finePurity) continue;
+      next[p] = base ? String(derivedRate(base, p)) : "";
+    }
+    setDerived(next);
+  }
+
+  useEffect(() => { setFine(""); setDerived({}); }, [metal]);
 
   async function add() {
-    if (!form.rate_per_gram) return toast.error("Rate required");
-    const { error } = await supabase.from("metal_rates").upsert({
-      metal: form.metal as any, purity: form.purity,
-      rate_per_gram: Number(form.rate_per_gram), created_by: user?.id,
-      effective_date: new Date().toISOString().slice(0, 10),
-      source: "manual",
-    } as any, { onConflict: "metal,purity,effective_date" });
+    const base = Number(fine);
+    if (!base) return toast.error(`Enter the ${metal === "silver" ? "fine silver (999)" : "fine gold (24K)"} rate`);
+    const date = new Date().toISOString().slice(0, 10);
+    const rows = [
+      { metal, purity: finePurity, rate_per_gram: base, effective_date: date, source: "manual", created_by: user?.id },
+      ...list.filter((p) => p !== finePurity && Number(derived[p]) > 0).map((p) => ({
+        metal, purity: p, rate_per_gram: Number(derived[p]), effective_date: date, source: "manual", created_by: user?.id,
+      })),
+    ];
+    setSaving(true);
+    const { error } = await supabase.from("metal_rates").upsert(rows as any, { onConflict: "metal,purity,effective_date" });
+    setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Rate saved"); setForm({ ...form, rate_per_gram: "" }); load();
+    toast.success(`Saved ${rows.length} ${metal} rates`); setFine(""); setDerived({}); load();
   }
 
   const [fetching, setFetching] = useState(false);
