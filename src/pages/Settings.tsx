@@ -37,11 +37,12 @@ function TaxationCard() {
   const [saving, setSaving] = useState(false);
   const [recalcOpen, setRecalcOpen] = useState(false);
 
-  async function save(next: { vat_enabled?: boolean; vat_rate?: number; sd_tax_rate?: number }) {
+  async function save(next: { vat_enabled?: boolean; vat_rate?: number; sd_tax_rate?: number; allow_custom_purity?: boolean }) {
     const payload = {
       vat_enabled: next.vat_enabled ?? settings.vat_enabled,
       vat_rate: next.vat_rate ?? settings.vat_rate,
       sd_tax_rate: next.sd_tax_rate ?? settings.sd_tax_rate,
+      allow_custom_purity: next.allow_custom_purity ?? settings.allow_custom_purity,
     };
     const changed =
       payload.vat_enabled !== settings.vat_enabled ||
@@ -56,7 +57,8 @@ function TaxationCard() {
     }
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Tax settings saved");
+    resetAllowCustomPurityCache(payload.allow_custom_purity);
+    toast.success("Settings saved");
     await reload();
     if (changed) setRecalcOpen(true);
   }
