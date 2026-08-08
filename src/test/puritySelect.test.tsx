@@ -50,7 +50,7 @@ describe("PuritySelect", () => {
   });
 
   it("lists only the silver categories for silver", async () => {
-    await open(true, { metal: "silver" });
+    await open(true, { metal: "silver", value: "999" });
     const options = screen.getAllByRole("option").map((o) => o.textContent);
     expect(options).toEqual(expect.arrayContaining(["999 (fine silver)", "925 (sterling)"]));
     expect(options).not.toContain("22K (916)");
