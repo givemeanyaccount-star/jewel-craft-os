@@ -69,15 +69,17 @@ export function PuritySelect({
       }}>
         <SelectTrigger className="flex-1"><SelectValue placeholder="Purity" /></SelectTrigger>
         <SelectContent>
-          {list.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-          <SelectItem value={CUSTOM}>Custom purity…</SelectItem>
-          {allowPercent && <SelectItem value={PERCENT}>Purity percentage…</SelectItem>}
+          {list.map((p) => <SelectItem key={p} value={p}>{purityLabel(p)}</SelectItem>)}
+          {allowCustom && <SelectItem value={CUSTOM}>Custom purity…</SelectItem>}
+          {allowCustom && allowPercent && <SelectItem value={PERCENT}>Purity percentage…</SelectItem>}
         </SelectContent>
       </Select>
-      <Button type="button" size="icon" variant="ghost" title="Enter custom purity"
-        onClick={() => { setDraft(value ?? ""); setMode("custom"); }}>
-        <Pencil className="h-4 w-4" />
-      </Button>
+      {allowCustom && (
+        <Button type="button" size="icon" variant="ghost" title="Enter custom purity"
+          onClick={() => { setDraft(value ?? ""); setMode("custom"); }}>
+          <Pencil className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }
