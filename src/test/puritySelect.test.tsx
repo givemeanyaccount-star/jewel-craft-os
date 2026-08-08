@@ -33,7 +33,7 @@ async function open(toggle: boolean, props: any = {}) {
   render(<PuritySelect value="22K" onChange={onChange} {...props} />);
   const trigger = screen.getByRole("combobox");
   await waitFor(() => expect(trigger).toBeInTheDocument());
-  fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
+  fireEvent.keyDown(trigger, { key: "Enter" });
   await screen.findByRole("listbox");
   return { onChange };
 }
@@ -80,7 +80,7 @@ describe("PuritySelect", () => {
     resetAllowCustomPurityCache();
     render(<PuritySelect value="91.6%" onChange={vi.fn()} metal="gold" />);
     const trigger = screen.getByRole("combobox");
-    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+    fireEvent.keyDown(trigger, { key: "Enter" });
     await screen.findByRole("listbox");
     expect(screen.getByRole("option", { name: "91.6%" })).toBeInTheDocument();
   });
@@ -91,7 +91,7 @@ describe("PuritySelect", () => {
     const onChange = vi.fn();
     render(<PuritySelect value="22K" onChange={onChange} metal="gold" allowPercent />);
     await waitFor(() => expect(screen.getByTitle("Enter custom purity")).toBeInTheDocument());
-    fireEvent.pointerDown(screen.getByRole("combobox"), { button: 0, pointerType: "mouse" });
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "Enter" });
     fireEvent.click(await screen.findByText("Purity percentage…"));
     const input = screen.getByPlaceholderText("e.g. 91.6");
     fireEvent.change(input, { target: { value: "91.6" } });
