@@ -14,19 +14,42 @@ const PURITY_FACTORS: Record<string, number> = {
   "925": 0.925,
 };
 
+const API_URL = "https://api.fenegosida.org/api/website/v1/Dashboard/today";
+
+function pick(rows: any[], keywords: string[]): number {
+  const row = rows.find((r) =>
+    keywords.every((k) => String(r?.rateType ?? "").toLowerCase().includes(k.toLowerCase()))
+  );
+  const v = Number(row?.todayBaseRatePerGram ?? 0);
+  return Number.isFinite(v) ? v : 0;
+}
+
+/** FENEGOSIDA's site is a SPA — read its public JSON API instead of scraping HTML. */
 async function scrape(): Promise<{ fineGoldPer10g: number; silverPer10g: number; source: string }> {
-  const res = await fetch("https://www.fenegosida.org/", {
-    headers: { "user-agent": "Mozilla/5.0 JewelMasterOS/1.0" },
+  const res = await fetch(API_URL, {
+    headers: { "user-agent": "Mozilla/5.0 JewelMasterOS/1.0", accept: "application/json" },
   });
   if (!res.ok) throw new Error(`FENEGOSIDA fetch failed: ${res.status}`);
-  const html = await res.text();
-  // Match "FINE GOLD (9999)per 10 grmNrs 254800/-" etc.
-  const gold = html.match(/FINE\s*GOLD[^<]*?per\s*10\s*gr?m[^0-9]*([0-9,]+)/i);
-  const silver = html.match(/SILVER[^<]*?per\s*10\s*gr?m[^0-9]*([0-9,.]+)/i);
-  if (!gold) throw new Error("Could not parse FINE GOLD from FENEGOSIDA page");
-  const fineGoldPer10g = Number(gold[1].replace(/,/g, ""));
-  const silverPer10g = silver ? Number(silver[1].replace(/,/g, "")) : 0;
-  return { fineGoldPer10g, silverPer10g, source: "fenegosida.org" };
+  const rows = await res.json();
+  if (!Array.isArray(rows)) throw new Error("Unexpected FENEGOSIDA API response");
+
+  // "छापावाल सुन (१० ग्राम)" = fine/hallmark gold per 10 g; fall back to tola (11.6638 g).
+  let fineGoldPer10g = pick(rows, ["छापावाल", "ग्राम"]) || pick(rows, ["तेजाबी", "ग्राम"]);
+  if (!fineGoldPer10g) {
+    const tola = pick(rows, ["छापावाल", "तोला"]) || pick(rows, ["तेजाबी", "तोला"]);
+    if (tola) fineGoldPer10g = (tola / 11.6638) * 10;
+  }
+  let silverPer10g = pick(rows, ["चाँदी", "ग्राम"]);
+  if (!silverPer10g) {
+    const tola = pick(rows, ["चाँदी", "तोला"]);
+    if (tola) silverPer10g = (tola / 11.6638) * 10;
+  }
+  if (!fineGoldPer10g) throw new Error("Could not read fine gold rate from FENEGOSIDA");
+  return {
+    fineGoldPer10g: Math.round(fineGoldPer10g * 100) / 100,
+    silverPer10g: Math.round(silverPer10g * 100) / 100,
+    source: "fenegosida.org",
+  };
 }
 
 Deno.serve(async (req) => {
