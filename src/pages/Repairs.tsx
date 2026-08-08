@@ -21,8 +21,8 @@ import { ImageCaptureButton } from "@/components/ImageCapture";
 import { KarigarSelect, useKarigars } from "@/components/KarigarSelect";
 import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
 
-const METALS = ["gold", "silver", "platinum"];
-const PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
+const METALS = ["gold", "silver"];
+const PURITIES = ["24K", "22K", "18K", "14K", "999", "925"];
 const STATUS_FLOW = ["received", "in_progress", "quality_check", "ready", "delivered"];
 export const STATUS_LABEL: Record<string, string> = {
   received: "Received", in_progress: "In Progress", quality_check: "Quality Check", ready: "Ready", delivered: "Delivered",

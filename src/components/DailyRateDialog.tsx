@@ -95,7 +95,7 @@ export function DailyRateDialog({ open, onOpenChange, onSaved }: {
         <DialogHeader>
           <DialogTitle>Set today's metal rates</DialogTitle>
           <DialogDescription>
-            Enter the fine gold (24K) rate per gram — 22K, 18K, 14K and 9K are derived automatically and stay editable.
+            Enter the fine gold (24K) rate per gram — 22K (916), 18K (750) and 14K (585) are derived automatically and stay editable.
           </DialogDescription>
         </DialogHeader>
 

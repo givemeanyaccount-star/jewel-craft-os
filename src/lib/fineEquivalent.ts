@@ -44,7 +44,7 @@ export function billFineRate(
 }
 
 export const METAL_LABEL: Record<string, string> = {
-  gold: "gold", silver: "silver", platinum: "platinum", diamond: "diamond", other: "metal",
+  gold: "gold", silver: "silver", diamond: "diamond", other: "metal",
 };
 
 /** "≈ 1.786 g fine gold" — or null when no reliable rate exists. */
