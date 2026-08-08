@@ -86,20 +86,20 @@ function TaxationCard() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label className="text-xs">VAT rate (%)</Label>
-            <Input
-              type="number" step="0.01" disabled={!settings.vat_enabled || loading}
+            <NumberField
+              disabled={!settings.vat_enabled || loading}
               value={settings.vat_rate}
-              onChange={(e) => setSettings({ ...settings, vat_rate: Number(e.target.value) })}
-              onBlur={(e) => save({ vat_rate: Number(e.target.value) })}
+              onChange={(v) => setSettings({ ...settings, vat_rate: v })}
+              onBlur={() => save({ vat_rate: settings.vat_rate })}
             />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">SD tax rate (%)</Label>
-            <Input
-              type="number" step="0.01" disabled={loading}
+            <NumberField
+              disabled={loading}
               value={settings.sd_tax_rate}
-              onChange={(e) => setSettings({ ...settings, sd_tax_rate: Number(e.target.value) })}
-              onBlur={(e) => save({ sd_tax_rate: Number(e.target.value) })}
+              onChange={(v) => setSettings({ ...settings, sd_tax_rate: v })}
+              onBlur={() => save({ sd_tax_rate: settings.sd_tax_rate })}
             />
           </div>
         </div>
