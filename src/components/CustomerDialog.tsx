@@ -17,7 +17,7 @@ export const ID_TYPES = ["citizenship", "passport", "license", "national_id", "o
 
 /**
  * The single, shared "add / edit customer" dialog used everywhere a customer record
- * is created or edited (Customers page, Old Gold Purchase, Repairs, etc). Keeping this
+ * is created or edited (Customers page, Old Metal Purchase, Repairs, etc). Keeping this
  * in one place means duplicate-checking and photo capture behave identically everywhere.
  */
 export function CustomerDialog({

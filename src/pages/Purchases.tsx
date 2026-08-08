@@ -37,7 +37,7 @@ export default function Purchases() {
       <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="stock">Stock Purchases</TabsTrigger>
-          <TabsTrigger value="oldgold">Old Gold Purchases</TabsTrigger>
+          <TabsTrigger value="oldgold">Old Metal Purchases</TabsTrigger>
         </TabsList>
         <TabsContent value="stock" className="mt-4"><StockPurchasesTab /></TabsContent>
         <TabsContent value="oldgold" className="mt-4"><OldGoldPurchasesTab /></TabsContent>
@@ -261,14 +261,14 @@ function OldGoldPurchasesTab() {
         <p className="text-sm text-muted-foreground">Cash buyback: customer sells gold/silver to the shop. Automatically linked to your Customer CRM.</p>
         {canWrite && (
           <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" /> New Old Gold Purchase
+            <Plus className="mr-1 h-4 w-4" /> New Old Metal Purchase
           </Button>
         )}
       </div>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-          <DialogHeader><DialogTitle>New Old Gold Purchase</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>New Old Metal Purchase</DialogTitle></DialogHeader>
           <OldGoldForm compact onSaved={() => { load(); setAddOpen(false); }} />
         </DialogContent>
       </Dialog>
@@ -456,7 +456,7 @@ function ReceiptDialog({ purchase, onOpenChange }: { purchase: any; onOpenChange
               </div>
             </div>
             <div className="text-right">
-              <div className="text-[9px] uppercase tracking-widest text-gray-500">Old Gold Purchase Receipt</div>
+              <div className="text-[9px] uppercase tracking-widest text-gray-500">Old Metal Purchase Receipt</div>
               <div className="text-base font-semibold">{purchase.receipt_number}</div>
               <div className="text-[9px] text-gray-600">{new Date(purchase.purchased_at).toLocaleString()}</div>
             </div>
@@ -505,7 +505,7 @@ function printReceipt(id: string) {
   const el = document.getElementById(`ogp-print-${id}`);
   if (!el) return;
   openPrintPreview({
-    title: "Old Gold Purchase Receipt",
+    title: "Old Metal Purchase Receipt",
     fileName: "Old-Gold-Purchase-Receipt",
     page: "a4",
     html: el.innerHTML,

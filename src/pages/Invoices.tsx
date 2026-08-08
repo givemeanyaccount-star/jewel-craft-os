@@ -21,7 +21,7 @@ export function InvoiceSubNav({ active }: { active: "sales" | "oldgold" }) {
     <div className="mb-4 flex gap-2 border-b">
       <Link to="/invoices" className={`px-3 py-2 text-sm font-medium ${active === "sales" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground"}`}>Sales</Link>
       {hasPermission("old_gold_purchase") && (
-        <Link to="/invoices/old-gold" className={`px-3 py-2 text-sm font-medium ${active === "oldgold" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground"}`}>Old Gold Purchases</Link>
+        <Link to="/invoices/old-gold" className={`px-3 py-2 text-sm font-medium ${active === "oldgold" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground"}`}>Old Metal Purchases</Link>
       )}
     </div>
   );

@@ -25,8 +25,8 @@ export interface OldGoldSaveResult { id: string; receiptNumber: string; total: n
 
 
 /**
- * The single, shared Old Gold Purchase form — used identically whether a purchase
- * happens standalone (Purchases > Old Gold Purchases) or as a trade-in during a sale (POS).
+ * The single, shared Old Metal Purchase form — used identically whether a purchase
+ * happens standalone (Purchases > Old Metal Purchases) or as a trade-in during a sale (POS).
  * ID document + ID photo are mandatory. If the selected customer already has an ID/customer
  * photo on file, those are reused automatically instead of forcing a re-capture.
  */
@@ -181,7 +181,7 @@ export function OldGoldForm({
             <AlertDialogTitle>Continue without ID information?</AlertDialogTitle>
             <AlertDialogDescription>
               No complete ID document is recorded for this purchase. Capturing customer ID is recommended for gold purchases.
-              You can add the ID details later from Purchases → Old Gold Purchases.
+              You can add the ID details later from Purchases → Old Metal Purchases.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -199,7 +199,7 @@ export function OldGoldForm({
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
-        <div className="flex items-center gap-2"><Coins className="h-5 w-5" /> <span className="font-medium">New Old Gold Purchase</span></div>
+        <div className="flex items-center gap-2"><Coins className="h-5 w-5" /> <span className="font-medium">New Old Metal Purchase</span></div>
         {body}
       </CardContent>
     </Card>

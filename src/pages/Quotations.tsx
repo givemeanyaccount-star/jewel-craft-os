@@ -458,7 +458,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
               {settings.vat_enabled && <div className="flex justify-between"><span className="text-muted-foreground">VAT {settings.vat_rate}% (stones)</span><span>{npr(tax.vat)}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">SD tax {settings.sd_tax_rate}%</span><span>{npr(tax.sdTax)}</span></div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Old gold credit</span>
+                <span className="text-muted-foreground">Old metal credit</span>
                 <NumberField className="h-8 w-28 text-right" value={oldGoldCredit}
                   onChange={(v) => setOldGoldCredit(v)} />
               </div>

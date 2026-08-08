@@ -136,7 +136,7 @@ export function CancelInvoiceDialog({ open, onOpenChange, invoice, items, userId
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Cancel invoice {invoice?.invoice_number}</DialogTitle>
-          <DialogDescription>Choose how payments, stock and old gold should be handled.</DialogDescription>
+          <DialogDescription>Choose how payments, stock and old metal should be handled.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -186,7 +186,7 @@ export function CancelInvoiceDialog({ open, onOpenChange, invoice, items, userId
 
           {oldGold.length > 0 && (
             <div className="rounded-md border p-3">
-              <div className="text-sm font-medium">Linked old gold purchase(s)</div>
+              <div className="text-sm font-medium">Linked old metal purchase(s)</div>
               <div className="mt-1 text-xs text-muted-foreground">
                 {oldGold.map((o) => `${o.receipt_number} · ${npr(o.total_amount)}`).join(", ")}
               </div>

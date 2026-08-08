@@ -67,7 +67,7 @@ export function MissingIdCard({ count }: { count: number }) {
         <CardContent className="flex h-full flex-col justify-between p-4">
           <div>
             <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-destructive">
-              <AlertCircle className="h-3.5 w-3.5" /> Old gold alert
+              <AlertCircle className="h-3.5 w-3.5" /> Old metal alert
             </p>
             <p className="text-sm font-medium text-destructive">
               Missing ID documentation for {count} trade-in{count === 1 ? "" : "s"}.

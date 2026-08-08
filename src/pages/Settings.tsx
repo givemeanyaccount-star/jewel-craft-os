@@ -70,7 +70,7 @@ function TaxationCard() {
       <CardHeader>
         <CardTitle>Taxation</CardTitle>
         <p className="text-xs text-muted-foreground">
-          VAT applies to the stones portion only. When disabled, no VAT is charged on any invoice or quotation. SD tax always applies to (gold + making + wastage − old gold credit).
+          VAT applies to the stones portion only. When disabled, no VAT is charged on any invoice or quotation. SD tax always applies to (gold + making + wastage − old metal credit).
         </p>
       </CardHeader>
       <CardContent className="space-y-4">

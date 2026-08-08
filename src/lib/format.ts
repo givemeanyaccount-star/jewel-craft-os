@@ -1,6 +1,6 @@
 export const VAT_RATE = 13;
-// Nepal SD tax: 0.5% on (gold + making + wastage − old gold credit).
-// No minimum threshold; skipped when old gold credit covers the base.
+// Nepal SD tax: 0.5% on (gold + making + wastage − old metal credit).
+// No minimum threshold; skipped when old metal credit covers the base.
 export const SD_TAX_RATE = 0.5;
 
 /** Round half-up (away from zero) to a fixed number of decimals, float-safe. */
@@ -27,7 +27,7 @@ export interface TaxBreakdown {
   discount: number;
   taxableStones: number;   // stones portion after proportional discount
   vat: number;             // VAT on stones only (0 when VAT is disabled in settings)
-  sdTax: number;           // 0.5% of (gold + making + wastage − old gold credit)
+  sdTax: number;           // 0.5% of (gold + making + wastage − old metal credit)
   oldGoldCredit: number;
   total: number;
 }
@@ -55,7 +55,7 @@ export function computeInvoiceTaxes(opts: {
   const stonesShare = subtotal > 0 ? stonesTotal / subtotal : 0;
   const taxableStones = Math.max(0, postDiscount * stonesShare);
   const vat = (taxableStones * vatRate) / 100;
-  // SD tax: applies on (gold + making + wastage) AFTER deducting old gold credit.
+  // SD tax: applies on (gold + making + wastage) AFTER deducting old metal credit.
   const nonStonePostDiscount = Math.max(0, postDiscount - taxableStones);
   const sdBase = Math.max(0, nonStonePostDiscount - oldGoldCredit);
   const sdTax = sdBase > 0 ? (sdBase * sdRate) / 100 : 0;

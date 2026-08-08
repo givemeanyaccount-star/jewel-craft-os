@@ -26,7 +26,7 @@ const FALLBACK_PROFILE: CompanyProfile = {
 const PAYMENT_LABEL: Record<string, string> = {
   cash: "Cash", card: "Card", bank_transfer: "Bank Transfer", esewa: "eSewa",
   khalti: "Khalti", fonepay: "QR Scan / Fonepay", credit: "Credit",
-  old_gold: "Old Gold", other: "Other",
+  old_gold: "Old Metal", other: "Other",
 };
 
 const n2 = (v: number) => Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -127,7 +127,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   // Latest fine (pure) rate per metal, used for the trade-in equivalent weight.
   useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
 
-  // Which metal was traded in (the linked old gold/metal purchase); defaults to gold.
+  // Which metal was traded in (the linked old metal/metal purchase); defaults to gold.
   useEffect(() => {
     if (kind !== "invoice" || !doc?.id) return;
     supabase.from("old_gold_purchases").select("metal, total_amount")
@@ -332,7 +332,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                   ))}
                   {oldGold > 0 && (
                     <tr>
-                      <td style={{ border: bd, padding: "3px 6px" }}>Old Gold</td>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Old Metal</td>
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>
                         {n2(oldGold)}
                         {oldGoldEq && <div style={{ fontSize: "8px", color: "#777" }}>{oldGoldEq}</div>}
@@ -350,7 +350,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
             {tot("Discount", n2(discount))}
             {tot("Total", n2(afterDiscount), { borderBottom: bd })}
             {tot("Non Taxable Amt", n2(stones))}
-            {tot("Customer Old Gold", n2(oldGold))}
+            {tot("Customer Old Metal", n2(oldGold))}
             {oldGoldEq && (
               <div style={{ padding: "0 8px 3px", fontSize: "8.5px", color: "#777", textAlign: "right" }}>{oldGoldEq}</div>
             )}
