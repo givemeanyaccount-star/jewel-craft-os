@@ -143,7 +143,7 @@ export function purityFactor(purity: string): number {
 }
 
 export function computeFineWeight(netWeight: number, purity: string) {
-  return netWeight * purityFactor(purity);
+  return round3(netWeight * purityFactor(purity));
 }
 
 /** Convert a rate quoted for a given purity into the equivalent fine (pure) metal rate per gram. */
