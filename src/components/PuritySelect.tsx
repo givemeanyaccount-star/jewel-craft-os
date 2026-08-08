@@ -3,32 +3,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pencil, Check } from "lucide-react";
+import { purityOptions, purityLabel, useAllowCustomPurity } from "@/lib/purity";
 
 const CUSTOM = "__custom__";
 const PERCENT = "__percent__";
 
 /**
- * Purity picker: choose from the configured list, type a custom purity
- * (e.g. "21K", "916"), or — when `allowPercent` — enter a purity percentage
- * such as 91.6 which is stored as "91.6%".
+ * Purity picker: choose from the standard list for the metal, or — when custom
+ * purity is enabled in Settings — type a custom purity ("21K", "916") or a
+ * purity percentage such as 91.6 which is stored as "91.6%".
  */
 export function PuritySelect({
   value,
   onChange,
   options,
+  metal,
   className,
   allowPercent = false,
 }: {
   value: string;
   onChange: (v: string) => void;
-  options: string[];
+  options?: string[];
+  metal?: string | null;
   className?: string;
   allowPercent?: boolean;
 }) {
+  const allowCustom = useAllowCustomPurity();
   const [mode, setMode] = useState<null | "custom" | "percent">(null);
   const [draft, setDraft] = useState(value ?? "");
 
-  const list = options.includes(value) || !value ? options : [...options, value];
+  const base = options ?? purityOptions(metal);
+  const list = base.includes(value) || !value ? base : [...base, value];
+
 
   if (mode) {
     const isPct = mode === "percent";
