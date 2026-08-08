@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2, ShoppingCart, Eye, Printer, Pencil, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { npr, gms, computeNetWeight, computeFineWeight, nextNumber } from "@/lib/format";
+import { npr, gms, computeNetWeight, computeFineWeight, nextNumber, round2 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadImage, getSignedUrls } from "@/lib/storage";
 import { toast } from "sonner";

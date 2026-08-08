@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Coins } from "lucide-react";
-import { npr, computeNetWeight, computeFineWeight, nextNumber } from "@/lib/format";
+import { npr, computeNetWeight, computeFineWeight, nextNumber, round2 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadImage } from "@/lib/storage";
 import { toast } from "sonner";
