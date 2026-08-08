@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { RecalcTaxesDialog } from "@/components/RecalcTaxesDialog";
 import { CompanyProfileCard } from "@/components/CompanyProfileCard";
+import { resetAllowCustomPurityCache } from "@/lib/purity";
 
 
 export default function Settings() {
