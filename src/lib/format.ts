@@ -56,7 +56,11 @@ export function computeInvoiceTaxes(opts: {
   const sdTax = sdBase > 0 ? (sdBase * sdRate) / 100 : 0;
   const total = Math.max(0, postDiscount + vat + sdTax - oldGoldCredit);
 
-  return { subtotal, stonesTotal, nonStoneTotal, discount, taxableStones, vat, sdTax, oldGoldCredit, total };
+  return {
+    subtotal: round2(subtotal), stonesTotal: round2(stonesTotal), nonStoneTotal: round2(nonStoneTotal),
+    discount: round2(discount), taxableStones: round2(taxableStones), vat: round2(vat), sdTax: round2(sdTax),
+    oldGoldCredit: round2(oldGoldCredit), total: round2(total),
+  };
 }
 
 // Back-solve the discount so the final total equals a desired net amount.
