@@ -3,6 +3,18 @@ export const VAT_RATE = 13;
 // No minimum threshold; skipped when old gold credit covers the base.
 export const SD_TAX_RATE = 0.5;
 
+/** Round half-up to a fixed number of decimals (float-safe). */
+export function roundTo(n: number, decimals: number) {
+  if (!isFinite(n)) return 0;
+  const f = Math.pow(10, decimals);
+  return Math.round((n + Number.EPSILON) * f) / f;
+}
+/** Money: always 2 decimals. */
+export const round2 = (n: number) => roundTo(Number(n) || 0, 2);
+/** Weights: always 3 decimals. */
+export const round3 = (n: number) => roundTo(Number(n) || 0, 3);
+
+
 export interface TaxBreakdown {
   subtotal: number;        // sum of all line totals (metal + making + wastage + stones)
   stonesTotal: number;     // VAT-taxable portion only
