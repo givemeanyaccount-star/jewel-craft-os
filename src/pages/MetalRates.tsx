@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Plus, TrendingUp, Download, Search, X } from "lucide-react";
 import { npr } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
+import { ALL_PURITIES, GOLD_PURITIES, SILVER_PURITIES, derivedRate, purityLabel } from "@/lib/purity";
 
 const METALS = ["gold", "silver"];
 const PURITIES = ALL_PURITIES;
@@ -48,6 +49,19 @@ export default function MetalRates() {
   }
 
   useEffect(() => { setFine(""); setDerived({}); }, [metal]);
+
+  const filteredRates = useMemo(() => {
+    return rates.filter((r) => {
+      if (filter.metal !== "all" && r.metal !== filter.metal) return false;
+      if (filter.purity !== "all" && r.purity !== filter.purity) return false;
+      if (filter.search.trim()) {
+        const q = filter.search.toLowerCase();
+        const text = `${r.metal} ${r.purity} ${r.source ?? ""} ${r.effective_date ?? ""}`.toLowerCase();
+        if (!text.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [rates, filter]);
 
   async function add() {
     const base = Number(fine);
