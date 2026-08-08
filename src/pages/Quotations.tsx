@@ -248,8 +248,8 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
     addToCart(data);
   }
 
-  const subtotal = useMemo(() => cart.reduce((a, r) => a + r.line_total, 0), [cart]);
-  const stonesTotal = useMemo(() => cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0), [cart]);
+  const subtotal = useMemo(() => round2(cart.reduce((a, r) => a + r.line_total, 0)), [cart]);
+  const stonesTotal = useMemo(() => round2(cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0)), [cart]);
   const tax = useMemo(() => computeInvoiceTaxes({
     subtotal, stonesTotal, discount, oldGoldCredit,
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,

@@ -116,7 +116,7 @@ function NewPurchaseDialog({ open, onOpenChange, onSaved }: any) {
     const net = computeNetWeight(Number(it.gross_weight) || 0, Number(it.stone_weight) || 0);
     return (net * (Number(it.rate_per_gram) || 0) + (Number(it.making_charge) || 0)) * (Number(it.quantity) || 1);
   }
-  const grandTotal = items.reduce((sum, it) => sum + itemTotal(it), 0);
+  const grandTotal = round2(items.reduce((sum, it) => sum + itemTotal(it), 0));
 
   async function save() {
     if (!items.length || items.some((it) => !it.item_name?.trim())) return toast.error("Every line item needs a name");
@@ -335,7 +335,7 @@ function EditOldGoldDialog({ purchase, onOpenChange, onSaved }: { purchase: any;
 
   const net = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
   const fine = computeFineWeight(net, form.purity || "");
-  const total = Math.max(0, fine * Number(form.rate_per_gram || 0) - Number(form.deduction || 0));
+  const total = round2(Math.max(0, fine * Number(form.rate_per_gram || 0) - Number(form.deduction || 0)));
 
   async function save() {
     setSaving(true);

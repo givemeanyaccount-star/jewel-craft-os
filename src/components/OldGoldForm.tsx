@@ -64,7 +64,7 @@ export function OldGoldForm({
 
   const net = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
   const fine = computeFineWeight(net, form.purity || "");
-  const total = Math.max(0, fine * Number(form.rate_per_gram || 0) - Number(form.deduction || 0));
+  const total = round2(Math.max(0, fine * Number(form.rate_per_gram || 0) - Number(form.deduction || 0)));
 
   function attemptSave() {
     if (!customer) return toast.error("Select or create a customer first");
