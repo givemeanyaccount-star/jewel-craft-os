@@ -92,9 +92,10 @@ describe("derived rates", () => {
     expect(derivedRate(goldFine, "14K")).toBe(11612.69); // * 0.585
   });
 
-  it("derives the silver sheet from the 999 rate", () => {
-    expect(derivedRate(silverFine, "999")).toBe(245.4);
-    expect(derivedRate(silverFine, "925")).toBe(227.0); // 245.4 * 0.925 = 227.0
+  it("derives the silver sheet from the pure silver rate", () => {
+    // the entered rate is for pure silver; 999 carries its own 0.999 fineness
+    expect(derivedRate(silverFine, "999")).toBe(245.15); // 245.4 * 0.999
+    expect(derivedRate(silverFine, "925")).toBe(227.0);  // 245.4 * 0.925
   });
 
   it("rounds derived rates to 2 decimals (half-up)", () => {
