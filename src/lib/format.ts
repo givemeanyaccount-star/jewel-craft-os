@@ -3,6 +3,18 @@ export const VAT_RATE = 13;
 // No minimum threshold; skipped when old gold credit covers the base.
 export const SD_TAX_RATE = 0.5;
 
+/** Round half-up to a fixed number of decimals (float-safe). */
+export function roundTo(n: number, decimals: number) {
+  if (!isFinite(n)) return 0;
+  const f = Math.pow(10, decimals);
+  return Math.round((n + Number.EPSILON) * f) / f;
+}
+/** Money: always 2 decimals. */
+export const round2 = (n: number) => roundTo(Number(n) || 0, 2);
+/** Weights: always 3 decimals. */
+export const round3 = (n: number) => roundTo(Number(n) || 0, 3);
+
+
 export interface TaxBreakdown {
   subtotal: number;        // sum of all line totals (metal + making + wastage + stones)
   stonesTotal: number;     // VAT-taxable portion only
@@ -44,7 +56,11 @@ export function computeInvoiceTaxes(opts: {
   const sdTax = sdBase > 0 ? (sdBase * sdRate) / 100 : 0;
   const total = Math.max(0, postDiscount + vat + sdTax - oldGoldCredit);
 
-  return { subtotal, stonesTotal, nonStoneTotal, discount, taxableStones, vat, sdTax, oldGoldCredit, total };
+  return {
+    subtotal: round2(subtotal), stonesTotal: round2(stonesTotal), nonStoneTotal: round2(nonStoneTotal),
+    discount: round2(discount), taxableStones: round2(taxableStones), vat: round2(vat), sdTax: round2(sdTax),
+    oldGoldCredit: round2(oldGoldCredit), total: round2(total),
+  };
 }
 
 // Back-solve the discount so the final total equals a desired net amount.
@@ -109,7 +125,7 @@ export interface WeightInputs {
 }
 
 export function computeNetWeight(gross: number, stone: number) {
-  return Math.max(0, (gross || 0) - (stone || 0));
+  return round3(Math.max(0, (gross || 0) - (stone || 0)));
 }
 
 export function purityFactor(purity: string): number {
@@ -127,7 +143,7 @@ export function purityFactor(purity: string): number {
 }
 
 export function computeFineWeight(netWeight: number, purity: string) {
-  return netWeight * purityFactor(purity);
+  return round3(netWeight * purityFactor(purity));
 }
 
 /** Convert a rate quoted for a given purity into the equivalent fine (pure) metal rate per gram. */
@@ -169,7 +185,7 @@ export function computeLineTotal(p: PricingInputs) {
   else wastageAmount = p.wastageValue;
 
   const lineTotal = (metalValue + making + wastageAmount + p.stoneValue) * qty;
-  return { metalValue, making, wastageAmount, lineTotal };
+  return { metalValue: round2(metalValue), making: round2(making), wastageAmount: round2(wastageAmount), lineTotal: round2(lineTotal) };
 }
 
 export function nextNumber(prefix: string, seq: number, pad = 5) {

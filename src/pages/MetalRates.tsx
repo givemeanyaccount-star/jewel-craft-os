@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -92,7 +93,7 @@ export default function MetalRates() {
                   <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                 </Select></div>
               <div><Label>Rate per gram (रू)</Label>
-                <Input type="number" step="0.01" value={form.rate_per_gram} onChange={(e) => setForm({ ...form, rate_per_gram: e.target.value })} /></div>
+                <NumberField value={form.rate_per_gram} onChange={(v) => setForm({ ...form, rate_per_gram: v ? String(v) : "" })} /></div>
               <div className="flex items-end"><Button className="w-full" onClick={add}><Plus className="mr-1 h-4 w-4" /> Save Rate</Button></div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">

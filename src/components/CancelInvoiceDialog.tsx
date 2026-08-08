@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -154,7 +155,7 @@ export function CancelInvoiceDialog({ open, onOpenChange, invoice, items, userId
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Amount</Label>
-                    <Input type="number" value={refundAmount} onChange={(e) => setRefundAmount(Number(e.target.value) || 0)} />
+                    <NumberField value={refundAmount} onChange={(v) => setRefundAmount(v)} />
                   </div>
                   <div>
                     <Label className="text-xs">Refund via</Label>

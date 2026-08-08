@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Search, FileText, Eye, Pencil, CalendarIcon, ShoppingCart } from "lucide-react";
 import {
   npr, nextNumber, computeInvoiceTaxes, discountForTargetTotal,
+  round2,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -246,8 +248,8 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
     addToCart(data);
   }
 
-  const subtotal = useMemo(() => cart.reduce((a, r) => a + r.line_total, 0), [cart]);
-  const stonesTotal = useMemo(() => cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0), [cart]);
+  const subtotal = useMemo(() => round2(cart.reduce((a, r) => a + r.line_total, 0)), [cart]);
+  const stonesTotal = useMemo(() => round2(cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0)), [cart]);
   const tax = useMemo(() => computeInvoiceTaxes({
     subtotal, stonesTotal, discount, oldGoldCredit,
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
@@ -398,16 +400,16 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
                             <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Input type="number" className="h-8 w-20 text-right" value={r.weight}
-                              onChange={(e) => updateRow(i, { weight: Number(e.target.value) || 0 })} />
+                            <NumberField decimals={3} className="h-8 w-20 text-right" value={r.weight}
+                              onChange={(v) => updateRow(i, { weight: v })} />
                           </TableCell>
                           <TableCell className="text-right">
-                            <Input type="number" className={`h-8 w-28 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
-                              value={r.rate} onChange={(e) => updateRow(i, { rate: Number(e.target.value) || 0 })} />
+                            <NumberField className={`h-8 w-28 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
+                              value={r.rate} onChange={(v) => updateRow(i, { rate: v })} />
                           </TableCell>
                           <TableCell className="text-right">
-                            <Input type="number" className="h-8 w-24 text-right" value={r.stone_value}
-                              onChange={(e) => updateRow(i, { stone_value: Number(e.target.value) || 0 })} />
+                            <NumberField className="h-8 w-24 text-right" value={r.stone_value}
+                              onChange={(v) => updateRow(i, { stone_value: v })} />
                           </TableCell>
                           <TableCell className="text-right font-medium">{npr(r.line_total)}</TableCell>
                           <TableCell className="flex gap-0.5">
@@ -450,27 +452,27 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
               <div className="flex justify-between"><span className="text-muted-foreground">  Gold + Making + Wastage</span><span>{npr(tax.nonStoneTotal)}</span></div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Discount</span>
-                <Input type="number" className="h-8 w-28 text-right" value={discount}
-                  onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
+                <NumberField className="h-8 w-28 text-right" value={discount}
+                  onChange={(v) => { setDiscount(v); setTargetTotal(""); }} />
               </div>
               {settings.vat_enabled && <div className="flex justify-between"><span className="text-muted-foreground">VAT {settings.vat_rate}% (stones)</span><span>{npr(tax.vat)}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">SD tax {settings.sd_tax_rate}%</span><span>{npr(tax.sdTax)}</span></div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Old gold credit</span>
-                <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit}
-                  onChange={(e) => setOldGoldCredit(Number(e.target.value) || 0)} />
+                <NumberField className="h-8 w-28 text-right" value={oldGoldCredit}
+                  onChange={(v) => setOldGoldCredit(v)} />
               </div>
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>
               <div className="rounded-md border bg-muted/40 p-2">
                 <Label className="text-xs">Set net amount (auto-discount)</Label>
                 <div className="mt-1 flex gap-2">
-                  <Input type="number" placeholder="e.g. 150000" value={targetTotal} onChange={(e) => setTargetTotal(e.target.value)} />
+                  <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                   <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
                 </div>
               </div>
               <div>
                 <Label>Valid for (days)</Label>
-                <Input type="number" value={validDays} onChange={(e) => applyValidDays(Number(e.target.value) || 0)} />
+                <NumberField decimals={0} value={validDays} onChange={(v) => applyValidDays(v)} />
               </div>
               <div>
                 <Label>Or pick expiry date</Label>

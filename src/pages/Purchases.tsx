@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2, ShoppingCart, Eye, Printer, Pencil, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { npr, gms, computeNetWeight, computeFineWeight, nextNumber } from "@/lib/format";
+import { npr, gms, computeNetWeight, computeFineWeight, nextNumber, round2 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadImage, getSignedUrls } from "@/lib/storage";
 import { toast } from "sonner";
@@ -115,7 +116,7 @@ function NewPurchaseDialog({ open, onOpenChange, onSaved }: any) {
     const net = computeNetWeight(Number(it.gross_weight) || 0, Number(it.stone_weight) || 0);
     return (net * (Number(it.rate_per_gram) || 0) + (Number(it.making_charge) || 0)) * (Number(it.quantity) || 1);
   }
-  const grandTotal = items.reduce((sum, it) => sum + itemTotal(it), 0);
+  const grandTotal = round2(items.reduce((sum, it) => sum + itemTotal(it), 0));
 
   async function save() {
     if (!items.length || items.some((it) => !it.item_name?.trim())) return toast.error("Every line item needs a name");
@@ -197,11 +198,11 @@ function NewPurchaseDialog({ open, onOpenChange, onSaved }: any) {
                   <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label className="text-xs">Gross (g)</Label><Input type="number" step="0.001" value={it.gross_weight} onChange={(e) => updateItem(i, { gross_weight: e.target.value })} /></div>
-              <div><Label className="text-xs">Stone (g)</Label><Input type="number" step="0.001" value={it.stone_weight} onChange={(e) => updateItem(i, { stone_weight: e.target.value })} /></div>
-              <div><Label className="text-xs">Rate/g</Label><Input type="number" value={it.rate_per_gram} onChange={(e) => updateItem(i, { rate_per_gram: e.target.value })} /></div>
-              <div className="col-span-2"><Label className="text-xs">Making charge (NPR)</Label><Input type="number" value={it.making_charge} onChange={(e) => updateItem(i, { making_charge: e.target.value })} /></div>
-              <div><Label className="text-xs">Qty</Label><Input type="number" value={it.quantity} onChange={(e) => updateItem(i, { quantity: e.target.value })} /></div>
+              <div><Label className="text-xs">Gross (g)</Label><NumberField decimals={3} value={it.gross_weight} onChange={(v) => updateItem(i, { gross_weight: v })} /></div>
+              <div><Label className="text-xs">Stone (g)</Label><NumberField decimals={3} value={it.stone_weight} onChange={(v) => updateItem(i, { stone_weight: v })} /></div>
+              <div><Label className="text-xs">Rate/g</Label><NumberField value={it.rate_per_gram} onChange={(v) => updateItem(i, { rate_per_gram: v })} /></div>
+              <div className="col-span-2"><Label className="text-xs">Making charge (NPR)</Label><NumberField value={it.making_charge} onChange={(v) => updateItem(i, { making_charge: v })} /></div>
+              <div><Label className="text-xs">Qty</Label><NumberField decimals={0} value={it.quantity} onChange={(v) => updateItem(i, { quantity: v })} /></div>
               <div className="col-span-2 flex items-end justify-between">
                 <div><span className="text-xs text-muted-foreground block">Net wt</span>{gms(computeNetWeight(Number(it.gross_weight) || 0, Number(it.stone_weight) || 0))}</div>
                 <div className="text-right"><span className="text-xs text-muted-foreground block">Line total</span>{npr(itemTotal(it))}</div>
@@ -334,7 +335,7 @@ function EditOldGoldDialog({ purchase, onOpenChange, onSaved }: { purchase: any;
 
   const net = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
   const fine = computeFineWeight(net, form.purity || "");
-  const total = Math.max(0, fine * Number(form.rate_per_gram || 0) - Number(form.deduction || 0));
+  const total = round2(Math.max(0, fine * Number(form.rate_per_gram || 0) - Number(form.deduction || 0)));
 
   async function save() {
     setSaving(true);
@@ -402,12 +403,12 @@ function EditOldGoldDialog({ purchase, onOpenChange, onSaved }: { purchase: any;
           <div><Label>Purity</Label>
             <PuritySelect value={form.purity} onChange={(v) => setForm({ ...form, purity: v })} options={["24K", "22K", "20K", "18K", "14K", "9K", "999", "925"]} allowPercent />
           </div>
-          <div><Label>Gross wt (g)</Label><Input type="number" step="0.001" value={form.gross_weight ?? 0} onChange={(e) => setForm({ ...form, gross_weight: e.target.value })} /></div>
-          <div><Label>Stone wt (g)</Label><Input type="number" step="0.001" value={form.stone_weight ?? 0} onChange={(e) => setForm({ ...form, stone_weight: e.target.value })} /></div>
+          <div><Label>Gross wt (g)</Label><NumberField decimals={3} value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} /></div>
+          <div><Label>Stone wt (g)</Label><NumberField decimals={3} value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} /></div>
           <div><Label>Net (auto)</Label><Input readOnly value={net.toFixed(3)} className="bg-muted" /></div>
           <div><Label>Fine (auto)</Label><Input readOnly value={fine.toFixed(3)} className="bg-muted" /></div>
-          <div><Label>Rate per gram (fine)</Label><Input type="number" value={form.rate_per_gram ?? 0} onChange={(e) => setForm({ ...form, rate_per_gram: e.target.value })} /></div>
-          <div><Label>Deduction</Label><Input type="number" value={form.deduction ?? 0} onChange={(e) => setForm({ ...form, deduction: e.target.value })} /></div>
+          <div><Label>Rate per gram (fine)</Label><NumberField value={form.rate_per_gram ?? 0} onChange={(v) => setForm({ ...form, rate_per_gram: v })} /></div>
+          <div><Label>Deduction</Label><NumberField value={form.deduction ?? 0} onChange={(v) => setForm({ ...form, deduction: v })} /></div>
           <div><Label>Payment method</Label>
             <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>

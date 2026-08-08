@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -242,8 +243,8 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
                       <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div><Label className="text-xs">Gross wt in (g)</Label><Input type="number" step="0.001" value={it.gross_weight_in} onChange={(e) => updateItem(it.key, { gross_weight_in: e.target.value })} /></div>
-                  <div><Label className="text-xs">Stone wt in (g)</Label><Input type="number" step="0.001" value={it.stone_weight_in} onChange={(e) => updateItem(it.key, { stone_weight_in: e.target.value })} /></div>
+                  <div><Label className="text-xs">Gross wt in (g)</Label><NumberField decimals={3} value={it.gross_weight_in} onChange={(v) => updateItem(it.key, { gross_weight_in: v })} /></div>
+                  <div><Label className="text-xs">Stone wt in (g)</Label><NumberField decimals={3} value={it.stone_weight_in} onChange={(v) => updateItem(it.key, { stone_weight_in: v })} /></div>
                   <div className="md:col-span-2"><Label className="text-xs">Net weight in (auto)</Label><Input readOnly value={gms(netIn)} className="bg-muted" /></div>
                   <div className="md:col-span-2">
                     <Label className="text-xs">Assign karigar</Label>
@@ -255,7 +256,7 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
                       onKarigarCreated={refreshKarigars}
                     />
                   </div>
-                  <div><Label className="text-xs">Estimated cost (NPR)</Label><Input type="number" value={it.estimated_cost} onChange={(e) => updateItem(it.key, { estimated_cost: e.target.value })} /></div>
+                  <div><Label className="text-xs">Estimated cost (NPR)</Label><NumberField value={it.estimated_cost} onChange={(v) => updateItem(it.key, { estimated_cost: v })} /></div>
                   <div>
                     <Label className="text-xs mb-1 block">Intake photos</Label>
                     <div className="flex flex-wrap items-center gap-2">

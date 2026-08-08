@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +16,7 @@ import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil 
 import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
+  round2,
 } from "@/lib/format";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { useAuth } from "@/hooks/useAuth";
@@ -243,16 +245,16 @@ export default function POS() {
     toast.success("Rates refreshed");
   }
 
-  const subtotal = useMemo(() => cart.reduce((a, r) => a + r.line_total, 0), [cart]);
-  const stonesTotal = useMemo(() => cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0), [cart]);
+  const subtotal = useMemo(() => round2(cart.reduce((a, r) => a + r.line_total, 0)), [cart]);
+  const stonesTotal = useMemo(() => round2(cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0)), [cart]);
 
   const tax = useMemo(() => computeInvoiceTaxes({
     subtotal, stonesTotal, discount, oldGoldCredit,
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
   }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
 
-  const paid = useMemo(() => payments.reduce((a, p) => a + (Number(p.amount) || 0), 0), [payments]);
-  const balance = Math.max(0, tax.total - paid);
+  const paid = useMemo(() => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)), [payments]);
+  const balance = round2(Math.max(0, tax.total - paid));
 
   // Fine-metal equivalent of the old gold credit, at the bill's rate (or the day's rate).
   const oldGoldEq = useMemo(() => oldGoldCredit > 0
@@ -455,16 +457,16 @@ export default function POS() {
                           <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input type="number" className="h-8 w-20 text-right" value={r.weight}
-                            onChange={(e) => updateRow(i, { weight: Number(e.target.value) || 0 })} />
+                          <NumberField decimals={3} className="h-8 w-20 text-right" value={r.weight}
+                            onChange={(v) => updateRow(i, { weight: v })} />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input type="number" className={`h-8 w-28 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
-                            value={r.rate} onChange={(e) => updateRow(i, { rate: Number(e.target.value) || 0 })} />
+                          <NumberField className={`h-8 w-28 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
+                            value={r.rate} onChange={(v) => updateRow(i, { rate: v })} />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input type="number" className="h-8 w-24 text-right" value={r.stone_value}
-                            onChange={(e) => updateRow(i, { stone_value: Number(e.target.value) || 0 })} />
+                          <NumberField className="h-8 w-24 text-right" value={r.stone_value}
+                            onChange={(v) => updateRow(i, { stone_value: v })} />
                         </TableCell>
                         <TableCell className="text-right font-medium">{npr(r.line_total)}</TableCell>
                         <TableCell className="flex gap-0.5">
@@ -510,8 +512,8 @@ export default function POS() {
             <Row label="  Gold + Making + Wastage" value={npr(tax.nonStoneTotal)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Discount</span>
-              <Input type="number" className="h-8 w-28 text-right" value={discount}
-                onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
+              <NumberField className="h-8 w-28 text-right" value={discount}
+                onChange={(v) => { setDiscount(v); setTargetTotal(""); }} />
             </div>
             {settings.vat_enabled && <Row label={`VAT ${settings.vat_rate}% (stones only)`} value={npr(tax.vat)} />}
             <Row label={`SD tax ${settings.sd_tax_rate}% (gold+making − old gold)`} value={npr(tax.sdTax)} />
@@ -521,7 +523,7 @@ export default function POS() {
                 <Button size="sm" variant="outline" onClick={() => setOgOpen(true)} title="New old gold purchase">
                   <Coins className="h-3.5 w-3.5" />
                 </Button>
-                <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(e) => setOldGoldCredit(Number(e.target.value) || 0)} />
+                <NumberField className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(v) => setOldGoldCredit(v)} />
               </div>
             </div>
             {oldGoldEq && <div className="-mt-1 text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
@@ -531,7 +533,7 @@ export default function POS() {
             <div className="rounded-md border bg-muted/40 p-2">
               <Label className="text-xs">Set net amount (auto-discount)</Label>
               <div className="mt-1 flex gap-2">
-                <Input type="number" placeholder="e.g. 150000" value={targetTotal} onChange={(e) => setTargetTotal(e.target.value)} />
+                <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                 <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
               </div>
             </div>
@@ -551,8 +553,8 @@ export default function POS() {
                       <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                       <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
                     </Select>
-                    <Input type="number" className="h-9 w-28 text-right" value={p.amount}
-                      onChange={(e) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, amount: Number(e.target.value) || 0 } : x))} />
+                    <NumberField className="h-9 w-28 text-right" value={p.amount}
+                      onChange={(v) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, amount: v } : x))} />
                     {payments.length > 1 && (
                       <Button size="icon" variant="ghost" className="h-9 w-9"
                         onClick={() => setPayments((arr) => arr.filter((_, j) => j !== i))}>

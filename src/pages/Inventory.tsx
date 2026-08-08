@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -268,11 +269,11 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
           </div>
           <div>
             <Label>Gross weight (g)</Label>
-            <Input type="number" step="0.001" value={form.gross_weight ?? 0} onChange={(e) => setForm({ ...form, gross_weight: e.target.value })} />
+            <NumberField decimals={3} value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} />
           </div>
           <div>
             <Label>Stone weight (g)</Label>
-            <Input type="number" step="0.001" value={form.stone_weight ?? 0} onChange={(e) => setForm({ ...form, stone_weight: e.target.value })} />
+            <NumberField decimals={3} value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} />
           </div>
           <div>
             <Label>Net (auto)</Label>
@@ -284,7 +285,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
           </div>
           <div>
             <Label>Stone value (रू)</Label>
-            <Input type="number" step="0.01" value={form.stone_value ?? 0} onChange={(e) => setForm({ ...form, stone_value: e.target.value })} />
+            <NumberField value={form.stone_value ?? 0} onChange={(v) => setForm({ ...form, stone_value: v })} />
           </div>
           <div>
             <Label>Making charge type</Label>
@@ -299,7 +300,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
           </div>
           <div>
             <Label>Making charge value</Label>
-            <Input type="number" step="0.01" value={form.making_charge ?? 0} onChange={(e) => setForm({ ...form, making_charge: e.target.value })} />
+            <NumberField value={form.making_charge ?? 0} onChange={(v) => setForm({ ...form, making_charge: v })} />
           </div>
           <div>
             <Label>Wastage type</Label>
@@ -314,7 +315,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
           </div>
           <div>
             <Label>Wastage value</Label>
-            <Input type="number" step="0.001" value={form.wastage_value ?? 0} onChange={(e) => setForm({ ...form, wastage_value: e.target.value })} />
+            <NumberField decimals={3} value={form.wastage_value ?? 0} onChange={(v) => setForm({ ...form, wastage_value: v })} />
           </div>
           <div>
             <Label>Status</Label>

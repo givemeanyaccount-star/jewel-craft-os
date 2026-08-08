@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberField } from "@/components/ui/number-field";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -105,25 +106,25 @@ export function DailyRateDialog({ open, onOpenChange, onSaved }: {
         <div className="space-y-3">
           <div>
             <Label>Gold 24K (fine) rate per gram *</Label>
-            <Input type="number" step="0.01" value={gold["24K"] ?? ""} onChange={(e) => setBase(e.target.value)} />
+            <NumberField value={gold["24K"] ?? ""} onChange={(v) => setBase(v ? String(v) : "")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             {GOLD_PURITIES.slice(1).map((p) => (
               <div key={p}>
                 <Label>Gold {p}</Label>
-                <Input type="number" step="0.01" value={gold[p] ?? ""}
-                  onChange={(e) => setGold({ ...gold, [p]: e.target.value })} />
+                <NumberField value={gold[p] ?? ""}
+                  onChange={(v) => setGold({ ...gold, [p]: v ? String(v) : "" })} />
               </div>
             ))}
           </div>
           <div className="grid grid-cols-2 gap-3 border-t pt-3">
             <div>
               <Label>Fine silver (999)</Label>
-              <Input type="number" step="0.01" value={silverFine} onChange={(e) => setFineSilver(e.target.value)} />
+              <NumberField value={silverFine} onChange={(v) => setFineSilver(v ? String(v) : "")} />
             </div>
             <div>
               <Label>Silver 925</Label>
-              <Input type="number" step="0.01" value={silver925} onChange={(e) => setSilver925(e.target.value)} />
+              <NumberField value={silver925} onChange={(v) => setSilver925(v ? String(v) : "")} />
             </div>
           </div>
         </div>
