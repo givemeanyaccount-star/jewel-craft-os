@@ -471,7 +471,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
               </div>
               <div>
                 <Label>Valid for (days)</Label>
-                <NumberField value={validDays} onChange={(v) => applyValidDays(v)} />
+                <NumberField decimals={0} value={validDays} onChange={(v) => applyValidDays(v)} />
               </div>
               <div>
                 <Label>Or pick expiry date</Label>

@@ -202,7 +202,7 @@ function NewPurchaseDialog({ open, onOpenChange, onSaved }: any) {
               <div><Label className="text-xs">Stone (g)</Label><NumberField decimals={3} value={it.stone_weight} onChange={(v) => updateItem(i, { stone_weight: v })} /></div>
               <div><Label className="text-xs">Rate/g</Label><NumberField value={it.rate_per_gram} onChange={(v) => updateItem(i, { rate_per_gram: v })} /></div>
               <div className="col-span-2"><Label className="text-xs">Making charge (NPR)</Label><NumberField value={it.making_charge} onChange={(v) => updateItem(i, { making_charge: v })} /></div>
-              <div><Label className="text-xs">Qty</Label><NumberField value={it.quantity} onChange={(v) => updateItem(i, { quantity: v })} /></div>
+              <div><Label className="text-xs">Qty</Label><NumberField decimals={0} value={it.quantity} onChange={(v) => updateItem(i, { quantity: v })} /></div>
               <div className="col-span-2 flex items-end justify-between">
                 <div><span className="text-xs text-muted-foreground block">Net wt</span>{gms(computeNetWeight(Number(it.gross_weight) || 0, Number(it.stone_weight) || 0))}</div>
                 <div className="text-right"><span className="text-xs text-muted-foreground block">Line total</span>{npr(itemTotal(it))}</div>
