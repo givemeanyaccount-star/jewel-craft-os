@@ -152,7 +152,7 @@ export function OldGoldForm({
           </Select></div>
         <div><Label>Purity</Label>
           <PuritySelect value={form.purity} onChange={(v) => setForm({ ...form, purity: v })}
-            options={PURITIES} allowPercent />
+            metal={form.metal} allowPercent />
         </div>
 
         <div><Label>Gross wt (g)</Label><NumberField decimals={3} value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} /></div>
