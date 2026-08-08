@@ -3,11 +3,16 @@ export const VAT_RATE = 13;
 // No minimum threshold; skipped when old gold credit covers the base.
 export const SD_TAX_RATE = 0.5;
 
-/** Round half-up to a fixed number of decimals (float-safe). */
+/** Round half-up (away from zero) to a fixed number of decimals, float-safe. */
 export function roundTo(n: number, decimals: number) {
-  if (!isFinite(n)) return 0;
+  const v = Number(n);
+  if (!isFinite(v)) return 0;
   const f = Math.pow(10, decimals);
-  return Math.round((n + Number.EPSILON) * f) / f;
+  // toPrecision(12) folds binary representation noise (e.g. 2449.4999999999995 -> 2449.5)
+  // before rounding, so values like 8.165 * 3 round to 24.50 instead of 24.49.
+  const scaled = Number((Math.abs(v) * f).toPrecision(12));
+  const rounded = Math.round(scaled) / f;
+  return v < 0 ? -rounded : rounded;
 }
 /** Money: always 2 decimals. */
 export const round2 = (n: number) => roundTo(Number(n) || 0, 2);
