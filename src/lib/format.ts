@@ -125,7 +125,7 @@ export interface WeightInputs {
 }
 
 export function computeNetWeight(gross: number, stone: number) {
-  return Math.max(0, (gross || 0) - (stone || 0));
+  return round3(Math.max(0, (gross || 0) - (stone || 0)));
 }
 
 export function purityFactor(purity: string): number {
