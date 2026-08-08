@@ -244,16 +244,16 @@ export default function POS() {
     toast.success("Rates refreshed");
   }
 
-  const subtotal = useMemo(() => cart.reduce((a, r) => a + r.line_total, 0), [cart]);
-  const stonesTotal = useMemo(() => cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0), [cart]);
+  const subtotal = useMemo(() => round2(cart.reduce((a, r) => a + r.line_total, 0)), [cart]);
+  const stonesTotal = useMemo(() => round2(cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0)), [cart]);
 
   const tax = useMemo(() => computeInvoiceTaxes({
     subtotal, stonesTotal, discount, oldGoldCredit,
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
   }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
 
-  const paid = useMemo(() => payments.reduce((a, p) => a + (Number(p.amount) || 0), 0), [payments]);
-  const balance = Math.max(0, tax.total - paid);
+  const paid = useMemo(() => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)), [payments]);
+  const balance = round2(Math.max(0, tax.total - paid));
 
   // Fine-metal equivalent of the old gold credit, at the bill's rate (or the day's rate).
   const oldGoldEq = useMemo(() => oldGoldCredit > 0
