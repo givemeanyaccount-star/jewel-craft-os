@@ -92,24 +92,33 @@ export default function MetalRates() {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-3">
               <div><Label>Metal</Label>
-                <Select value={form.metal} onValueChange={(v) => setForm({ ...form, metal: v })}>
+                <Select value={metal} onValueChange={setMetal}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
                 </Select></div>
-              <div><Label>Purity</Label>
-                <Select value={form.purity} onValueChange={(v) => setForm({ ...form, purity: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                </Select></div>
-              <div><Label>Rate per gram (रू)</Label>
-                <NumberField value={form.rate_per_gram} onChange={(v) => setForm({ ...form, rate_per_gram: v ? String(v) : "" })} /></div>
-              <div className="flex items-end"><Button className="w-full" onClick={add}><Plus className="mr-1 h-4 w-4" /> Save Rate</Button></div>
+              <div><Label>{metal === "silver" ? "Fine silver (999) rate / g" : "Fine gold (24K) rate / g"} (रू)</Label>
+                <NumberField value={fine} onChange={(v) => setFineRate(v ? String(v) : "")} /></div>
+              <div className="flex items-end">
+                <Button className="w-full" onClick={add} disabled={saving}>
+                  <Plus className="mr-1 h-4 w-4" /> {saving ? "Saving..." : "Save today's rates"}
+                </Button>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {list.filter((p) => p !== finePurity).map((p) => (
+                <div key={p}>
+                  <Label>{purityLabel(p)}</Label>
+                  <NumberField value={derived[p] ?? ""} onChange={(v) => setDerived({ ...derived, [p]: v ? String(v) : "" })} />
+                </div>
+              ))}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Source: Federation of Nepal Gold &amp; Silver Dealers Association (FENEGOSIDA) — fine gold 9999 per 10g, converted to each purity.
+              Derived automatically from the fine rate (22K = 91.6%, 18K = 75%, 14K = 58.5%, 925 = 92.5%) and editable before saving.
+              Source: Federation of Nepal Gold &amp; Silver Dealers Association (FENEGOSIDA).
             </p>
+
           </CardContent>
         </Card>
       )}
