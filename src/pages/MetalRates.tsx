@@ -93,7 +93,7 @@ export default function MetalRates() {
                   <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                 </Select></div>
               <div><Label>Rate per gram (रू)</Label>
-                <NumberField value={form.rate_per_gram} onChange={(v) => setForm({ ...form, rate_per_gram: v })} /></div>
+                <NumberField value={form.rate_per_gram} onChange={(v) => setForm({ ...form, rate_per_gram: v ? String(v) : "" })} /></div>
               <div className="flex items-end"><Button className="w-full" onClick={add}><Plus className="mr-1 h-4 w-4" /> Save Rate</Button></div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">

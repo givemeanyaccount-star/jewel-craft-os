@@ -399,7 +399,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
                             <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <NumberField className="h-8 w-20 text-right" value={r.weight}
+                            <NumberField decimals={3} className="h-8 w-20 text-right" value={r.weight}
                               onChange={(v) => updateRow(i, { weight: v })} />
                           </TableCell>
                           <TableCell className="text-right">
@@ -465,7 +465,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
               <div className="rounded-md border bg-muted/40 p-2">
                 <Label className="text-xs">Set net amount (auto-discount)</Label>
                 <div className="mt-1 flex gap-2">
-                  <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v)} />
+                  <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                   <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
                 </div>
               </div>

@@ -532,7 +532,7 @@ export default function POS() {
             <div className="rounded-md border bg-muted/40 p-2">
               <Label className="text-xs">Set net amount (auto-discount)</Label>
               <div className="mt-1 flex gap-2">
-                <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v)} />
+                <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                 <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
               </div>
             </div>

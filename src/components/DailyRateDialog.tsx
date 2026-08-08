@@ -106,25 +106,25 @@ export function DailyRateDialog({ open, onOpenChange, onSaved }: {
         <div className="space-y-3">
           <div>
             <Label>Gold 24K (fine) rate per gram *</Label>
-            <NumberField value={gold["24K"] ?? ""} onChange={(v) => setBase(v)} />
+            <NumberField value={gold["24K"] ?? ""} onChange={(v) => setBase(v ? String(v) : "")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             {GOLD_PURITIES.slice(1).map((p) => (
               <div key={p}>
                 <Label>Gold {p}</Label>
                 <NumberField value={gold[p] ?? ""}
-                  onChange={(v) => setGold({ ...gold, [p]: v })} />
+                  onChange={(v) => setGold({ ...gold, [p]: v ? String(v) : "" })} />
               </div>
             ))}
           </div>
           <div className="grid grid-cols-2 gap-3 border-t pt-3">
             <div>
               <Label>Fine silver (999)</Label>
-              <NumberField value={silverFine} onChange={(v) => setFineSilver(v)} />
+              <NumberField value={silverFine} onChange={(v) => setFineSilver(v ? String(v) : "")} />
             </div>
             <div>
               <Label>Silver 925</Label>
-              <NumberField value={silver925} onChange={(v) => setSilver925(v)} />
+              <NumberField value={silver925} onChange={(v) => setSilver925(v ? String(v) : "")} />
             </div>
           </div>
         </div>
