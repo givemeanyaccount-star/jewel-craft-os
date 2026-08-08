@@ -25,7 +25,7 @@ import { ImageCaptureButton } from "@/components/ImageCapture";
 import { PuritySelect } from "@/components/PuritySelect";
 import logoUrl from "@/assets/logo.png";
 
-const METALS = ["gold", "silver", "platinum"];
+const METALS = ["gold", "silver"];
 const PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
@@ -401,7 +401,7 @@ function EditOldGoldDialog({ purchase, onOpenChange, onSaved }: { purchase: any;
               <SelectContent>{METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
             </Select></div>
           <div><Label>Purity</Label>
-            <PuritySelect value={form.purity} onChange={(v) => setForm({ ...form, purity: v })} options={["24K", "22K", "20K", "18K", "14K", "9K", "999", "925"]} allowPercent />
+            <PuritySelect value={form.purity} onChange={(v) => setForm({ ...form, purity: v })} metal={form.metal} allowPercent />
           </div>
           <div><Label>Gross wt (g)</Label><NumberField decimals={3} value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} /></div>
           <div><Label>Stone wt (g)</Label><NumberField decimals={3} value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} /></div>

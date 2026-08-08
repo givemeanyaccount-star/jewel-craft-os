@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
+          allow_custom_purity: boolean
           created_at: string
           id: string
           purities: string[]
@@ -26,6 +27,7 @@ export type Database = {
           vat_rate: number
         }
         Insert: {
+          allow_custom_purity?: boolean
           created_at?: string
           id?: string
           purities?: string[]
@@ -36,6 +38,7 @@ export type Database = {
           vat_rate?: number
         }
         Update: {
+          allow_custom_purity?: boolean
           created_at?: string
           id?: string
           purities?: string[]

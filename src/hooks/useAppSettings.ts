@@ -8,6 +8,7 @@ export interface AppSettings {
   vat_rate: number;
   sd_tax_rate: number;
   purities: string[];
+  allow_custom_purity: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -15,7 +16,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   vat_enabled: true,
   vat_rate: VAT_RATE,
   sd_tax_rate: SD_TAX_RATE,
-  purities: ["24K", "22K", "20K", "18K", "14K", "9K", "999", "925"],
+  purities: ["24K", "22K", "18K", "14K", "999", "925"],
+  allow_custom_purity: true,
 };
 
 export async function fetchAppSettings(): Promise<AppSettings> {
@@ -26,7 +28,8 @@ export async function fetchAppSettings(): Promise<AppSettings> {
     vat_enabled: !!data.vat_enabled,
     vat_rate: Number(data.vat_rate ?? VAT_RATE),
     sd_tax_rate: Number(data.sd_tax_rate ?? SD_TAX_RATE),
-    purities: (data.purities as string[] | null)?.length ? (data.purities as string[]) : DEFAULT_SETTINGS.purities,
+    purities: DEFAULT_SETTINGS.purities,
+    allow_custom_purity: (data as any).allow_custom_purity ?? true,
   };
 }
 

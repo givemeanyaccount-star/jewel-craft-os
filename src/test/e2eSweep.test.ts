@@ -100,11 +100,11 @@ describe("POS & quotation line pricing", () => {
 
   it("resolves karat, fineness, percentage and custom purities", () => {
     expect(purityFactor("24K")).toBeCloseTo(1, 6);
-    expect(purityFactor("22K")).toBeCloseTo(22 / 24, 6);
+    expect(purityFactor("22K")).toBeCloseTo(0.916, 6);
     expect(purityFactor("999")).toBe(0.999);
     expect(purityFactor("91.6%")).toBeCloseTo(0.916, 6);
     expect(purityFactor("")).toBe(1);
-    expect(computeFineWeight(10.567, "22K")).toBe(round3(10.567 * (22 / 24)));
+    expect(computeFineWeight(10.567, "22K")).toBe(round3(10.567 * 0.916));
   });
 });
 
@@ -199,7 +199,7 @@ describe("purchases and old gold valuation", () => {
     const fine = computeFineWeight(net, "91.6%");
     expect(fine).toBe(round3(14.444 * 0.916));
     const fineRate = fineRateFromLine(14000, "22K"); // 22K rate -> fine rate
-    expect(fineRate).toBeCloseTo(14000 / (22 / 24), 6);
+    expect(fineRate).toBeCloseTo(14000 / 0.916, 6);
     expect(round2(fine * fineRate)).toBe(round2(fine * fineRate));
   });
 

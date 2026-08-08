@@ -10,7 +10,7 @@ import { Download } from "lucide-react";
 import { purityFactor } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 
-const GOLD_PURITIES = ["24K", "22K", "18K", "14K", "9K"];
+const GOLD_PURITIES = ["24K", "22K", "18K", "14K"];
 
 export function todayIsoDate() { return new Date().toISOString().slice(0, 10); }
 
@@ -95,7 +95,7 @@ export function DailyRateDialog({ open, onOpenChange, onSaved }: {
         <DialogHeader>
           <DialogTitle>Set today's metal rates</DialogTitle>
           <DialogDescription>
-            Enter the fine gold (24K) rate per gram — 22K, 18K, 14K and 9K are derived automatically and stay editable.
+            Enter the fine gold (24K) rate per gram — 22K (916), 18K (750) and 14K (585) are derived automatically and stay editable.
           </DialogDescription>
         </DialogHeader>
 

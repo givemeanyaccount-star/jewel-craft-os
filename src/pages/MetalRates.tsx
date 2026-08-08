@@ -12,15 +12,19 @@ import { toast } from "sonner";
 import { Plus, TrendingUp, Download, Search, X } from "lucide-react";
 import { npr } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
+import { ALL_PURITIES, GOLD_PURITIES, SILVER_PURITIES, derivedRate, purityLabel } from "@/lib/purity";
 
-const METALS = ["gold", "silver", "platinum"];
-const PURITIES = ["24K", "22K", "20K", "18K", "14K", "999", "925"];
+const METALS = ["gold", "silver"];
+const PURITIES = ALL_PURITIES;
 
 export default function MetalRates() {
   const { hasRole, user } = useAuth();
   const canWrite = hasRole("admin") || hasRole("manager") || hasRole("accountant");
   const [rates, setRates] = useState<any[]>([]);
-  const [form, setForm] = useState({ metal: "gold", purity: "22K", rate_per_gram: "" });
+  const [metal, setMetal] = useState("gold");
+  const [fine, setFine] = useState("");
+  const [derived, setDerived] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   const [filter, setFilter] = useState({ metal: "all", purity: "all", search: "" });
 
@@ -29,6 +33,22 @@ export default function MetalRates() {
     const { data } = await supabase.from("metal_rates").select("*").order("effective_date", { ascending: false }).limit(100);
     setRates(data ?? []);
   }
+
+  const list = metal === "silver" ? [...SILVER_PURITIES] : [...GOLD_PURITIES];
+  const finePurity = metal === "silver" ? "999" : "24K";
+
+  function setFineRate(v: string) {
+    setFine(v);
+    const base = Number(v) || 0;
+    const next: Record<string, string> = {};
+    for (const p of list) {
+      if (p === finePurity) continue;
+      next[p] = base ? String(derivedRate(base, p)) : "";
+    }
+    setDerived(next);
+  }
+
+  useEffect(() => { setFine(""); setDerived({}); }, [metal]);
 
   const filteredRates = useMemo(() => {
     return rates.filter((r) => {
@@ -44,15 +64,20 @@ export default function MetalRates() {
   }, [rates, filter]);
 
   async function add() {
-    if (!form.rate_per_gram) return toast.error("Rate required");
-    const { error } = await supabase.from("metal_rates").upsert({
-      metal: form.metal as any, purity: form.purity,
-      rate_per_gram: Number(form.rate_per_gram), created_by: user?.id,
-      effective_date: new Date().toISOString().slice(0, 10),
-      source: "manual",
-    } as any, { onConflict: "metal,purity,effective_date" });
+    const base = Number(fine);
+    if (!base) return toast.error(`Enter the ${metal === "silver" ? "fine silver (999)" : "fine gold (24K)"} rate`);
+    const date = new Date().toISOString().slice(0, 10);
+    const rows = [
+      { metal, purity: finePurity, rate_per_gram: base, effective_date: date, source: "manual", created_by: user?.id },
+      ...list.filter((p) => p !== finePurity && Number(derived[p]) > 0).map((p) => ({
+        metal, purity: p, rate_per_gram: Number(derived[p]), effective_date: date, source: "manual", created_by: user?.id,
+      })),
+    ];
+    setSaving(true);
+    const { error } = await supabase.from("metal_rates").upsert(rows as any, { onConflict: "metal,purity,effective_date" });
+    setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Rate saved"); setForm({ ...form, rate_per_gram: "" }); load();
+    toast.success(`Saved ${rows.length} ${metal} rates`); setFine(""); setDerived({}); load();
   }
 
   const [fetching, setFetching] = useState(false);
@@ -81,24 +106,33 @@ export default function MetalRates() {
             </Button>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-3">
               <div><Label>Metal</Label>
-                <Select value={form.metal} onValueChange={(v) => setForm({ ...form, metal: v })}>
+                <Select value={metal} onValueChange={setMetal}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
                 </Select></div>
-              <div><Label>Purity</Label>
-                <Select value={form.purity} onValueChange={(v) => setForm({ ...form, purity: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                </Select></div>
-              <div><Label>Rate per gram (रू)</Label>
-                <NumberField value={form.rate_per_gram} onChange={(v) => setForm({ ...form, rate_per_gram: v ? String(v) : "" })} /></div>
-              <div className="flex items-end"><Button className="w-full" onClick={add}><Plus className="mr-1 h-4 w-4" /> Save Rate</Button></div>
+              <div><Label>{metal === "silver" ? "Fine silver (999) rate / g" : "Fine gold (24K) rate / g"} (रू)</Label>
+                <NumberField value={fine} onChange={(v) => setFineRate(v ? String(v) : "")} /></div>
+              <div className="flex items-end">
+                <Button className="w-full" onClick={add} disabled={saving}>
+                  <Plus className="mr-1 h-4 w-4" /> {saving ? "Saving..." : "Save today's rates"}
+                </Button>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {list.filter((p) => p !== finePurity).map((p) => (
+                <div key={p}>
+                  <Label>{purityLabel(p)}</Label>
+                  <NumberField value={derived[p] ?? ""} onChange={(v) => setDerived({ ...derived, [p]: v ? String(v) : "" })} />
+                </div>
+              ))}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Source: Federation of Nepal Gold &amp; Silver Dealers Association (FENEGOSIDA) — fine gold 9999 per 10g, converted to each purity.
+              Derived automatically from the fine rate (22K = 91.6%, 18K = 75%, 14K = 58.5%, 925 = 92.5%) and editable before saving.
+              Source: Federation of Nepal Gold &amp; Silver Dealers Association (FENEGOSIDA).
             </p>
+
           </CardContent>
         </Card>
       )}

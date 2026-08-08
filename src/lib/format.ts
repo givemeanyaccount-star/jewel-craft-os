@@ -136,6 +136,11 @@ export function computeNetWeight(gross: number, stone: number) {
 export function purityFactor(purity: string): number {
   if (!purity) return 1;
   const trimmed = purity.trim().toUpperCase();
+  // Exact factors for the standard categories.
+  const STANDARD: Record<string, number> = {
+    "24K": 1, "22K": 0.916, "18K": 0.75, "14K": 0.585, "999": 0.999, "925": 0.925,
+  };
+  if (STANDARD[trimmed] !== undefined) return STANDARD[trimmed];
   // Percentage purity, e.g. "91.6%" -> 0.916
   const pctMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*%$/);
   if (pctMatch) return parseFloat(pctMatch[1]) / 100;

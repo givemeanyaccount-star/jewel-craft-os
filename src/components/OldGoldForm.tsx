@@ -17,8 +17,8 @@ import { ImageCaptureButton } from "@/components/ImageCapture";
 import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
 import { PuritySelect } from "@/components/PuritySelect";
 
-const METALS = ["gold", "silver", "platinum"];
-const PURITIES = ["24K", "22K", "20K", "18K", "14K", "9K", "999", "925"];
+const METALS = ["gold", "silver"];
+
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
 export interface OldGoldSaveResult { id: string; receiptNumber: string; total: number; metal: string; purity: string; }
@@ -152,7 +152,7 @@ export function OldGoldForm({
           </Select></div>
         <div><Label>Purity</Label>
           <PuritySelect value={form.purity} onChange={(v) => setForm({ ...form, purity: v })}
-            options={PURITIES} allowPercent />
+            metal={form.metal} allowPercent />
         </div>
 
         <div><Label>Gross wt (g)</Label><NumberField decimals={3} value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} /></div>

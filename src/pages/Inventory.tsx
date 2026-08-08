@@ -29,8 +29,8 @@ interface Item {
   description: string | null; stone_value: number; qr_code: string | null;
 }
 
-const METALS = ["gold", "silver", "platinum", "diamond", "other"];
-const PURITIES = ["24K", "22K", "20K", "18K", "14K", "999", "925", "750"];
+const METALS = ["gold", "silver", "diamond", "other"];
+const PURITIES = ["24K", "22K", "18K", "14K", "999", "925"];
 const STATUSES = ["in_stock", "reserved", "sold", "returned", "melted", "transferred"];
 
 export default function Inventory() {
