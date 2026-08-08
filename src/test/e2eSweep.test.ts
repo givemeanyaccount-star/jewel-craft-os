@@ -104,7 +104,7 @@ describe("POS & quotation line pricing", () => {
     expect(purityFactor("999")).toBe(0.999);
     expect(purityFactor("91.6%")).toBeCloseTo(0.916, 6);
     expect(purityFactor("")).toBe(1);
-    expect(computeFineWeight(10.567, "22K")).toBe(round3(10.567 * (22 / 24)));
+    expect(computeFineWeight(10.567, "22K")).toBe(round3(10.567 * 0.916));
   });
 });
 
