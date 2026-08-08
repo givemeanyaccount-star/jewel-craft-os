@@ -37,6 +37,23 @@ export default function MetalRates() {
   const list = metal === "silver" ? [...SILVER_PURITIES] : [...GOLD_PURITIES];
   const finePurity = metal === "silver" ? "999" : "24K";
 
+  // Prefill the form with the most recent saved rates for the selected metal
+  useEffect(() => {
+    const forMetal = rates.filter((r) => r.metal === metal);
+    if (!forMetal.length) { setFine(""); setDerived({}); return; }
+    const latestDate = forMetal[0].effective_date;
+    const latest = forMetal.filter((r) => r.effective_date === latestDate);
+    const fineRow = latest.find((r) => r.purity === finePurity);
+    setFine(fineRow ? String(fineRow.rate_per_gram) : "");
+    const next: Record<string, string> = {};
+    for (const p of list) {
+      if (p === finePurity) continue;
+      const row = latest.find((r) => r.purity === p);
+      if (row) next[p] = String(row.rate_per_gram);
+    }
+    setDerived(next);
+  }, [rates, metal]);
+
   function setFineRate(v: string) {
     setFine(v);
     const base = Number(v) || 0;
@@ -48,7 +65,7 @@ export default function MetalRates() {
     setDerived(next);
   }
 
-  useEffect(() => { setFine(""); setDerived({}); }, [metal]);
+  
 
   const filteredRates = useMemo(() => {
     return rates.filter((r) => {
