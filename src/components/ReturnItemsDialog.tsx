@@ -368,7 +368,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                           </div>
                           <div>
                             <Label className="text-xs">Refund amount</Label>
-                            <Input type="number" value={line.refundAmount} onChange={(e) => patch(it.id, { refundAmount: Number(e.target.value) || 0 })} />
+                            <NumberField value={line.refundAmount} onChange={(v) => patch(it.id, { refundAmount: v })} />
                           </div>
                         </div>
                       )}
@@ -387,8 +387,8 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                         <Label className="text-xs">Tax withheld (non-refundable)</Label>
                         <p className="text-[11px] text-muted-foreground">VAT + SD + luxury tax share of the returned items. Editable.</p>
                       </div>
-                      <Input type="number" className="w-40" value={taxWithheld}
-                        onChange={(e) => { setTaxEdited(true); setTaxWithheld(Number(e.target.value) || 0); }} />
+                      <NumberField className="w-40" value={taxWithheld}
+                        onChange={(v) => { setTaxEdited(true); setTaxWithheld(v); }} />
                     </div>
                   </div>
                 )}
@@ -414,7 +414,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <Label className="text-xs">Rate today (per g fine)</Label>
-                            <Input type="number" value={ogRate} onChange={(e) => setOgRate(Number(e.target.value) || 0)} />
+                            <NumberField value={ogRate} onChange={(v) => setOgRate(v)} />
                           </div>
                           <div className="flex flex-col justify-end text-xs text-muted-foreground">
                             <span>Revalued: {npr(ogRevalued)}</span>

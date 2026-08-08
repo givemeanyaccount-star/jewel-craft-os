@@ -155,7 +155,7 @@ export function CancelInvoiceDialog({ open, onOpenChange, invoice, items, userId
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Amount</Label>
-                    <Input type="number" value={refundAmount} onChange={(e) => setRefundAmount(Number(e.target.value) || 0)} />
+                    <NumberField value={refundAmount} onChange={(v) => setRefundAmount(v)} />
                   </div>
                   <div>
                     <Label className="text-xs">Refund via</Label>

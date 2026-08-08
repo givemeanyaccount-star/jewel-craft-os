@@ -155,12 +155,12 @@ export function OldGoldForm({
             options={PURITIES} allowPercent />
         </div>
 
-        <div><Label>Gross wt (g)</Label><Input type="number" step="0.001" value={form.gross_weight ?? 0} onChange={(e) => setForm({ ...form, gross_weight: e.target.value })} /></div>
-        <div><Label>Stone wt (g)</Label><Input type="number" step="0.001" value={form.stone_weight ?? 0} onChange={(e) => setForm({ ...form, stone_weight: e.target.value })} /></div>
+        <div><Label>Gross wt (g)</Label><NumberField decimals={3} value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} /></div>
+        <div><Label>Stone wt (g)</Label><NumberField decimals={3} value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} /></div>
         <div><Label>Net (auto)</Label><Input readOnly value={net.toFixed(3)} className="bg-muted" /></div>
         <div><Label>Fine (auto)</Label><Input readOnly value={fine.toFixed(3)} className="bg-muted" /></div>
-        <div><Label>Rate per gram (fine)</Label><Input type="number" value={form.rate_per_gram ?? 0} onChange={(e) => setForm({ ...form, rate_per_gram: e.target.value })} /></div>
-        <div><Label>Deduction</Label><Input type="number" value={form.deduction ?? 0} onChange={(e) => setForm({ ...form, deduction: e.target.value })} /></div>
+        <div><Label>Rate per gram (fine)</Label><NumberField value={form.rate_per_gram ?? 0} onChange={(v) => setForm({ ...form, rate_per_gram: v })} /></div>
+        <div><Label>Deduction</Label><NumberField value={form.deduction ?? 0} onChange={(v) => setForm({ ...form, deduction: v })} /></div>
         <div className="md:col-span-2 rounded bg-secondary p-3 text-center">
           <div className="text-xs text-muted-foreground">Total payable to customer (cash out)</div>
           <div className="text-2xl font-semibold">{npr(total)}</div>

@@ -254,7 +254,7 @@ function PaymentDialog({ open, onOpenChange, invoice, userId, onSaved }: any) {
       <DialogContent>
         <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><Label>Amount</Label><Input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} /></div>
+          <div><Label>Amount</Label><NumberField value={amount} onChange={(v) => setAmount(v)} /></div>
           <div><Label>Method</Label>
             <Select value={method} onValueChange={setMethod}>
               <SelectTrigger><SelectValue /></SelectTrigger>

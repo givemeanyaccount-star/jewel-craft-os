@@ -126,7 +126,7 @@ export function CustomerDialog({
           </div>
           <div><Label>Email</Label><Input value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
           <div><Label>City</Label><Input value={form.city ?? ""} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
-          <div><Label>Credit limit (रू)</Label><Input type="number" value={form.credit_limit ?? 0} onChange={(e) => setForm({ ...form, credit_limit: e.target.value })} /></div>
+          <div><Label>Credit limit (रू)</Label><NumberField value={form.credit_limit ?? 0} onChange={(v) => setForm({ ...form, credit_limit: v })} /></div>
           <div className="md:col-span-2"><Label>Address</Label><Textarea rows={2} value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
           <div><Label>ID document type</Label>
             <Select value={form.id_doc_type ?? undefined} onValueChange={(v) => { setForm({ ...form, id_doc_type: v }); setIdWarning(null); }}>

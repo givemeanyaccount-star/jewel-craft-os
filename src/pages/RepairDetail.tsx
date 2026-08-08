@@ -296,10 +296,10 @@ function WorkflowDialog({ item, onOpenChange, onSaved }: any) {
             <KarigarSelect karigars={karigars} value={karigarId} valueName={karigarName} onChange={(id, name) => { setKarigarId(id); setKarigarName(name); }} onKarigarCreated={refreshKarigars} />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div><Label className="text-xs">Gross weight out (g)</Label><Input type="number" step="0.001" value={grossOut} onChange={(e) => setGrossOut(e.target.value)} /></div>
-            <div><Label className="text-xs">Stone weight out (g)</Label><Input type="number" step="0.001" value={stoneOut} onChange={(e) => setStoneOut(e.target.value)} /></div>
+            <div><Label className="text-xs">Gross weight out (g)</Label><NumberField decimals={3} value={grossOut} onChange={(v) => setGrossOut(v)} /></div>
+            <div><Label className="text-xs">Stone weight out (g)</Label><NumberField decimals={3} value={stoneOut} onChange={(v) => setStoneOut(v)} /></div>
           </div>
-          {movingToDeliverable && <div><Label className="text-xs">Final cost (NPR)</Label><Input type="number" value={finalCost} onChange={(e) => setFinalCost(e.target.value)} /></div>}
+          {movingToDeliverable && <div><Label className="text-xs">Final cost (NPR)</Label><NumberField value={finalCost} onChange={(v) => setFinalCost(v)} /></div>}
           <div><Label>Note for this update</Label><Textarea rows={2} placeholder="What was done at this stage..." value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
         <DialogFooter>

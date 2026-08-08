@@ -511,8 +511,8 @@ export default function POS() {
             <Row label="  Gold + Making + Wastage" value={npr(tax.nonStoneTotal)} />
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Discount</span>
-              <Input type="number" className="h-8 w-28 text-right" value={discount}
-                onChange={(e) => { setDiscount(Number(e.target.value) || 0); setTargetTotal(""); }} />
+              <NumberField className="h-8 w-28 text-right" value={discount}
+                onChange={(v) => { setDiscount(v); setTargetTotal(""); }} />
             </div>
             {settings.vat_enabled && <Row label={`VAT ${settings.vat_rate}% (stones only)`} value={npr(tax.vat)} />}
             <Row label={`SD tax ${settings.sd_tax_rate}% (gold+making − old gold)`} value={npr(tax.sdTax)} />
@@ -522,7 +522,7 @@ export default function POS() {
                 <Button size="sm" variant="outline" onClick={() => setOgOpen(true)} title="New old gold purchase">
                   <Coins className="h-3.5 w-3.5" />
                 </Button>
-                <Input type="number" className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(e) => setOldGoldCredit(Number(e.target.value) || 0)} />
+                <NumberField className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(v) => setOldGoldCredit(v)} />
               </div>
             </div>
             {oldGoldEq && <div className="-mt-1 text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
@@ -532,7 +532,7 @@ export default function POS() {
             <div className="rounded-md border bg-muted/40 p-2">
               <Label className="text-xs">Set net amount (auto-discount)</Label>
               <div className="mt-1 flex gap-2">
-                <Input type="number" placeholder="e.g. 150000" value={targetTotal} onChange={(e) => setTargetTotal(e.target.value)} />
+                <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v)} />
                 <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
               </div>
             </div>
@@ -552,8 +552,8 @@ export default function POS() {
                       <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                       <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
                     </Select>
-                    <Input type="number" className="h-9 w-28 text-right" value={p.amount}
-                      onChange={(e) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, amount: Number(e.target.value) || 0 } : x))} />
+                    <NumberField className="h-9 w-28 text-right" value={p.amount}
+                      onChange={(v) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, amount: v } : x))} />
                     {payments.length > 1 && (
                       <Button size="icon" variant="ghost" className="h-9 w-9"
                         onClick={() => setPayments((arr) => arr.filter((_, j) => j !== i))}>
