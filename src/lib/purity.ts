@@ -61,15 +61,15 @@ let inflight: Promise<boolean> | null = null;
 export async function fetchAllowCustomPurity(): Promise<boolean> {
   if (cached !== null) return cached;
   if (!inflight) {
-    inflight = supabase
-      .from("app_settings")
-      .select("allow_custom_purity")
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        cached = (data as any)?.allow_custom_purity ?? true;
-        return cached!;
-      });
+    inflight = (async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("allow_custom_purity")
+        .limit(1)
+        .maybeSingle();
+      cached = (data as any)?.allow_custom_purity ?? true;
+      return cached!;
+    })();
   }
   return inflight;
 }
