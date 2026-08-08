@@ -10,7 +10,7 @@ import { Download } from "lucide-react";
 import { purityFactor } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 
-const GOLD_PURITIES = ["24K", "22K", "18K", "14K", "9K"];
+const GOLD_PURITIES = ["24K", "22K", "18K", "14K"];
 
 export function todayIsoDate() { return new Date().toISOString().slice(0, 10); }
 
