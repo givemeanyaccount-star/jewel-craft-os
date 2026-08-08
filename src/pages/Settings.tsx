@@ -106,6 +106,20 @@ function TaxationCard() {
             />
           </div>
         </div>
+        <div className="flex items-center justify-between rounded border p-3">
+          <div>
+            <Label htmlFor="custom-purity-toggle" className="text-sm font-medium">Allow custom purity</Label>
+            <p className="text-xs text-muted-foreground">
+              Standard purities are gold 24K / 22K (916) / 18K (750) / 14K (585) and silver 999 / 925. When enabled, staff can also enter a custom purity or percentage.
+            </p>
+          </div>
+          <Switch
+            id="custom-purity-toggle"
+            disabled={loading || saving}
+            checked={settings.allow_custom_purity}
+            onCheckedChange={(v) => { setSettings({ ...settings, allow_custom_purity: v }); save({ allow_custom_purity: v }); }}
+          />
+        </div>
       </CardContent>
       <RecalcTaxesDialog open={recalcOpen} onOpenChange={setRecalcOpen} settings={settings} />
     </Card>
