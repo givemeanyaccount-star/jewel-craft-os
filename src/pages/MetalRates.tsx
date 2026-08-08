@@ -65,7 +65,7 @@ export default function MetalRates() {
     setDerived(next);
   }
 
-  useEffect(() => { setFine(""); setDerived({}); }, [metal]);
+  
 
   const filteredRates = useMemo(() => {
     return rates.filter((r) => {
