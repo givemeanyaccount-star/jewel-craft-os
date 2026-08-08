@@ -47,7 +47,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
   const [printTargets, setPrintTargets] = useState<any[]>([]);
   const [receipt, setReceipt] = useState<any>(null);
 
-  // Old gold trade-in linked to this sale
+  // Old metal trade-in linked to this sale
   const oldGoldCredit = Number(invoice?.old_gold_credit ?? 0);
   const [og, setOg] = useState<{ id: string | null; metal: string; fineWeight: number; derived: boolean }>(
     { id: null, metal: "gold", fineWeight: 0, derived: true },
@@ -59,8 +59,8 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
 
   const taxTotal = Number(invoice?.vat_amount ?? 0) + Number(invoice?.sd_tax ?? 0) + Number(invoice?.luxury_tax ?? 0);
 
-  // Goods value of the bill = subtotal − discount (taxes and old gold credit taken out),
-  // so tax and old gold are settled once, explicitly, instead of hiding inside the line share.
+  // Goods value of the bill = subtotal − discount (taxes and old metal credit taken out),
+  // so tax and old metal are settled once, explicitly, instead of hiding inside the line share.
   const factor = useMemo(() => {
     const gross = items.reduce((s, i) => s + (Number(i.line_total) || 0), 0);
     const goods = Number(invoice?.total ?? 0) - taxTotal + oldGoldCredit;
@@ -83,7 +83,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
     setLines(init);
   }, [open]);
 
-  // Resolve the traded-in metal / fine weight for the old gold settlement panel.
+  // Resolve the traded-in metal / fine weight for the old metal settlement panel.
   useEffect(() => {
     if (!open || !invoice?.id || oldGoldCredit <= 0) return;
     (async () => {
@@ -229,11 +229,11 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
         });
       }
 
-      // Old gold settled only on a full return.
+      // Old metal settled only on a full return.
       if (showOgPanel && og.id) {
         const note = ogMode === "metal"
-          ? `Old gold returned to customer on sales return of invoice ${invoice.invoice_number} (${new Date().toLocaleDateString()})`
-          : `Old gold revalued at ${ogRate}/g on sales return of invoice ${invoice.invoice_number} (${new Date().toLocaleDateString()})`;
+          ? `Old metal returned to customer on sales return of invoice ${invoice.invoice_number} (${new Date().toLocaleDateString()})`
+          : `Old metal revalued at ${ogRate}/g on sales return of invoice ${invoice.invoice_number} (${new Date().toLocaleDateString()})`;
         const { data: p } = await supabase.from("old_gold_purchases").select("notes").eq("id", og.id).maybeSingle();
         await supabase.from("old_gold_purchases").update({ notes: [p?.notes, note].filter(Boolean).join(" | ") }).eq("id", og.id);
       }
@@ -290,7 +290,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
               )}
               {receipt.oldGold && (
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Old gold {receipt.oldGold.mode === "metal" ? "returned to customer" : `revalued @ ${npr(receipt.oldGold.rate)}/g`}</span>
+                  <span>Old metal {receipt.oldGold.mode === "metal" ? "returned to customer" : `revalued @ ${npr(receipt.oldGold.rate)}/g`}</span>
                   <span>{receipt.oldGold.deduction >= 0 ? "−" : "+"} {npr(Math.abs(receipt.oldGold.deduction))}</span>
                 </div>
               )}
@@ -397,7 +397,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                   showOgPanel ? (
                     <div className="rounded border p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs">Old gold settlement</Label>
+                        <Label className="text-xs">Old metal settlement</Label>
                         <span className="text-[11px] text-muted-foreground">
                           Original credit {npr(oldGoldCredit)} · {og.fineWeight.toFixed(3)} g fine {METAL_LABEL[og.metal] ?? og.metal}
                           {og.derived ? " (derived from the bill rate)" : ""}
@@ -430,7 +430,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                     </div>
                   ) : (
                     <p className="text-[11px] text-muted-foreground">
-                      Old gold credit of {npr(oldGoldCredit)} is settled only when the complete sale is returned.
+                      Old metal credit of {npr(oldGoldCredit)} is settled only when the complete sale is returned.
                     </p>
                   )
                 )}
@@ -446,7 +446,7 @@ export function ReturnItemsDialog({ open, onOpenChange, invoice, items, userId, 
                   <div className="flex flex-col items-end justify-end gap-1 text-[11px] text-muted-foreground">
                     <span>Goods refund {npr(goodsRefund)}</span>
                     {Number(taxWithheld) > 0 && <span>− tax withheld {npr(Number(taxWithheld))}</span>}
-                    {ogDeduction !== 0 && <span>{ogDeduction > 0 ? "−" : "+"} old gold {npr(Math.abs(ogDeduction))}</span>}
+                    {ogDeduction !== 0 && <span>{ogDeduction > 0 ? "−" : "+"} old metal {npr(Math.abs(ogDeduction))}</span>}
                     <Badge variant="outline">Net refund: {npr(totalRefund)}</Badge>
                     <span>
                       Cash back {npr(Math.min(totalRefund, Number(invoice?.amount_paid ?? 0)))} · credit adjusted {npr(Math.max(0, totalRefund - Number(invoice?.amount_paid ?? 0)))}
@@ -494,7 +494,7 @@ function printRefundReceipt(r: any) {
           <tfoot>
             <tr><td class="r" colspan="2">Goods refund</td><td class="r">${escapeHtml(npr(r.goodsRefund ?? r.totalRefund))}</td></tr>
             ${Number(r.taxWithheld) > 0 ? `<tr><td class="r" colspan="2">Less: tax withheld (non-refundable)</td><td class="r">− ${escapeHtml(npr(r.taxWithheld))}</td></tr>` : ""}
-            ${r.oldGold ? `<tr><td class="r" colspan="2">${r.oldGold.deduction >= 0 ? "Less" : "Add"}: old gold settlement — ${r.oldGold.mode === "metal" ? "metal returned to customer" : `${escapeHtml(r.oldGold.fineWeight.toFixed(3))} g fine ${escapeHtml(METAL_LABEL[r.oldGold.metal] ?? r.oldGold.metal)} @ ${escapeHtml(npr(r.oldGold.rate))}/g = ${escapeHtml(npr(r.oldGold.revalued))} vs credit ${escapeHtml(npr(r.oldGold.credit))}`}</td><td class="r">${r.oldGold.deduction >= 0 ? "−" : "+"} ${escapeHtml(npr(Math.abs(r.oldGold.deduction)))}</td></tr>` : ""}
+            ${r.oldGold ? `<tr><td class="r" colspan="2">${r.oldGold.deduction >= 0 ? "Less" : "Add"}: old metal settlement — ${r.oldGold.mode === "metal" ? "metal returned to customer" : `${escapeHtml(r.oldGold.fineWeight.toFixed(3))} g fine ${escapeHtml(METAL_LABEL[r.oldGold.metal] ?? r.oldGold.metal)} @ ${escapeHtml(npr(r.oldGold.rate))}/g = ${escapeHtml(npr(r.oldGold.revalued))} vs credit ${escapeHtml(npr(r.oldGold.credit))}`}</td><td class="r">${r.oldGold.deduction >= 0 ? "−" : "+"} ${escapeHtml(npr(Math.abs(r.oldGold.deduction)))}</td></tr>` : ""}
             <tr><td class="r" colspan="2">Net refund</td><td class="r"><b>${escapeHtml(npr(r.totalRefund))}</b></td></tr>
             <tr><td class="r" colspan="2">Paid back (${escapeHtml(String(r.method).replace("_", " "))})</td><td class="r">${escapeHtml(npr(r.cashRefund))}</td></tr>
             ${r.creditReleased > 0 ? `<tr><td class="r" colspan="2">Adjusted against outstanding credit</td><td class="r">${escapeHtml(npr(r.creditReleased))}</td></tr>` : ""}

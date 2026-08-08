@@ -256,7 +256,7 @@ export default function POS() {
   const paid = useMemo(() => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)), [payments]);
   const balance = round2(Math.max(0, tax.total - paid));
 
-  // Fine-metal equivalent of the old gold credit, at the bill's rate (or the day's rate).
+  // Fine-metal equivalent of the old metal credit, at the bill's rate (or the day's rate).
   const oldGoldEq = useMemo(() => oldGoldCredit > 0
     ? fineEquivalentNote(oldGoldCredit, billFineRate(cart as any, oldGoldMetal, fineRates), oldGoldMetal)
     : null, [oldGoldCredit, cart, oldGoldMetal, fineRates]);
@@ -516,11 +516,11 @@ export default function POS() {
                 onChange={(v) => { setDiscount(v); setTargetTotal(""); }} />
             </div>
             {settings.vat_enabled && <Row label={`VAT ${settings.vat_rate}% (stones only)`} value={npr(tax.vat)} />}
-            <Row label={`SD tax ${settings.sd_tax_rate}% (gold+making − old gold)`} value={npr(tax.sdTax)} />
+            <Row label={`SD tax ${settings.sd_tax_rate}% (gold+making − old metal)`} value={npr(tax.sdTax)} />
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Old gold credit</span>
+              <span className="text-muted-foreground">Old metal credit</span>
               <div className="flex gap-1">
-                <Button size="sm" variant="outline" onClick={() => setOgOpen(true)} title="New old gold purchase">
+                <Button size="sm" variant="outline" onClick={() => setOgOpen(true)} title="New old metal purchase">
                   <Coins className="h-3.5 w-3.5" />
                 </Button>
                 <NumberField className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(v) => setOldGoldCredit(v)} />
@@ -584,7 +584,7 @@ export default function POS() {
         onSaved={async (id) => { setNewCustOpen(false); await loadCustomers(); setCustomerId(id); }} />
       <OldGoldPurchaseDialog open={ogOpen} onOpenChange={setOgOpen}
         initialCustomer={customers.find((c) => c.id === customerId) ? { id: customerId!, full_name: customers.find((c) => c.id === customerId)!.full_name, phone: customers.find((c) => c.id === customerId)!.phone ?? null } : null}
-        onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); setOldGoldMetal(result.metal ?? "gold"); toast.success(`Old gold credit set to ${npr(result.total)}`); }} />
+        onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); setOldGoldMetal(result.metal ?? "gold"); toast.success(`Old metal credit set to ${npr(result.total)}`); }} />
       <ItemDialog open={newItemOpen} onOpenChange={setNewItemOpen}
         editing={null} cats={categories as any} locs={locations as any}
         onSaved={(created) => {
@@ -664,7 +664,7 @@ function OldGoldPurchaseDialog({ open, onOpenChange, initialCustomer, onSaved }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Coins className="h-5 w-5" /> Old Gold Purchase</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Coins className="h-5 w-5" /> Old Metal Purchase</DialogTitle></DialogHeader>
         <p className="text-xs text-muted-foreground">Applies as credit toward this sale. ID document and photo are required for every gold purchase.</p>
         {open && <OldGoldForm compact initialCustomer={initialCustomer} submitLabel="Create & Apply to Sale" onSaved={onSaved} />}
       </DialogContent>

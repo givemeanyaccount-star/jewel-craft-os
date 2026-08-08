@@ -3,7 +3,7 @@ import { fineRateFromLine, fineEquivalentGrams } from "@/lib/format";
 
 /**
  * Fine (pure) metal rate helpers used to show the "equivalent fine weight"
- * of an old gold / old metal trade-in on sales documents.
+ * of an old metal trade-in on sales documents.
  */
 
 export type FineRates = Record<string, number>; // metal -> fine rate per gram

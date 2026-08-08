@@ -18,7 +18,7 @@ export interface ActivityEntry {
 const BADGE: Record<ActivityEntry["kind"], { label: string; cls: string }> = {
   sale: { label: "Sale", cls: "bg-primary/10 text-primary" },
   purchase: { label: "Purchase", cls: "bg-accent/20 text-accent-foreground" },
-  oldgold: { label: "Old gold", cls: "bg-muted text-muted-foreground" },
+  oldgold: { label: "Old metal", cls: "bg-muted text-muted-foreground" },
 };
 
 type Filter = "all" | ActivityEntry["kind"];
@@ -27,7 +27,7 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "sale", label: "Sales" },
   { key: "purchase", label: "Purchases" },
-  { key: "oldgold", label: "Old gold" },
+  { key: "oldgold", label: "Old metal" },
 ];
 
 export function ActivityLog({ entries }: { entries: ActivityEntry[] }) {

@@ -79,7 +79,7 @@ export default function InvoicesOldGold() {
             <TableHead className="text-right">Net wt</TableHead><TableHead className="text-right">Amount</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {filtered.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No old gold purchases</TableCell></TableRow>
+            {filtered.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No old metal purchases</TableCell></TableRow>
               : filtered.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="font-medium">{p.receipt_number}</TableCell>
