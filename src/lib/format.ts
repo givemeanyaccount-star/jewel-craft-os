@@ -185,7 +185,7 @@ export function computeLineTotal(p: PricingInputs) {
   else wastageAmount = p.wastageValue;
 
   const lineTotal = (metalValue + making + wastageAmount + p.stoneValue) * qty;
-  return { metalValue, making, wastageAmount, lineTotal };
+  return { metalValue: round2(metalValue), making: round2(making), wastageAmount: round2(wastageAmount), lineTotal: round2(lineTotal) };
 }
 
 export function nextNumber(prefix: string, seq: number, pad = 5) {
