@@ -99,6 +99,63 @@ Deno.serve(async (req) => {
       });
       return json({ id: newId, email, username });
     }
+    if (action === "update") {
+      const targetId = String(body.user_id ?? "");
+      if (!targetId) return json({ error: "user_id is required" }, 400);
+      const email = String(body.email ?? "").trim().toLowerCase();
+      const username = String(body.username ?? "").trim();
+      const fullName = String(body.full_name ?? "").trim();
+      const phone = String(body.phone ?? "").trim();
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return json({ error: "A valid email is required" }, 400);
+      }
+      if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
+        return json({ error: "Username must be 3-30 characters (letters, numbers, . _ -)" }, 400);
+      }
+      if (fullName.length > 255 || phone.length > 40) {
+        return json({ error: "Name or phone too long" }, 400);
+      }
+
+      const { data: clash } = await admin
+        .from("profiles")
+        .select("id")
+        .ilike("username", username)
+        .neq("id", targetId)
+        .maybeSingle();
+      if (clash) return json({ error: "That username is already taken" }, 400);
+
+      const { data: before } = await admin.auth.admin.getUserById(targetId);
+      if (!before?.user) return json({ error: "User not found" }, 404);
+
+      if ((before.user.email ?? "").toLowerCase() !== email) {
+        const { error: emailErr } = await admin.auth.admin.updateUserById(targetId, {
+          email,
+          email_confirm: true,
+        });
+        if (emailErr) return json({ error: emailErr.message }, 400);
+      }
+
+      const { error: profErr } = await admin
+        .from("profiles")
+        .upsert({ id: targetId, full_name: fullName, phone, username });
+      if (profErr) return json({ error: profErr.message }, 400);
+
+      await admin.from("audit_logs").insert({
+        actor_id: userData.user.id,
+        actor_email: userData.user.email ?? null,
+        action: "user_updated",
+        target_user_id: targetId,
+        target_email: email,
+        details: {
+          previous_email: before.user.email ?? null,
+          username,
+          full_name: fullName,
+          phone,
+        },
+      });
+      return json({ ok: true });
+    }
+
 
 
 

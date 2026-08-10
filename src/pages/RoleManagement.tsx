@@ -37,7 +37,7 @@ import {
 } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 import AuditLog from "@/components/AuditLog";
-import { Loader2, Plus, Trash2, RotateCcw } from "lucide-react";
+import { Loader2, Plus, Trash2, RotateCcw, Pencil } from "lucide-react";
 
 interface UserRow {
   id: string;
@@ -220,6 +220,7 @@ const RoleManagement = () => {
                           ) : (
                             u.roles.map((r) => <Badge key={r} variant="secondary">{r}</Badge>)
                           )}
+                          <EditUserDialog user={u} onSaved={load} />
                           {!isSelf && (
                             <Button
                               variant="ghost"
@@ -389,6 +390,96 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
           <Button onClick={submit} disabled={saving || !email.trim() || !usernameValid}>
             {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Send invite
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditUserDialog({ user, onSaved }: { user: UserRow; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [email, setEmail] = useState(user.email ?? "");
+  const [username, setUsername] = useState(user.username ?? "");
+  const [fullName, setFullName] = useState(user.full_name ?? "");
+  const [phone, setPhone] = useState(user.phone ?? "");
+
+  useEffect(() => {
+    if (!open) return;
+    setEmail(user.email ?? "");
+    setUsername(user.username ?? "");
+    setFullName(user.full_name ?? "");
+    setPhone(user.phone ?? "");
+  }, [open, user]);
+
+  const usernameValid = /^[a-zA-Z0-9._-]{3,30}$/.test(username.trim());
+
+  const submit = async () => {
+    setSaving(true);
+    const { data, error } = await supabase.functions.invoke("admin-users", {
+      body: {
+        action: "update",
+        user_id: user.id,
+        email: email.trim(),
+        username: username.trim(),
+        full_name: fullName,
+        phone,
+      },
+    });
+    setSaving(false);
+    if (error || data?.error) {
+      toast({ title: "Could not save changes", description: data?.error ?? error?.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "User updated" });
+    setOpen(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Edit user">
+          <Pencil className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit user</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Username</Label>
+              <Input value={username} onChange={(e) => setUsername(e.target.value)} />
+              {username && !usernameValid && (
+                <p className="text-xs text-destructive">3–30 characters: letters, numbers, . _ -</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>Full name</Label>
+              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Phone</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Changing the email changes the address this person signs in with.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={saving || !email.trim() || !usernameValid}>
+            {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Save changes
           </Button>
         </DialogFooter>
       </DialogContent>

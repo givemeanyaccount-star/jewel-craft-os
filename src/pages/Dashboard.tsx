@@ -120,7 +120,7 @@ export default function Dashboard() {
     setMissingIdCount(missingId.count ?? 0);
     await sweepExpiredQuotations();
     setQuoteStats(await pendingQuotationStats());
-    if ((todayRate.data ?? []).length === 0) setRateDialog(true);
+    if ((todayRate.data ?? []).length === 0 && hasPermission("metal_rate_manage")) setRateDialog(true);
 
     // ── metal rates ───────────────────────────────────────
     const grouped: Record<string, { latest: number | null; history: RatePoint[] }> = {};
@@ -260,7 +260,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <DailyRateDialog open={rateDialog} onOpenChange={setRateDialog} onSaved={load} />
+      {hasPermission("metal_rate_manage") && (
+        <DailyRateDialog open={rateDialog} onOpenChange={setRateDialog} onSaved={load} />
+      )}
     </AppLayout>
   );
 }
