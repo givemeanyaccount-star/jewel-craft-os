@@ -220,6 +220,7 @@ const RoleManagement = () => {
                           ) : (
                             u.roles.map((r) => <Badge key={r} variant="secondary">{r}</Badge>)
                           )}
+                          <EditUserDialog user={u} onSaved={load} />
                           {!isSelf && (
                             <Button
                               variant="ghost"
