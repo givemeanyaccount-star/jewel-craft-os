@@ -55,6 +55,7 @@ export const ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "inventory_view",
     "inventory_manage",
     "customer_manage",
+    "metal_rate_manage",
     "old_gold_purchase",
   ],
   karigar: [
