@@ -260,7 +260,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <DailyRateDialog open={rateDialog} onOpenChange={setRateDialog} onSaved={load} />
+      {hasPermission("metal_rate_manage") && (
+        <DailyRateDialog open={rateDialog} onOpenChange={setRateDialog} onSaved={load} />
+      )}
     </AppLayout>
   );
 }
