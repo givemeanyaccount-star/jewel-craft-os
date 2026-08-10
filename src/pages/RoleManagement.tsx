@@ -37,7 +37,7 @@ import {
 } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 import AuditLog from "@/components/AuditLog";
-import { Loader2, Plus, Trash2, RotateCcw } from "lucide-react";
+import { Loader2, Plus, Trash2, RotateCcw, Pencil } from "lucide-react";
 
 interface UserRow {
   id: string;
