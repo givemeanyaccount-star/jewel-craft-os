@@ -19,7 +19,7 @@ const PURITIES = ALL_PURITIES;
 
 export default function MetalRates() {
   const { hasRole, user } = useAuth();
-  const canWrite = hasRole("admin") || hasRole("manager") || hasRole("accountant");
+  const canWrite = hasRole("admin") || hasRole("manager") || hasRole("accountant") || hasRole("sales");
   const [rates, setRates] = useState<any[]>([]);
   const [metal, setMetal] = useState("gold");
   const [fine, setFine] = useState("");
