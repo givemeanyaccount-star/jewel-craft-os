@@ -27,6 +27,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { ItemDialog } from "@/pages/Inventory";
 import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
 import { PickedCustomer } from "@/components/CustomerSelector";
+import { fetchRateOn, fetchLatestRate, todayISO, logOrderItemStatus, syncOrderStatus } from "@/lib/orders";
 
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
@@ -97,6 +98,8 @@ export default function POS() {
   const location = useLocation();
   const quotationId: string | null = (location.state as any)?.quotationId ?? null;
   const quotationNumber: string | null = (location.state as any)?.quoteNumber ?? null;
+  const orderIdFromState: string | null = (location.state as any)?.orderId ?? null;
+  const canBackdate = hasPermission("invoice_cancel_refund") || hasPermission("settings_manage");
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
@@ -116,6 +119,15 @@ export default function POS() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [editItem, setEditItem] = useState<{ row: number; item: any } | null>(null);
+
+  // Custom order billing
+  const [order, setOrder] = useState<any>(null);
+  const [orderLineByItem, setOrderLineByItem] = useState<Record<string, string>>({});
+  const [orderDate, setOrderDate] = useState<string>("");
+  const [rateBasis, setRateBasis] = useState<"order" | "current">("current");
+  const [advance, setAdvance] = useState(0);
+  const [issueDate, setIssueDate] = useState<string>(todayISO());
+  const [orderPickerOpen, setOrderPickerOpen] = useState(false);
 
   const [newCustOpen, setNewCustOpen] = useState(false);
   const [ogOpen, setOgOpen] = useState(false);
@@ -171,6 +183,67 @@ export default function POS() {
   }, [quotationId]);
 
 
+
+  useEffect(() => { if (orderIdFromState) void loadOrder(orderIdFromState); }, [orderIdFromState]);
+
+  async function loadOrder(id: string) {
+    const [{ data: o }, { data: lines }, { data: pays }] = await Promise.all([
+      supabase.from("orders").select("*, customers(full_name, phone)").eq("id", id).maybeSingle(),
+      supabase.from("order_items").select("*, inventory_items(*)").eq("order_id", id).eq("status", "in_stock"),
+      supabase.from("payments").select("amount").eq("order_id", id),
+    ]);
+    if (!o) return toast.error("Order not found");
+    if (!lines?.length) return toast.error("No finished items on this order are ready to bill");
+    setOrder(o);
+    setCustomerId(o.customer_id);
+    setOrderDate(o.order_date);
+    setRateBasis("order");
+    setAdvance(round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0)));
+    setNotes(o.notes ?? "");
+
+    const map: Record<string, string> = {};
+    const rows: CartRow[] = [];
+    for (const l of lines as any[]) {
+      const inv = l.inventory_items;
+      const gross = Number(l.received_gross_weight ?? inv?.gross_weight ?? l.expected_gross_weight ?? 0);
+      const stoneWt = Number(l.received_stone_weight ?? inv?.stone_weight ?? l.expected_stone_weight ?? 0);
+      const net = Number(inv?.net_weight ?? Math.max(0, gross - stoneWt));
+      const lookup = await fetchRateOn(l.metal, l.purity, o.order_date);
+      if (inv?.id) map[inv.id] = l.id;
+      rows.push(recompute({
+        inventory_item_id: inv?.id ?? null,
+        description: inv?.sku ? `${l.description} (${inv.sku})` : l.description,
+        metal: l.metal, purity: l.purity,
+        gross_weight: gross, stone_weight: stoneWt, weight: net,
+        rate: lookup.rate || Number(l.rate ?? 0),
+        making_charge: 0, wastage_amount: 0,
+        stone_value: Number(l.stone_value ?? 0),
+        quantity: Number(l.quantity ?? 1),
+        line_total: 0,
+        making_input: Number(l.making_input ?? 0),
+        making_type: (l.making_type ?? "per_gram") as any,
+        wastage_input: Number(l.wastage_input ?? 0),
+        wastage_type: (l.wastage_type ?? "percentage") as any,
+        raw_item: inv ?? undefined,
+      }));
+    }
+    setOrderLineByItem(map);
+    setCart(rows);
+    toast.success(`Loaded order ${o.order_no}`);
+  }
+
+  /** Re-price the whole cart from the order date or from the latest rates. */
+  async function applyRateBasis(basis: "order" | "current") {
+    const date = orderDate;
+    const updated = await Promise.all(cart.map(async (r) => {
+      if (!r.metal || !r.purity) return r;
+      const look = basis === "order" && date ? await fetchRateOn(r.metal, r.purity, date) : await fetchLatestRate(r.metal, r.purity);
+      return look.rate ? recompute({ ...r, rate: look.rate }) : r;
+    }));
+    setCart(updated);
+    setRateBasis(basis);
+    toast.success(basis === "order" ? `Priced at the ${date} rate` : "Priced at today's rate");
+  }
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -253,7 +326,10 @@ export default function POS() {
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
   }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
 
-  const paid = useMemo(() => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)), [payments]);
+  const paid = useMemo(
+    () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0) + advance),
+    [payments, advance],
+  );
   const balance = round2(Math.max(0, tax.total - paid));
 
   // Fine-metal equivalent of the old metal credit, at the bill's rate (or the day's rate).
