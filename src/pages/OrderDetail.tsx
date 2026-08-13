@@ -653,7 +653,7 @@ function CancelOrderDialog({ open, onOpenChange, order, items, receipts, advance
 
   useEffect(() => { if (open) { setReason(""); setAdvanceAction(advanceTotal > 0 ? "refund" : "none"); setStockAction("release"); } }, [open, advanceTotal]);
 
-  const produced = items.filter((i) => i.inventory_item_id);
+  const produced = (receipts ?? []).filter((r) => r.inventory_item_id && r.status !== "billed");
 
   async function save() {
     if (!reason.trim()) return toast.error("Enter a reason");
@@ -672,11 +672,14 @@ function CancelOrderDialog({ open, onOpenChange, order, items, receipts, advance
       }
 
       if (produced.length) {
-        const ids = produced.map((i) => i.inventory_item_id);
+        const ids = produced.map((r) => r.inventory_item_id);
         await supabase.from("inventory_items")
           .update({ status: (stockAction === "release" ? "in_stock" : "melted") as any })
           .in("id", ids);
+        await supabase.from("order_item_receipts").update({ status: "cancelled" } as any)
+          .in("id", produced.map((r) => r.id));
       }
+
 
       if (advanceAction === "refund" && advanceTotal > 0) {
         await supabase.from("payments").insert({
