@@ -100,11 +100,12 @@ export default function OrderDetail() {
         <Button size="sm" variant="outline" onClick={() => printAdvanceReceipt(order, advances, advanceTotal)}>
           <Printer className="mr-1 h-4 w-4" /> Advance receipt
         </Button>
-        {canBill && readyLines.length > 0 && order.status !== "cancelled" && (
+        {canBill && billableCount > 0 && order.status !== "cancelled" && (
           <Button size="sm" onClick={() => nav("/pos", { state: { orderId: order.id } })}>
-            <Receipt className="mr-1 h-4 w-4" /> Bill this order
+            <Receipt className="mr-1 h-4 w-4" /> Bill {billableCount} finished piece{billableCount > 1 ? "s" : ""}
           </Button>
         )}
+
         {canManage && !["completed", "cancelled"].includes(order.status) && (
           <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}><X className="mr-1 h-4 w-4" /> Cancel</Button>
         )}
