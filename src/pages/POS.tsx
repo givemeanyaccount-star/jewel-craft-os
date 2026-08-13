@@ -421,19 +421,49 @@ export default function POS() {
       }
 
       if (order) {
-        const lineIds = cart
+        const refs = cart
           .map((r) => (r.inventory_item_id ? orderLineByItem[r.inventory_item_id] : null))
-          .filter(Boolean) as string[];
-        if (lineIds.length) {
-          await supabase.from("order_items").update({ status: "billed" as any, invoice_id: inv.id }).in("id", lineIds);
-          await Promise.all(lineIds.map((lid) => logOrderItemStatus({
-            order_item_id: lid, status: "billed", note: `Billed on invoice ${invNumber}`, changed_by: user?.id,
-          })));
+          .filter(Boolean) as { receiptId: string; orderItemId: string }[];
+        if (refs.length) {
+          await supabase.from("order_item_receipts")
+            .update({ status: "billed", invoice_id: inv.id } as any)
+            .in("id", refs.map((r) => r.receiptId));
+          const lineIds = Array.from(new Set(refs.map((r) => r.orderItemId)));
+          await supabase.from("order_items").update({ invoice_id: inv.id }).in("id", lineIds);
+          await Promise.all(lineIds.map(async (lid) => {
+            await recalcOrderItem(lid);
+            await logOrderItemStatus({
+              order_item_id: lid, status: "billed", note: `Billed on invoice ${invNumber}`, changed_by: user?.id,
+            });
+          }));
         }
-        // Advances already collected on the order now belong to this invoice.
-        await supabase.from("payments").update({ invoice_id: inv.id }).eq("order_id", order.id).is("invoice_id", null);
+        // Apply the order advance to this invoice, only up to what this bill needs.
+        let remaining = appliedAdvance;
+        if (remaining > 0) {
+          const { data: adv } = await supabase.from("payments")
+            .select("id, amount").eq("order_id", order.id).is("invoice_id", null).order("paid_at");
+          for (const p of (adv ?? []) as any[]) {
+            if (remaining <= 0.004) break;
+            const amt = Number(p.amount ?? 0);
+            if (amt <= 0) continue;
+            if (amt <= remaining + 0.004) {
+              await supabase.from("payments").update({ invoice_id: inv.id }).eq("id", p.id);
+              remaining = round2(remaining - amt);
+            } else {
+              // split: part of this advance settles the current bill, the rest stays on the order
+              await supabase.from("payments").update({ amount: round2(amt - remaining) }).eq("id", p.id);
+              await supabase.from("payments").insert({
+                order_id: order.id, invoice_id: inv.id, customer_id: order.customer_id,
+                amount: remaining, method: (p.method ?? "cash") as any,
+                notes: `Advance applied to invoice ${invNumber}`, created_by: user?.id,
+              } as any);
+              remaining = 0;
+            }
+          }
+        }
         await syncOrderStatus(order.id);
       }
+
 
       if (oldGoldPurchaseId) {
         await supabase.from("old_gold_purchases").update({ linked_invoice_id: inv.id }).eq("id", oldGoldPurchaseId);
