@@ -189,11 +189,19 @@ export default function POS() {
   async function loadOrder(id: string) {
     const [{ data: o }, { data: lines }, { data: pays }] = await Promise.all([
       supabase.from("orders").select("*, customers(full_name, phone)").eq("id", id).maybeSingle(),
-      supabase.from("order_items").select("*, inventory_items(*)").eq("order_id", id).eq("status", "in_stock"),
+      supabase.from("order_items")
+        .select("*, order_item_receipts(*, inventory_items(*))")
+        .eq("order_id", id)
+        .neq("status", "cancelled"),
       supabase.from("payments").select("amount").eq("order_id", id),
     ]);
     if (!o) return toast.error("Order not found");
-    if (!lines?.length) return toast.error("No finished items on this order are ready to bill");
+    const billable = ((lines ?? []) as any[]).flatMap((l) =>
+      ((l.order_item_receipts ?? []) as any[])
+        .filter((r) => r.inventory_item_id && r.status !== "billed" && r.status !== "cancelled")
+        .map((r) => ({ line: l, receipt: r })),
+    );
+    if (!billable.length) return toast.error("No finished pieces on this order are ready to bill");
     setOrder(o);
     setCustomerId(o.customer_id);
     setOrderDate(o.order_date);
@@ -201,15 +209,15 @@ export default function POS() {
     setAdvance(round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0)));
     setNotes(o.notes ?? "");
 
-    const map: Record<string, string> = {};
+    const map: Record<string, { receiptId: string; orderItemId: string }> = {};
     const rows: CartRow[] = [];
-    for (const l of lines as any[]) {
-      const inv = l.inventory_items;
-      const gross = Number(l.received_gross_weight ?? inv?.gross_weight ?? l.expected_gross_weight ?? 0);
-      const stoneWt = Number(l.received_stone_weight ?? inv?.stone_weight ?? l.expected_stone_weight ?? 0);
+    for (const { line: l, receipt: r } of billable) {
+      const inv = r.inventory_items;
+      const gross = Number(r.received_gross_weight ?? inv?.gross_weight ?? 0);
+      const stoneWt = Number(r.received_stone_weight ?? inv?.stone_weight ?? 0);
       const net = Number(inv?.net_weight ?? Math.max(0, gross - stoneWt));
       const lookup = await fetchRateOn(l.metal, l.purity, o.order_date);
-      if (inv?.id) map[inv.id] = l.id;
+      if (inv?.id) map[inv.id] = { receiptId: r.id, orderItemId: l.id };
       rows.push(recompute({
         inventory_item_id: inv?.id ?? null,
         description: inv?.sku ? `${l.description} (${inv.sku})` : l.description,
@@ -218,7 +226,7 @@ export default function POS() {
         rate: lookup.rate || Number(l.rate ?? 0),
         making_charge: 0, wastage_amount: 0,
         stone_value: Number(l.stone_value ?? 0),
-        quantity: Number(l.quantity ?? 1),
+        quantity: Number(r.quantity ?? 1),
         line_total: 0,
         making_input: Number(l.making_input ?? 0),
         making_type: (l.making_type ?? "per_gram") as any,
@@ -229,8 +237,9 @@ export default function POS() {
     }
     setOrderLineByItem(map);
     setCart(rows);
-    toast.success(`Loaded order ${o.order_no}`);
+    toast.success(`Loaded ${rows.length} finished piece(s) from order ${o.order_no}`);
   }
+
 
   /** Re-price the whole cart from the order date or from the latest rates. */
   async function applyRateBasis(basis: "order" | "current") {
