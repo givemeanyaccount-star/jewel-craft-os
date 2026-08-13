@@ -122,7 +122,7 @@ export default function POS() {
 
   // Custom order billing
   const [order, setOrder] = useState<any>(null);
-  const [orderLineByItem, setOrderLineByItem] = useState<Record<string, string>>({});
+  const [orderLineByItem, setOrderLineByItem] = useState<Record<string, { receiptId: string; orderItemId: string }>>({});
   const [orderDate, setOrderDate] = useState<string>("");
   const [rateBasis, setRateBasis] = useState<"order" | "current">("current");
   const [advance, setAdvance] = useState(0);
