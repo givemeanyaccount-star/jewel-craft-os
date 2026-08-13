@@ -227,6 +227,58 @@ export function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Upload freshly captured reference photos and return all storage paths for a line. */
+export async function saveLinePhotos(existing: string[], files: File[]): Promise<string[]> {
+  const { uploadImage } = await import("@/lib/storage");
+  const added: string[] = [];
+  for (const f of files) added.push(await uploadImage("product-images", f, "orders/"));
+  return [...existing, ...added];
+}
+
+/** Pieces already received for a line — a line's quantity can never go below this. */
+export async function receivedQuantity(orderItemId: string): Promise<number> {
+  const { data } = await supabase.from("order_item_receipts").select("quantity").eq("order_item_id", orderItemId);
+  return (data ?? []).reduce((a: number, r: any) => a + Number(r.quantity ?? 0), 0);
+}
+
+/**
+ * Cancel a single order line. Produced stock from its batches is either released
+ * to normal inventory or marked melted. Billed batches are left untouched.
+ */
+export async function cancelOrderLine(opts: {
+  orderItemId: string;
+  orderId: string;
+  reason: string;
+  stockAction?: "release" | "melt";
+  userId?: string | null;
+}) {
+  const { data: receipts } = await supabase.from("order_item_receipts")
+    .select("id, inventory_item_id, status").eq("order_item_id", opts.orderItemId);
+  const produced = (receipts ?? []).filter((r: any) => r.inventory_item_id && r.status !== "billed");
+  if (produced.length) {
+    await supabase.from("inventory_items")
+      .update({ status: (opts.stockAction === "melt" ? "melted" : "in_stock") as any })
+      .in("id", produced.map((r: any) => r.inventory_item_id));
+    await supabase.from("order_item_receipts").update({ status: "cancelled" } as any)
+      .in("id", produced.map((r: any) => r.id));
+  }
+  await supabase.from("order_items").update({ status: "cancelled" as any }).eq("id", opts.orderItemId);
+  await logOrderItemStatus({
+    order_item_id: opts.orderItemId, status: "cancelled",
+    note: `Item cancelled: ${opts.reason}`, changed_by: opts.userId ?? null,
+  });
+  await syncOrderStatus(opts.orderId);
+}
+
+/** Hard-delete an order line that has no receipts against it. */
+export async function deleteOrderLine(orderItemId: string, orderId: string) {
+  await supabase.from("order_item_status_log").delete().eq("order_item_id", orderItemId);
+  const { error } = await supabase.from("order_items").delete().eq("id", orderItemId);
+  if (error) throw error;
+  await syncOrderStatus(orderId);
+}
+
+
 export interface OrderDashboardStats {
   open: number;
   dueThisWeek: number;
