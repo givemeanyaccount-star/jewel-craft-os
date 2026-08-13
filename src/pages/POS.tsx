@@ -335,10 +335,18 @@ export default function POS() {
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
   }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
 
-  const paid = useMemo(
-    () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0) + advance),
-    [payments, advance],
+  const manualPaid = useMemo(
+    () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)),
+    [payments],
   );
+  // On a partial batch bill only as much of the order advance as this invoice needs;
+  // the rest stays on the order for the remaining pieces.
+  const appliedAdvance = useMemo(
+    () => round2(Math.min(advance, Math.max(0, tax.total - manualPaid))),
+    [advance, tax.total, manualPaid],
+  );
+  const paid = useMemo(() => round2(manualPaid + appliedAdvance), [manualPaid, appliedAdvance]);
+
   const balance = round2(Math.max(0, tax.total - paid));
 
   // Fine-metal equivalent of the old metal credit, at the bill's rate (or the day's rate).
