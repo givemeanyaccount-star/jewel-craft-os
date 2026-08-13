@@ -121,7 +121,7 @@ export default function Orders() {
         </CardContent>
       </Card>
 
-      <NewOrderDialog open={open} onOpenChange={setOpen} onSaved={(id) => { setOpen(false); load(); nav(`/orders/${id}`); }} />
+      <NewOrderDialog open={open} onOpenChange={setOpen} onSaved={(id) => { setOpen(false); load(); nav(`/orders/${id}`, { state: { justCreated: true } }); }} />
     </AppLayout>
   );
 }

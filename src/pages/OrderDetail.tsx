@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,19 +12,26 @@ import { NumberField } from "@/components/ui/number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Hammer, PackageCheck, Printer, Receipt, Plus, X, Coins } from "lucide-react";
+import { Hammer, PackageCheck, Printer, Receipt, Plus, X, Coins, Pencil, Trash2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { npr, gms, computeNetWeight, round2, computeFineWeight } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import { KarigarSelect, useKarigars } from "@/components/KarigarSelect";
-import { openPrintPreview } from "@/components/PrintPreview";
-import { useCompanyProfile } from "@/components/PrintDocument";
 import { ImageCaptureButton } from "@/components/ImageCapture";
 import { uploadImage } from "@/lib/storage";
+import { printDocument } from "@/components/PrintDocument";
+import { OrderPrintDocument } from "@/components/orders/OrderPrintDocument";
+import { printOldMetalReceipt } from "@/lib/oldMetalReceipt";
+import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
+import { PickedCustomer } from "@/components/CustomerSelector";
+import {
+  OrderLineFields, OrderLine, lineFromRow, lineNet, lineEstimate,
+} from "@/components/orders/OrderLineFields";
 import {
   ORDER_ITEM_LABEL, ORDER_ITEM_COLOR, ORDER_STATUS_LABEL,
   estimateOrderLine, logOrderItemStatus, syncOrderStatus, recalcOrderItem, lineProgress, progressLabel,
+  fetchRateOn, receivedQuantity, saveLinePhotos, cancelOrderLine, deleteOrderLine,
 } from "@/lib/orders";
 
 
@@ -48,6 +55,11 @@ export default function OrderDetail() {
   const [stockFor, setStockFor] = useState<{ item: any; receipt: any } | null>(null);
   const [advOpen, setAdvOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [removeTarget, setRemoveTarget] = useState<{ item: any; batches: any[] } | null>(null);
+  const [editOrderOpen, setEditOrderOpen] = useState(false);
+  const [confirmPrint, setConfirmPrint] = useState<"order" | "advance" | null>(null);
+  const loc = useLocation();
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -69,6 +81,13 @@ export default function OrderDetail() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (order && (loc.state as any)?.justCreated) {
+      setConfirmPrint("order");
+      window.history.replaceState({}, "");
+    }
+  }, [order]);
 
   const advanceTotal = useMemo(() => round2(advances.reduce((a, p) => a + Number(p.amount ?? 0), 0)), [advances]);
   const estimate = useMemo(
@@ -93,11 +112,21 @@ export default function OrderDetail() {
   if (!order) return <AppLayout title="Order"><p className="text-muted-foreground">Loading…</p></AppLayout>;
 
   const overdue = order.promised_date && new Date(order.promised_date) < new Date() && !["completed", "cancelled"].includes(order.status);
+  const orderDocId = `order-print-${order.id}`;
+  const advanceDocId = `order-advance-print-${order.id}`;
 
   return (
     <AppLayout title={`Order ${order.order_no}`} actions={
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={() => printAdvanceReceipt(order, advances, advanceTotal)}>
+        {canManage && !["completed", "cancelled"].includes(order.status) && (
+          <Button size="sm" variant="outline" onClick={() => setEditOrderOpen(true)}>
+            <Pencil className="mr-1 h-4 w-4" /> Edit order
+          </Button>
+        )}
+        <Button size="sm" variant="outline" onClick={() => printDocument(orderDocId, `Order ${order.order_no}`, `Order-${order.order_no}`)}>
+          <FileText className="mr-1 h-4 w-4" /> Order receipt
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => printDocument(advanceDocId, `Advance ${order.order_no}`, `Advance-${order.order_no}`)}>
           <Printer className="mr-1 h-4 w-4" /> Advance receipt
         </Button>
         {canBill && billableCount > 0 && order.status !== "cancelled" && (
@@ -167,6 +196,9 @@ export default function OrderDetail() {
                       <TableCell className="whitespace-nowrap text-right">
                         {canManage && active && (
                           <div className="flex justify-end gap-1">
+                            <Button size="sm" variant="outline" onClick={() => setEditingItem(it)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
                             {p.outstanding > 0 && (
                               <Button size="sm" variant="outline" onClick={() => setIssueFor(it)}>
                                 <Hammer className="mr-1 h-3.5 w-3.5" /> {it.issued_at ? "Re-issue" : "Issue"}
@@ -177,9 +209,9 @@ export default function OrderDetail() {
                                 Receive{p.quantity > 1 ? ` (${p.outstanding} left)` : ""}
                               </Button>
                             )}
-                            <Button size="sm" variant="ghost" onClick={() => {
-                              if (window.confirm("Cancel this order line?")) setStatus(it, "cancelled", "Line cancelled");
-                            }}><X className="h-3.5 w-3.5" /></Button>
+                            <Button size="sm" variant="ghost" onClick={() => setRemoveTarget({ item: it, batches })}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         )}
                       </TableCell>
@@ -272,9 +304,32 @@ export default function OrderDetail() {
       <ReceiveDialog item={receiveFor} onOpenChange={(v) => !v && setReceiveFor(null)} userId={user?.id} onDone={async () => { setReceiveFor(null); await refresh(); }} />
       <ToStockDialog target={stockFor} onOpenChange={(v) => !v && setStockFor(null)} userId={user?.id} onDone={async () => { setStockFor(null); await refresh(); }} />
       <AdvanceDialog open={advOpen} onOpenChange={setAdvOpen} order={order} userId={user?.id}
-        onDone={async () => { setAdvOpen(false); await load(); }} />
+        onDone={async () => { setAdvOpen(false); await load(); setConfirmPrint("advance"); }} />
       <CancelOrderDialog open={cancelOpen} onOpenChange={setCancelOpen} order={order} items={items} receipts={receipts} advanceTotal={advanceTotal}
         userId={user?.id} onDone={async () => { setCancelOpen(false); await load(); }} />
+      <EditLineDialog item={editingItem} onOpenChange={(v) => !v && setEditingItem(null)} userId={user?.id}
+        onDone={async () => { setEditingItem(null); await refresh(); }} />
+      <RemoveLineDialog target={removeTarget} onOpenChange={(v) => !v && setRemoveTarget(null)} userId={user?.id}
+        onDone={async () => { setRemoveTarget(null); await refresh(); }} />
+      <EditOrderDialog open={editOrderOpen} onOpenChange={setEditOrderOpen} order={order}
+        onDone={async () => { setEditOrderOpen(false); await load(); }} />
+
+      <OrderPrintDocument mode="order" order={order} items={items} advances={advances} cashierName={user?.email ?? ""} domId={orderDocId} />
+      <OrderPrintDocument mode="advance" order={order} items={items} advances={advances} cashierName={user?.email ?? ""} domId={advanceDocId} />
+
+      <Dialog open={!!confirmPrint} onOpenChange={(v) => !v && setConfirmPrint(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Print {confirmPrint === "order" ? "order receipt" : "advance receipt"} now?</DialogTitle></DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmPrint(null)}>Not now</Button>
+            <Button onClick={() => {
+              if (confirmPrint === "order") printDocument(orderDocId, `Order ${order.order_no}`, `Order-${order.order_no}`);
+              else printDocument(advanceDocId, `Advance ${order.order_no}`, `Advance-${order.order_no}`);
+              setConfirmPrint(null);
+            }}>Print now</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
@@ -599,22 +654,51 @@ function AdvanceDialog({ open, onOpenChange, order, onDone, userId }: {
 
   useEffect(() => { if (open) { setAmount(0); setMethod("cash"); setReference(""); } }, [open]);
 
+  async function recordPayment(amt: number, m: string, ref: string | null) {
+    const { error } = await supabase.from("payments").insert({
+      order_id: order.id, customer_id: order.customer_id, amount: round2(amt),
+      method: m as any, reference: ref,
+      notes: `Advance for order ${order.order_no}`, created_by: userId,
+    } as any);
+    if (error) throw error;
+    const { data: pays } = await supabase.from("payments").select("amount").eq("order_id", order.id);
+    const total = round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0));
+    await supabase.from("orders").update({ advance_paid: total }).eq("id", order.id);
+  }
+
   async function save() {
     if (amount <= 0) return toast.error("Enter an amount");
     setSaving(true);
     try {
-      const { error } = await supabase.from("payments").insert({
-        order_id: order.id, customer_id: order.customer_id, amount: round2(amount),
-        method: method as any, reference: reference || null,
-        notes: `Advance for order ${order.order_no}`, created_by: userId,
-      } as any);
-      if (error) throw error;
-      const { data: pays } = await supabase.from("payments").select("amount").eq("order_id", order.id);
-      const total = round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0));
-      await supabase.from("orders").update({ advance_paid: total }).eq("id", order.id);
+      await recordPayment(amount, method, reference || null);
       toast.success("Advance recorded");
       onDone();
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  }
+
+  async function onOldMetalSaved(result: OldGoldSaveResult) {
+    try {
+      await recordPayment(result.total, "old_gold", result.receiptNumber);
+      toast.success("Old metal advance recorded");
+      if (window.confirm("Print the old metal purchase receipt now?")) {
+        await printOldMetalReceipt(result.id, `Advance on order ${order.order_no}`);
+      }
+      onDone();
+    } catch (e: any) { toast.error(e.message); }
+  }
+
+  if (method === "old_gold") {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Old metal trade-in as advance</DialogTitle></DialogHeader>
+          <Button size="sm" variant="ghost" className="w-fit" onClick={() => setMethod("cash")}>&larr; Use cash/bank instead</Button>
+          <OldGoldForm compact submitLabel="Record & Apply as Advance"
+            initialCustomer={order?.customers ? { id: order.customer_id, full_name: order.customers.full_name, phone: order.customers.phone ?? null } : null}
+            onSaved={onOldMetalSaved} />
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   return (
@@ -627,7 +711,10 @@ function AdvanceDialog({ open, onOpenChange, order, onDone, userId }: {
             <Label>Method</Label>
             <Select value={method} onValueChange={setMethod}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}
+                <SelectItem value="old_gold">Old metal trade-in</SelectItem>
+              </SelectContent>
             </Select>
           </div>
           <div><Label>Reference</Label><Input value={reference} onChange={(e) => setReference(e.target.value)} /></div>
