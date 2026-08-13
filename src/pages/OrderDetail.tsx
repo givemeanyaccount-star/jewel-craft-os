@@ -453,9 +453,11 @@ function ReceiveDialog({ item, onOpenChange, onDone, userId }: {
 }
 
 
-function ToStockDialog({ item, onOpenChange, onDone, userId }: {
-  item: any; onOpenChange: (v: boolean) => void; onDone: () => void; userId?: string;
+function ToStockDialog({ target, onOpenChange, onDone, userId }: {
+  target: { item: any; receipt: any } | null; onOpenChange: (v: boolean) => void; onDone: () => void; userId?: string;
 }) {
+  const item = target?.item;
+  const receipt = target?.receipt;
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
@@ -486,13 +488,13 @@ function ToStockDialog({ item, onOpenChange, onDone, userId }: {
       const image_urls: string[] = [];
       for (const f of files) image_urls.push(await uploadImage("product-images", f, "orders/"));
 
-      const gross = Number(item.received_gross_weight ?? item.expected_gross_weight ?? 0);
-      const stone = Number(item.received_stone_weight ?? item.expected_stone_weight ?? 0);
+      const gross = Number(receipt.received_gross_weight ?? 0);
+      const stone = Number(receipt.received_stone_weight ?? 0);
       const net = computeNetWeight(gross, stone);
 
       const { data: created, error } = await supabase.from("inventory_items").insert({
         sku, qr_code: `JM-QR-${crypto.randomUUID().slice(0, 12).toUpperCase()}`, barcode: sku,
-        name: name.trim(), description: `Custom order ${item.description}`,
+        name: name.trim(), description: `Custom order ${item.description} (batch ${receipt.batch_no})`,
         category_id: categoryId, location_id: locationId,
         metal: item.metal, purity: item.purity,
         gross_weight: gross, stone_weight: stone, net_weight: net,
@@ -501,25 +503,39 @@ function ToStockDialog({ item, onOpenChange, onDone, userId }: {
         wastage_type: item.wastage_type ?? "percentage", wastage_value: Number(item.wastage_input ?? 0),
         stone_value: Number(item.stone_value ?? 0),
         image_urls, status: "reserved" as any,
-        received_from: item.karigar_name ?? null, received_at: item.received_at ?? new Date().toISOString(),
+        received_from: receipt.karigar_name ?? item.karigar_name ?? null,
+        received_at: receipt.received_at ?? new Date().toISOString(),
         created_by: userId,
       } as any).select().single();
       if (error) throw error;
 
+      const { error: rErr } = await supabase.from("order_item_receipts").update({
+        inventory_item_id: created.id, status: "in_stock",
+      } as any).eq("id", receipt.id);
+      if (rErr) throw rErr;
+
+      // keep the line estimate aligned with actual received weights
+      const { data: all } = await supabase.from("order_item_receipts")
+        .select("quantity, received_net_weight").eq("order_item_id", item.id);
+      const rows = (all ?? []) as any[];
+      const recQty = rows.reduce((a, r) => a + Number(r.quantity ?? 0), 0);
+      const recNet = rows.reduce((a, r) => a + Number(r.received_net_weight ?? 0), 0);
+      const qty = Math.max(1, Number(item.quantity ?? 1));
+      const perPieceNet = recQty ? recNet / recQty : Number(item.expected_net_weight ?? 0);
       const estimated_amount = estimateOrderLine({
-        quantity: item.quantity, expected_net_weight: net, rate: item.rate,
+        quantity: qty, expected_net_weight: round2(perPieceNet * qty), rate: item.rate,
         making_input: item.making_input, making_type: item.making_type,
         wastage_input: item.wastage_input, wastage_type: item.wastage_type, stone_value: item.stone_value,
       });
-
-      const { error: uErr } = await supabase.from("order_items").update({
-        inventory_item_id: created.id, status: "in_stock" as any, estimated_amount,
+      await supabase.from("order_items").update({
+        inventory_item_id: item.inventory_item_id ?? created.id, estimated_amount,
       }).eq("id", item.id);
-      if (uErr) throw uErr;
+      await recalcOrderItem(item.id);
 
       await logOrderItemStatus({
         order_item_id: item.id, status: "in_stock", net_weight: net,
-        note: `Added to inventory as ${sku} (reserved for this order)`, changed_by: userId,
+        note: `Batch ${receipt.batch_no} (${receipt.quantity} pc) added to inventory as ${sku} (reserved)`,
+        changed_by: userId,
       });
       toast.success(`Added to inventory as ${sku}`);
       onDone();
@@ -527,7 +543,8 @@ function ToStockDialog({ item, onOpenChange, onDone, userId }: {
   }
 
   return (
-    <Dialog open={!!item} onOpenChange={onOpenChange}>
+    <Dialog open={!!target} onOpenChange={onOpenChange}>
+
       <DialogContent>
         <DialogHeader><DialogTitle>Add finished item to inventory</DialogTitle></DialogHeader>
         <div className="space-y-3">
