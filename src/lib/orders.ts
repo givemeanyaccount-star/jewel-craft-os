@@ -239,13 +239,14 @@ export async function orderDashboardStats(): Promise<OrderDashboardStats> {
   const weekAhead = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
   const { data } = await supabase
     .from("orders")
-    .select("id, status, promised_date, advance_paid, order_items(status)")
+    .select("id, status, promised_date, advance_paid, order_items(status, quantity, received_qty, stocked_qty, billed_qty)")
     .in("status", ["open", "in_production", "ready"]);
   const rows = (data ?? []) as any[];
   return {
     open: rows.length,
     dueThisWeek: rows.filter((o) => o.promised_date && o.promised_date >= today && o.promised_date <= weekAhead).length,
-    readyToBill: rows.filter((o) => (o.order_items ?? []).some((i: any) => i.status === "in_stock")).length,
+    readyToBill: rows.filter((o) => (o.order_items ?? []).some((i: any) => lineProgress(i).billable > 0)).length,
+
     advanceHeld: round2(rows.reduce((a, o) => a + Number(o.advance_paid ?? 0), 0)),
   };
 }
