@@ -269,7 +269,7 @@ export default function OrderDetail() {
 
       <IssueDialog item={issueFor} onOpenChange={(v) => !v && setIssueFor(null)} userId={user?.id} onDone={async () => { setIssueFor(null); await refresh(); }} />
       <ReceiveDialog item={receiveFor} onOpenChange={(v) => !v && setReceiveFor(null)} userId={user?.id} onDone={async () => { setReceiveFor(null); await refresh(); }} />
-      <ToStockDialog item={stockFor} onOpenChange={(v) => !v && setStockFor(null)} userId={user?.id} onDone={async () => { setStockFor(null); await refresh(); }} />
+      <ToStockDialog target={stockFor} onOpenChange={(v) => !v && setStockFor(null)} userId={user?.id} onDone={async () => { setStockFor(null); await refresh(); }} />
       <AdvanceDialog open={advOpen} onOpenChange={setAdvOpen} order={order} userId={user?.id}
         onDone={async () => { setAdvOpen(false); await load(); }} />
       <CancelOrderDialog open={cancelOpen} onOpenChange={setCancelOpen} order={order} items={items} advanceTotal={advanceTotal}
