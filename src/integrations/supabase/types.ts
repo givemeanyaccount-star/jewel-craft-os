@@ -458,7 +458,10 @@ export type Database = {
           luxury_tax_rate: number
           notes: string | null
           old_gold_credit: number
+          order_date: string | null
+          order_id: string | null
           quotation_id: string | null
+          rate_basis: string
           restocked: boolean
           sd_tax: number
           sd_tax_rate: number
@@ -486,7 +489,10 @@ export type Database = {
           luxury_tax_rate?: number
           notes?: string | null
           old_gold_credit?: number
+          order_date?: string | null
+          order_id?: string | null
           quotation_id?: string | null
+          rate_basis?: string
           restocked?: boolean
           sd_tax?: number
           sd_tax_rate?: number
@@ -514,7 +520,10 @@ export type Database = {
           luxury_tax_rate?: number
           notes?: string | null
           old_gold_credit?: number
+          order_date?: string | null
+          order_id?: string | null
           quotation_id?: string | null
+          rate_basis?: string
           restocked?: boolean
           sd_tax?: number
           sd_tax_rate?: number
@@ -532,6 +541,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
           {
@@ -732,6 +748,275 @@ export type Database = {
           },
         ]
       }
+      order_item_status_log: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          gross_weight: number | null
+          id: string
+          karigar_id: string | null
+          karigar_name: string | null
+          net_weight: number | null
+          note: string | null
+          order_item_id: string
+          status: Database["public"]["Enums"]["order_item_status"]
+          stone_weight: number | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          gross_weight?: number | null
+          id?: string
+          karigar_id?: string | null
+          karigar_name?: string | null
+          net_weight?: number | null
+          note?: string | null
+          order_item_id: string
+          status: Database["public"]["Enums"]["order_item_status"]
+          stone_weight?: number | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          gross_weight?: number | null
+          id?: string
+          karigar_id?: string | null
+          karigar_name?: string | null
+          net_weight?: number | null
+          note?: string | null
+          order_item_id?: string
+          status?: Database["public"]["Enums"]["order_item_status"]
+          stone_weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_item_status_log_karigar_id_fkey"
+            columns: ["karigar_id"]
+            isOneToOne: false
+            referencedRelation: "karigars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_status_log_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string
+          estimated_amount: number
+          expected_gross_weight: number
+          expected_net_weight: number
+          expected_stone_weight: number
+          id: string
+          inventory_item_id: string | null
+          invoice_id: string | null
+          issued_at: string | null
+          issued_gross_weight: number | null
+          issued_metal: Database["public"]["Enums"]["metal_type"] | null
+          issued_net_weight: number | null
+          issued_purity: string | null
+          karigar_id: string | null
+          karigar_name: string | null
+          making_input: number
+          making_type: string
+          metal: Database["public"]["Enums"]["metal_type"]
+          notes: string | null
+          order_id: string
+          photos: string[]
+          purity: string
+          quantity: number
+          rate: number
+          rate_date: string | null
+          received_at: string | null
+          received_gross_weight: number | null
+          received_net_weight: number | null
+          received_stone_weight: number | null
+          status: Database["public"]["Enums"]["order_item_status"]
+          stone_value: number
+          updated_at: string
+          wastage_input: number
+          wastage_type: Database["public"]["Enums"]["wastage_type"]
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description: string
+          estimated_amount?: number
+          expected_gross_weight?: number
+          expected_net_weight?: number
+          expected_stone_weight?: number
+          id?: string
+          inventory_item_id?: string | null
+          invoice_id?: string | null
+          issued_at?: string | null
+          issued_gross_weight?: number | null
+          issued_metal?: Database["public"]["Enums"]["metal_type"] | null
+          issued_net_weight?: number | null
+          issued_purity?: string | null
+          karigar_id?: string | null
+          karigar_name?: string | null
+          making_input?: number
+          making_type?: string
+          metal?: Database["public"]["Enums"]["metal_type"]
+          notes?: string | null
+          order_id: string
+          photos?: string[]
+          purity?: string
+          quantity?: number
+          rate?: number
+          rate_date?: string | null
+          received_at?: string | null
+          received_gross_weight?: number | null
+          received_net_weight?: number | null
+          received_stone_weight?: number | null
+          status?: Database["public"]["Enums"]["order_item_status"]
+          stone_value?: number
+          updated_at?: string
+          wastage_input?: number
+          wastage_type?: Database["public"]["Enums"]["wastage_type"]
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string
+          estimated_amount?: number
+          expected_gross_weight?: number
+          expected_net_weight?: number
+          expected_stone_weight?: number
+          id?: string
+          inventory_item_id?: string | null
+          invoice_id?: string | null
+          issued_at?: string | null
+          issued_gross_weight?: number | null
+          issued_metal?: Database["public"]["Enums"]["metal_type"] | null
+          issued_net_weight?: number | null
+          issued_purity?: string | null
+          karigar_id?: string | null
+          karigar_name?: string | null
+          making_input?: number
+          making_type?: string
+          metal?: Database["public"]["Enums"]["metal_type"]
+          notes?: string | null
+          order_id?: string
+          photos?: string[]
+          purity?: string
+          quantity?: number
+          rate?: number
+          rate_date?: string | null
+          received_at?: string | null
+          received_gross_weight?: number | null
+          received_net_weight?: number | null
+          received_stone_weight?: number | null
+          status?: Database["public"]["Enums"]["order_item_status"]
+          stone_value?: number
+          updated_at?: string
+          wastage_input?: number
+          wastage_type?: Database["public"]["Enums"]["wastage_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_karigar_id_fkey"
+            columns: ["karigar_id"]
+            isOneToOne: false
+            referencedRelation: "karigars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          advance_paid: number
+          cancel_reason: string | null
+          cancelled_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          estimated_total: number
+          id: string
+          notes: string | null
+          order_date: string
+          order_no: string
+          promised_date: string | null
+          status: Database["public"]["Enums"]["order_status"]
+          updated_at: string
+        }
+        Insert: {
+          advance_paid?: number
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          estimated_total?: number
+          id?: string
+          notes?: string | null
+          order_date?: string
+          order_no: string
+          promised_date?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+        }
+        Update: {
+          advance_paid?: number
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          estimated_total?: number
+          id?: string
+          notes?: string | null
+          order_date?: string
+          order_no?: string
+          promised_date?: string | null
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -742,6 +1027,7 @@ export type Database = {
           invoice_id: string | null
           method: Database["public"]["Enums"]["payment_method"]
           notes: string | null
+          order_id: string | null
           paid_at: string
           reference: string | null
         }
@@ -754,6 +1040,7 @@ export type Database = {
           invoice_id?: string | null
           method?: Database["public"]["Enums"]["payment_method"]
           notes?: string | null
+          order_id?: string | null
           paid_at?: string
           reference?: string | null
         }
@@ -766,6 +1053,7 @@ export type Database = {
           invoice_id?: string | null
           method?: Database["public"]["Enums"]["payment_method"]
           notes?: string | null
+          order_id?: string | null
           paid_at?: string
           reference?: string | null
         }
@@ -782,6 +1070,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -1015,6 +1310,7 @@ export type Database = {
           luxury_tax_rate: number
           notes: string | null
           old_gold_credit: number
+          order_date: string | null
           quote_number: string
           sd_tax: number
           sd_tax_rate: number
@@ -1038,6 +1334,7 @@ export type Database = {
           luxury_tax_rate?: number
           notes?: string | null
           old_gold_credit?: number
+          order_date?: string | null
           quote_number: string
           sd_tax?: number
           sd_tax_rate?: number
@@ -1061,6 +1358,7 @@ export type Database = {
           luxury_tax_rate?: number
           notes?: string | null
           old_gold_credit?: number
+          order_date?: string | null
           quote_number?: string
           sd_tax?: number
           sd_tax_rate?: number
@@ -1558,6 +1856,21 @@ export type Database = {
         | "melted"
         | "transferred"
       metal_type: "gold" | "silver" | "platinum" | "diamond" | "other"
+      order_item_status:
+        | "pending"
+        | "assigned"
+        | "in_progress"
+        | "received"
+        | "in_stock"
+        | "billed"
+        | "cancelled"
+      order_status:
+        | "draft"
+        | "open"
+        | "in_production"
+        | "ready"
+        | "completed"
+        | "cancelled"
       payment_method:
         | "cash"
         | "card"
@@ -1742,6 +2055,23 @@ export const Constants = {
         "transferred",
       ],
       metal_type: ["gold", "silver", "platinum", "diamond", "other"],
+      order_item_status: [
+        "pending",
+        "assigned",
+        "in_progress",
+        "received",
+        "in_stock",
+        "billed",
+        "cancelled",
+      ],
+      order_status: [
+        "draft",
+        "open",
+        "in_production",
+        "ready",
+        "completed",
+        "cancelled",
+      ],
       payment_method: [
         "cash",
         "card",
