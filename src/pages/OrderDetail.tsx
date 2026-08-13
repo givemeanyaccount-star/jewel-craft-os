@@ -641,9 +641,10 @@ function AdvanceDialog({ open, onOpenChange, order, onDone, userId }: {
   );
 }
 
-function CancelOrderDialog({ open, onOpenChange, order, items, advanceTotal, onDone, userId }: {
-  open: boolean; onOpenChange: (v: boolean) => void; order: any; items: any[];
+function CancelOrderDialog({ open, onOpenChange, order, items, receipts, advanceTotal, onDone, userId }: {
+  open: boolean; onOpenChange: (v: boolean) => void; order: any; items: any[]; receipts: any[];
   advanceTotal: number; onDone: () => void; userId?: string;
+
 }) {
   const [reason, setReason] = useState("");
   const [advanceAction, setAdvanceAction] = useState("refund");
