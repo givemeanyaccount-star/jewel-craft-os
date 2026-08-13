@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,8 +24,9 @@ import { ImageCaptureButton } from "@/components/ImageCapture";
 import { uploadImage } from "@/lib/storage";
 import {
   ORDER_ITEM_LABEL, ORDER_ITEM_COLOR, ORDER_STATUS_LABEL,
-  estimateOrderLine, logOrderItemStatus, syncOrderStatus,
+  estimateOrderLine, logOrderItemStatus, syncOrderStatus, recalcOrderItem, lineProgress, progressLabel,
 } from "@/lib/orders";
+
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
@@ -39,11 +40,12 @@ export default function OrderDetail() {
 
   const [order, setOrder] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
+  const [receipts, setReceipts] = useState<any[]>([]);
   const [advances, setAdvances] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [issueFor, setIssueFor] = useState<any>(null);
   const [receiveFor, setReceiveFor] = useState<any>(null);
-  const [stockFor, setStockFor] = useState<any>(null);
+  const [stockFor, setStockFor] = useState<{ item: any; receipt: any } | null>(null);
   const [advOpen, setAdvOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
@@ -57,9 +59,13 @@ export default function OrderDetail() {
     setOrder(o); setItems(its ?? []); setAdvances(pays ?? []);
     const ids = (its ?? []).map((i: any) => i.id);
     if (ids.length) {
-      const { data: lg } = await supabase.from("order_item_status_log").select("*").in("order_item_id", ids).order("changed_at", { ascending: false });
-      setLogs(lg ?? []);
-    } else setLogs([]);
+      const [{ data: lg }, { data: rc }] = await Promise.all([
+        supabase.from("order_item_status_log").select("*").in("order_item_id", ids).order("changed_at", { ascending: false }),
+        supabase.from("order_item_receipts").select("*, inventory_items(id, sku, status), invoices(id, invoice_number)")
+          .in("order_item_id", ids).order("batch_no"),
+      ]);
+      setLogs(lg ?? []); setReceipts(rc ?? []);
+    } else { setLogs([]); setReceipts([]); }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -69,7 +75,7 @@ export default function OrderDetail() {
     () => round2(items.filter((i) => i.status !== "cancelled").reduce((a, i) => a + Number(i.estimated_amount ?? 0), 0)),
     [items],
   );
-  const readyLines = items.filter((i) => i.status === "in_stock");
+  const billableCount = items.reduce((a, i) => a + (i.status === "cancelled" ? 0 : lineProgress(i).billable), 0);
 
   async function refresh() {
     if (id) await syncOrderStatus(id);
@@ -83,6 +89,7 @@ export default function OrderDetail() {
     await refresh();
   }
 
+
   if (!order) return <AppLayout title="Order"><p className="text-muted-foreground">Loading…</p></AppLayout>;
 
   const overdue = order.promised_date && new Date(order.promised_date) < new Date() && !["completed", "cancelled"].includes(order.status);
@@ -93,11 +100,12 @@ export default function OrderDetail() {
         <Button size="sm" variant="outline" onClick={() => printAdvanceReceipt(order, advances, advanceTotal)}>
           <Printer className="mr-1 h-4 w-4" /> Advance receipt
         </Button>
-        {canBill && readyLines.length > 0 && order.status !== "cancelled" && (
+        {canBill && billableCount > 0 && order.status !== "cancelled" && (
           <Button size="sm" onClick={() => nav("/pos", { state: { orderId: order.id } })}>
-            <Receipt className="mr-1 h-4 w-4" /> Bill this order
+            <Receipt className="mr-1 h-4 w-4" /> Bill {billableCount} finished piece{billableCount > 1 ? "s" : ""}
           </Button>
         )}
+
         {canManage && !["completed", "cancelled"].includes(order.status) && (
           <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}><X className="mr-1 h-4 w-4" /> Cancel</Button>
         )}
@@ -122,24 +130,33 @@ export default function OrderDetail() {
               </TableRow></TableHeader>
               <TableBody>
                 {items.map((it) => {
-                  const loss = it.issued_net_weight != null && it.received_net_weight != null
-                    ? round2(Number(it.issued_net_weight) - Number(it.received_net_weight)) : null;
+                  const p = lineProgress(it);
+                  const batches = receipts.filter((r) => r.order_item_id === it.id);
+                  const receivedNet = round2(batches.reduce((a, r) => a + Number(r.received_net_weight ?? 0), 0));
+                  const loss = it.issued_net_weight != null && receivedNet > 0
+                    ? round2(Number(it.issued_net_weight) - receivedNet) : null;
+                  const active = it.status !== "billed" && it.status !== "cancelled";
                   return (
-                    <TableRow key={it.id}>
+                    <Fragment key={it.id}>
+                    <TableRow>
+
                       <TableCell>
                         <div className="font-medium">{it.description}</div>
                         <div className="text-xs text-muted-foreground capitalize">
                           {it.metal} {it.purity}{it.categories?.name ? ` · ${it.categories.name}` : ""}
-                          {it.inventory_items?.sku ? ` · ${it.inventory_items.sku}` : ""}
+                          {` · qty ${p.quantity}`}
                         </div>
+                        {progressLabel(it) && (
+                          <div className="text-xs text-muted-foreground">{progressLabel(it)}</div>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm">{it.karigar_name ?? "-"}</TableCell>
                       <TableCell className="text-right">{gms(it.expected_net_weight)}</TableCell>
                       <TableCell className="text-right text-xs">
                         {it.issued_net_weight != null ? `${gms(it.issued_net_weight)} out` : "—"}
                         <br />
-                        {it.received_net_weight != null ? `${gms(it.received_net_weight)} in` : "—"}
-                        {loss != null && Math.abs(loss) > 0.0005 && (
+                        {receivedNet > 0 ? `${gms(receivedNet)} in` : "—"}
+                        {loss != null && Math.abs(loss) > 0.0005 && p.outstanding === 0 && (
                           <div className={loss > 0 ? "text-destructive" : "text-emerald-600"}>
                             {loss > 0 ? "loss" : "gain"} {gms(Math.abs(loss))}
                           </div>
@@ -148,16 +165,17 @@ export default function OrderDetail() {
                       <TableCell className="text-right">{npr(it.estimated_amount)}</TableCell>
                       <TableCell><Badge variant="secondary" className={ORDER_ITEM_COLOR[it.status]}>{ORDER_ITEM_LABEL[it.status]}</Badge></TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        {canManage && it.status !== "billed" && it.status !== "cancelled" && (
+                        {canManage && active && (
                           <div className="flex justify-end gap-1">
-                            {(it.status === "pending" || it.status === "assigned") && (
-                              <Button size="sm" variant="outline" onClick={() => setIssueFor(it)}><Hammer className="mr-1 h-3.5 w-3.5" /> Issue</Button>
+                            {p.outstanding > 0 && (
+                              <Button size="sm" variant="outline" onClick={() => setIssueFor(it)}>
+                                <Hammer className="mr-1 h-3.5 w-3.5" /> {it.issued_at ? "Re-issue" : "Issue"}
+                              </Button>
                             )}
-                            {it.status === "in_progress" && (
-                              <Button size="sm" variant="outline" onClick={() => setReceiveFor(it)}>Receive</Button>
-                            )}
-                            {it.status === "received" && (
-                              <Button size="sm" onClick={() => setStockFor(it)}><PackageCheck className="mr-1 h-3.5 w-3.5" /> Add to stock</Button>
+                            {p.outstanding > 0 && it.issued_at && (
+                              <Button size="sm" variant="outline" onClick={() => setReceiveFor(it)}>
+                                Receive{p.quantity > 1 ? ` (${p.outstanding} left)` : ""}
+                              </Button>
                             )}
                             <Button size="sm" variant="ghost" onClick={() => {
                               if (window.confirm("Cancel this order line?")) setStatus(it, "cancelled", "Line cancelled");
@@ -166,9 +184,34 @@ export default function OrderDetail() {
                         )}
                       </TableCell>
                     </TableRow>
+                    {batches.map((r) => (
+                      <TableRow key={r.id} className="bg-muted/30">
+                        <TableCell className="pl-6 text-xs">
+                          Batch {r.batch_no} · {r.quantity} pc{r.quantity > 1 ? "s" : ""}
+                          {r.inventory_items?.sku ? ` · ${r.inventory_items.sku}` : ""}
+                          {r.invoices?.invoice_number ? ` · ${r.invoices.invoice_number}` : ""}
+                        </TableCell>
+                        <TableCell className="text-xs">{r.karigar_name ?? "-"}</TableCell>
+                        <TableCell className="text-right text-xs">{new Date(r.received_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right text-xs">{gms(r.received_net_weight)} in</TableCell>
+                        <TableCell />
+                        <TableCell>
+                          <Badge variant="secondary" className={ORDER_ITEM_COLOR[r.status] ?? ""}>{ORDER_ITEM_LABEL[r.status] ?? r.status}</Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-right">
+                          {canManage && !r.inventory_item_id && r.status !== "cancelled" && (
+                            <Button size="sm" onClick={() => setStockFor({ item: it, receipt: r })}>
+                              <PackageCheck className="mr-1 h-3.5 w-3.5" /> Add to stock
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    </Fragment>
                   );
                 })}
               </TableBody>
+
             </Table>
           </CardContent>
         </Card>
@@ -227,10 +270,10 @@ export default function OrderDetail() {
 
       <IssueDialog item={issueFor} onOpenChange={(v) => !v && setIssueFor(null)} userId={user?.id} onDone={async () => { setIssueFor(null); await refresh(); }} />
       <ReceiveDialog item={receiveFor} onOpenChange={(v) => !v && setReceiveFor(null)} userId={user?.id} onDone={async () => { setReceiveFor(null); await refresh(); }} />
-      <ToStockDialog item={stockFor} onOpenChange={(v) => !v && setStockFor(null)} userId={user?.id} onDone={async () => { setStockFor(null); await refresh(); }} />
+      <ToStockDialog target={stockFor} onOpenChange={(v) => !v && setStockFor(null)} userId={user?.id} onDone={async () => { setStockFor(null); await refresh(); }} />
       <AdvanceDialog open={advOpen} onOpenChange={setAdvOpen} order={order} userId={user?.id}
         onDone={async () => { setAdvOpen(false); await load(); }} />
-      <CancelOrderDialog open={cancelOpen} onOpenChange={setCancelOpen} order={order} items={items} advanceTotal={advanceTotal}
+      <CancelOrderDialog open={cancelOpen} onOpenChange={setCancelOpen} order={order} items={items} receipts={receipts} advanceTotal={advanceTotal}
         userId={user?.id} onDone={async () => { setCancelOpen(false); await load(); }} />
     </AppLayout>
   );
@@ -319,38 +362,66 @@ function IssueDialog({ item, onOpenChange, onDone, userId }: {
 function ReceiveDialog({ item, onOpenChange, onDone, userId }: {
   item: any; onOpenChange: (v: boolean) => void; onDone: () => void; userId?: string;
 }) {
+  const [qty, setQty] = useState(1);
   const [gross, setGross] = useState(0);
   const [stone, setStone] = useState(0);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const prog = item ? lineProgress(item) : null;
+  const outstanding = prog?.outstanding ?? 0;
+
   useEffect(() => {
     if (!item) return;
-    setGross(Number(item.issued_gross_weight ?? item.expected_gross_weight ?? 0));
-    setStone(Number(item.expected_stone_weight ?? 0));
+    const p = lineProgress(item);
+    setQty(Math.max(1, p.outstanding));
+    const perPiece = Number(item.expected_gross_weight ?? 0) / Math.max(1, p.quantity);
+    setGross(round2(perPiece * Math.max(1, p.outstanding)) || Number(item.issued_gross_weight ?? 0));
+    setStone(Number(item.expected_stone_weight ?? 0) / Math.max(1, p.quantity) * Math.max(1, p.outstanding));
     setNote("");
   }, [item]);
 
   const net = computeNetWeight(gross, stone);
-  const loss = item?.issued_net_weight != null ? round2(Number(item.issued_net_weight) - net) : null;
 
   async function save() {
     if (gross <= 0) return toast.error("Enter the received gross weight");
+    if (qty < 1 || qty > outstanding) return toast.error(`Quantity must be between 1 and ${outstanding}`);
     setSaving(true);
     try {
-      const { error } = await supabase.from("order_items").update({
+      const { count } = await supabase.from("order_item_receipts")
+        .select("id", { count: "exact", head: true }).eq("order_item_id", item.id);
+      const { error } = await supabase.from("order_item_receipts").insert({
+        order_item_id: item.id,
+        batch_no: (count ?? 0) + 1,
+        quantity: qty,
+        karigar_id: item.karigar_id ?? null, karigar_name: item.karigar_name ?? null,
         received_at: new Date().toISOString(),
         received_gross_weight: gross, received_stone_weight: stone, received_net_weight: net,
-        status: "received" as any,
-      }).eq("id", item.id);
+        status: "received",
+        note: note || null,
+        created_by: userId ?? null,
+      } as any);
       if (error) throw error;
+
+      // keep the legacy roll-up columns in sync for reporting
+      const { data: all } = await supabase.from("order_item_receipts")
+        .select("received_gross_weight, received_stone_weight, received_net_weight").eq("order_item_id", item.id);
+      const sum = (k: string) => round2((all ?? []).reduce((a: number, r: any) => a + Number(r[k] ?? 0), 0));
+      await supabase.from("order_items").update({
+        received_at: new Date().toISOString(),
+        received_gross_weight: sum("received_gross_weight"),
+        received_stone_weight: sum("received_stone_weight"),
+        received_net_weight: sum("received_net_weight"),
+      }).eq("id", item.id);
+
+      await recalcOrderItem(item.id);
       await logOrderItemStatus({
         order_item_id: item.id, status: "received", karigar_id: item.karigar_id, karigar_name: item.karigar_name,
         gross_weight: gross, stone_weight: stone, net_weight: net,
-        note: note || (loss ? `Weight difference ${loss > 0 ? "-" : "+"}${Math.abs(loss).toFixed(3)} g` : "Received from karigar"),
+        note: note || `Received ${qty} of ${prog?.quantity ?? 1} pc(s) from karigar`,
         changed_by: userId,
       });
-      toast.success("Item received");
+      toast.success(`Received ${qty} piece(s)`);
       onDone();
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
@@ -360,32 +431,34 @@ function ReceiveDialog({ item, onOpenChange, onDone, userId }: {
       <DialogContent>
         <DialogHeader><DialogTitle>Receive from karigar</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Gross wt received (g)</Label><NumberField decimals={3} value={gross} onChange={setGross} /></div>
+          {prog && prog.quantity > 1 && (
+            <p className="text-xs text-muted-foreground">
+              {prog.received} of {prog.quantity} already received · {outstanding} still with the karigar.
+            </p>
+          )}
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>Qty in this batch</Label><NumberField decimals={0} value={qty} onChange={setQty} /></div>
+            <div><Label>Gross wt (g)</Label><NumberField decimals={3} value={gross} onChange={setGross} /></div>
             <div><Label>Stone wt (g)</Label><NumberField decimals={3} value={stone} onChange={setStone} /></div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Net received: <strong>{net.toFixed(3)} g</strong>
-            {loss != null && Math.abs(loss) > 0.0005 && (
-              <span className={loss > 0 ? " text-destructive" : " text-emerald-600"}>
-                {" "}· {loss > 0 ? "loss" : "gain"} {Math.abs(loss).toFixed(3)} g vs issued
-              </span>
-            )}
-          </p>
+          <p className="text-xs text-muted-foreground">Net received in this batch: <strong>{net.toFixed(3)} g</strong></p>
           <div><Label>Note</Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Receive"}</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Receive batch"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function ToStockDialog({ item, onOpenChange, onDone, userId }: {
-  item: any; onOpenChange: (v: boolean) => void; onDone: () => void; userId?: string;
+
+function ToStockDialog({ target, onOpenChange, onDone, userId }: {
+  target: { item: any; receipt: any } | null; onOpenChange: (v: boolean) => void; onDone: () => void; userId?: string;
 }) {
+  const item = target?.item;
+  const receipt = target?.receipt;
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
@@ -416,13 +489,13 @@ function ToStockDialog({ item, onOpenChange, onDone, userId }: {
       const image_urls: string[] = [];
       for (const f of files) image_urls.push(await uploadImage("product-images", f, "orders/"));
 
-      const gross = Number(item.received_gross_weight ?? item.expected_gross_weight ?? 0);
-      const stone = Number(item.received_stone_weight ?? item.expected_stone_weight ?? 0);
+      const gross = Number(receipt.received_gross_weight ?? 0);
+      const stone = Number(receipt.received_stone_weight ?? 0);
       const net = computeNetWeight(gross, stone);
 
       const { data: created, error } = await supabase.from("inventory_items").insert({
         sku, qr_code: `JM-QR-${crypto.randomUUID().slice(0, 12).toUpperCase()}`, barcode: sku,
-        name: name.trim(), description: `Custom order ${item.description}`,
+        name: name.trim(), description: `Custom order ${item.description} (batch ${receipt.batch_no})`,
         category_id: categoryId, location_id: locationId,
         metal: item.metal, purity: item.purity,
         gross_weight: gross, stone_weight: stone, net_weight: net,
@@ -431,25 +504,39 @@ function ToStockDialog({ item, onOpenChange, onDone, userId }: {
         wastage_type: item.wastage_type ?? "percentage", wastage_value: Number(item.wastage_input ?? 0),
         stone_value: Number(item.stone_value ?? 0),
         image_urls, status: "reserved" as any,
-        received_from: item.karigar_name ?? null, received_at: item.received_at ?? new Date().toISOString(),
+        received_from: receipt.karigar_name ?? item.karigar_name ?? null,
+        received_at: receipt.received_at ?? new Date().toISOString(),
         created_by: userId,
       } as any).select().single();
       if (error) throw error;
 
+      const { error: rErr } = await supabase.from("order_item_receipts").update({
+        inventory_item_id: created.id, status: "in_stock",
+      } as any).eq("id", receipt.id);
+      if (rErr) throw rErr;
+
+      // keep the line estimate aligned with actual received weights
+      const { data: all } = await supabase.from("order_item_receipts")
+        .select("quantity, received_net_weight").eq("order_item_id", item.id);
+      const rows = (all ?? []) as any[];
+      const recQty = rows.reduce((a, r) => a + Number(r.quantity ?? 0), 0);
+      const recNet = rows.reduce((a, r) => a + Number(r.received_net_weight ?? 0), 0);
+      const qty = Math.max(1, Number(item.quantity ?? 1));
+      const perPieceNet = recQty ? recNet / recQty : Number(item.expected_net_weight ?? 0);
       const estimated_amount = estimateOrderLine({
-        quantity: item.quantity, expected_net_weight: net, rate: item.rate,
+        quantity: qty, expected_net_weight: round2(perPieceNet * qty), rate: item.rate,
         making_input: item.making_input, making_type: item.making_type,
         wastage_input: item.wastage_input, wastage_type: item.wastage_type, stone_value: item.stone_value,
       });
-
-      const { error: uErr } = await supabase.from("order_items").update({
-        inventory_item_id: created.id, status: "in_stock" as any, estimated_amount,
+      await supabase.from("order_items").update({
+        inventory_item_id: item.inventory_item_id ?? created.id, estimated_amount,
       }).eq("id", item.id);
-      if (uErr) throw uErr;
+      await recalcOrderItem(item.id);
 
       await logOrderItemStatus({
         order_item_id: item.id, status: "in_stock", net_weight: net,
-        note: `Added to inventory as ${sku} (reserved for this order)`, changed_by: userId,
+        note: `Batch ${receipt.batch_no} (${receipt.quantity} pc) added to inventory as ${sku} (reserved)`,
+        changed_by: userId,
       });
       toast.success(`Added to inventory as ${sku}`);
       onDone();
@@ -457,7 +544,8 @@ function ToStockDialog({ item, onOpenChange, onDone, userId }: {
   }
 
   return (
-    <Dialog open={!!item} onOpenChange={onOpenChange}>
+    <Dialog open={!!target} onOpenChange={onOpenChange}>
+
       <DialogContent>
         <DialogHeader><DialogTitle>Add finished item to inventory</DialogTitle></DialogHeader>
         <div className="space-y-3">
@@ -553,9 +641,10 @@ function AdvanceDialog({ open, onOpenChange, order, onDone, userId }: {
   );
 }
 
-function CancelOrderDialog({ open, onOpenChange, order, items, advanceTotal, onDone, userId }: {
-  open: boolean; onOpenChange: (v: boolean) => void; order: any; items: any[];
+function CancelOrderDialog({ open, onOpenChange, order, items, receipts, advanceTotal, onDone, userId }: {
+  open: boolean; onOpenChange: (v: boolean) => void; order: any; items: any[]; receipts: any[];
   advanceTotal: number; onDone: () => void; userId?: string;
+
 }) {
   const [reason, setReason] = useState("");
   const [advanceAction, setAdvanceAction] = useState("refund");
@@ -564,7 +653,7 @@ function CancelOrderDialog({ open, onOpenChange, order, items, advanceTotal, onD
 
   useEffect(() => { if (open) { setReason(""); setAdvanceAction(advanceTotal > 0 ? "refund" : "none"); setStockAction("release"); } }, [open, advanceTotal]);
 
-  const produced = items.filter((i) => i.inventory_item_id);
+  const produced = (receipts ?? []).filter((r) => r.inventory_item_id && r.status !== "billed");
 
   async function save() {
     if (!reason.trim()) return toast.error("Enter a reason");
@@ -583,11 +672,14 @@ function CancelOrderDialog({ open, onOpenChange, order, items, advanceTotal, onD
       }
 
       if (produced.length) {
-        const ids = produced.map((i) => i.inventory_item_id);
+        const ids = produced.map((r) => r.inventory_item_id);
         await supabase.from("inventory_items")
           .update({ status: (stockAction === "release" ? "in_stock" : "melted") as any })
           .in("id", ids);
+        await supabase.from("order_item_receipts").update({ status: "cancelled" } as any)
+          .in("id", produced.map((r) => r.id));
       }
+
 
       if (advanceAction === "refund" && advanceTotal > 0) {
         await supabase.from("payments").insert({

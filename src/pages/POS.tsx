@@ -27,7 +27,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { ItemDialog } from "@/pages/Inventory";
 import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
 import { PickedCustomer } from "@/components/CustomerSelector";
-import { fetchRateOn, fetchLatestRate, todayISO, logOrderItemStatus, syncOrderStatus } from "@/lib/orders";
+import { fetchRateOn, fetchLatestRate, todayISO, logOrderItemStatus, syncOrderStatus, recalcOrderItem, lineProgress } from "@/lib/orders";
 
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
@@ -122,7 +122,7 @@ export default function POS() {
 
   // Custom order billing
   const [order, setOrder] = useState<any>(null);
-  const [orderLineByItem, setOrderLineByItem] = useState<Record<string, string>>({});
+  const [orderLineByItem, setOrderLineByItem] = useState<Record<string, { receiptId: string; orderItemId: string }>>({});
   const [orderDate, setOrderDate] = useState<string>("");
   const [rateBasis, setRateBasis] = useState<"order" | "current">("current");
   const [advance, setAdvance] = useState(0);
@@ -189,11 +189,19 @@ export default function POS() {
   async function loadOrder(id: string) {
     const [{ data: o }, { data: lines }, { data: pays }] = await Promise.all([
       supabase.from("orders").select("*, customers(full_name, phone)").eq("id", id).maybeSingle(),
-      supabase.from("order_items").select("*, inventory_items(*)").eq("order_id", id).eq("status", "in_stock"),
+      supabase.from("order_items")
+        .select("*, order_item_receipts(*, inventory_items(*))")
+        .eq("order_id", id)
+        .neq("status", "cancelled"),
       supabase.from("payments").select("amount").eq("order_id", id),
     ]);
     if (!o) return toast.error("Order not found");
-    if (!lines?.length) return toast.error("No finished items on this order are ready to bill");
+    const billable = ((lines ?? []) as any[]).flatMap((l) =>
+      ((l.order_item_receipts ?? []) as any[])
+        .filter((r) => r.inventory_item_id && r.status !== "billed" && r.status !== "cancelled")
+        .map((r) => ({ line: l, receipt: r })),
+    );
+    if (!billable.length) return toast.error("No finished pieces on this order are ready to bill");
     setOrder(o);
     setCustomerId(o.customer_id);
     setOrderDate(o.order_date);
@@ -201,15 +209,15 @@ export default function POS() {
     setAdvance(round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0)));
     setNotes(o.notes ?? "");
 
-    const map: Record<string, string> = {};
+    const map: Record<string, { receiptId: string; orderItemId: string }> = {};
     const rows: CartRow[] = [];
-    for (const l of lines as any[]) {
-      const inv = l.inventory_items;
-      const gross = Number(l.received_gross_weight ?? inv?.gross_weight ?? l.expected_gross_weight ?? 0);
-      const stoneWt = Number(l.received_stone_weight ?? inv?.stone_weight ?? l.expected_stone_weight ?? 0);
+    for (const { line: l, receipt: r } of billable) {
+      const inv = r.inventory_items;
+      const gross = Number(r.received_gross_weight ?? inv?.gross_weight ?? 0);
+      const stoneWt = Number(r.received_stone_weight ?? inv?.stone_weight ?? 0);
       const net = Number(inv?.net_weight ?? Math.max(0, gross - stoneWt));
       const lookup = await fetchRateOn(l.metal, l.purity, o.order_date);
-      if (inv?.id) map[inv.id] = l.id;
+      if (inv?.id) map[inv.id] = { receiptId: r.id, orderItemId: l.id };
       rows.push(recompute({
         inventory_item_id: inv?.id ?? null,
         description: inv?.sku ? `${l.description} (${inv.sku})` : l.description,
@@ -218,7 +226,7 @@ export default function POS() {
         rate: lookup.rate || Number(l.rate ?? 0),
         making_charge: 0, wastage_amount: 0,
         stone_value: Number(l.stone_value ?? 0),
-        quantity: Number(l.quantity ?? 1),
+        quantity: Number(r.quantity ?? 1),
         line_total: 0,
         making_input: Number(l.making_input ?? 0),
         making_type: (l.making_type ?? "per_gram") as any,
@@ -229,8 +237,9 @@ export default function POS() {
     }
     setOrderLineByItem(map);
     setCart(rows);
-    toast.success(`Loaded order ${o.order_no}`);
+    toast.success(`Loaded ${rows.length} finished piece(s) from order ${o.order_no}`);
   }
+
 
   /** Re-price the whole cart from the order date or from the latest rates. */
   async function applyRateBasis(basis: "order" | "current") {
@@ -326,10 +335,18 @@ export default function POS() {
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
   }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
 
-  const paid = useMemo(
-    () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0) + advance),
-    [payments, advance],
+  const manualPaid = useMemo(
+    () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)),
+    [payments],
   );
+  // On a partial batch bill only as much of the order advance as this invoice needs;
+  // the rest stays on the order for the remaining pieces.
+  const appliedAdvance = useMemo(
+    () => round2(Math.min(advance, Math.max(0, tax.total - manualPaid))),
+    [advance, tax.total, manualPaid],
+  );
+  const paid = useMemo(() => round2(manualPaid + appliedAdvance), [manualPaid, appliedAdvance]);
+
   const balance = round2(Math.max(0, tax.total - paid));
 
   // Fine-metal equivalent of the old metal credit, at the bill's rate (or the day's rate).
@@ -412,19 +429,49 @@ export default function POS() {
       }
 
       if (order) {
-        const lineIds = cart
+        const refs = cart
           .map((r) => (r.inventory_item_id ? orderLineByItem[r.inventory_item_id] : null))
-          .filter(Boolean) as string[];
-        if (lineIds.length) {
-          await supabase.from("order_items").update({ status: "billed" as any, invoice_id: inv.id }).in("id", lineIds);
-          await Promise.all(lineIds.map((lid) => logOrderItemStatus({
-            order_item_id: lid, status: "billed", note: `Billed on invoice ${invNumber}`, changed_by: user?.id,
-          })));
+          .filter(Boolean) as { receiptId: string; orderItemId: string }[];
+        if (refs.length) {
+          await supabase.from("order_item_receipts")
+            .update({ status: "billed", invoice_id: inv.id } as any)
+            .in("id", refs.map((r) => r.receiptId));
+          const lineIds = Array.from(new Set(refs.map((r) => r.orderItemId)));
+          await supabase.from("order_items").update({ invoice_id: inv.id }).in("id", lineIds);
+          await Promise.all(lineIds.map(async (lid) => {
+            await recalcOrderItem(lid);
+            await logOrderItemStatus({
+              order_item_id: lid, status: "billed", note: `Billed on invoice ${invNumber}`, changed_by: user?.id,
+            });
+          }));
         }
-        // Advances already collected on the order now belong to this invoice.
-        await supabase.from("payments").update({ invoice_id: inv.id }).eq("order_id", order.id).is("invoice_id", null);
+        // Apply the order advance to this invoice, only up to what this bill needs.
+        let remaining = appliedAdvance;
+        if (remaining > 0) {
+          const { data: adv } = await supabase.from("payments")
+            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null).order("paid_at");
+          for (const p of (adv ?? []) as any[]) {
+            if (remaining <= 0.004) break;
+            const amt = Number(p.amount ?? 0);
+            if (amt <= 0) continue;
+            if (amt <= remaining + 0.004) {
+              await supabase.from("payments").update({ invoice_id: inv.id }).eq("id", p.id);
+              remaining = round2(remaining - amt);
+            } else {
+              // split: part of this advance settles the current bill, the rest stays on the order
+              await supabase.from("payments").update({ amount: round2(amt - remaining) }).eq("id", p.id);
+              await supabase.from("payments").insert({
+                order_id: order.id, invoice_id: inv.id, customer_id: order.customer_id,
+                amount: remaining, method: (p.method ?? "cash") as any,
+                notes: `Advance applied to invoice ${invNumber}`, created_by: user?.id,
+              } as any);
+              remaining = 0;
+            }
+          }
+        }
         await syncOrderStatus(order.id);
       }
+
 
       if (oldGoldPurchaseId) {
         await supabase.from("old_gold_purchases").update({ linked_invoice_id: inv.id }).eq("id", oldGoldPurchaseId);
@@ -492,7 +539,7 @@ export default function POS() {
               {order && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Billing custom order <strong>{order.order_no}</strong>
-                  {advance > 0 && <> · advance of <strong>{npr(advance)}</strong> already collected and applied</>}
+                  {advance > 0 && <> · advance of <strong>{npr(advance)}</strong> held{appliedAdvance < advance ? <> — <strong>{npr(appliedAdvance)}</strong> applied to this bill, {npr(round2(advance - appliedAdvance))} kept for the remaining pieces</> : " applied to this bill"}</>}
                 </p>
               )}
               {!order && (
@@ -694,7 +741,7 @@ export default function POS() {
                 ))}
               </div>
               <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                <span>Paid: {npr(paid)}{advance > 0 ? ` (incl. advance ${npr(advance)})` : ""}</span>
+                <span>Paid: {npr(paid)}{appliedAdvance > 0 ? ` (incl. advance ${npr(appliedAdvance)})` : ""}</span>
                 <span>Balance: {npr(balance)}</span>
               </div>
             </div>
@@ -824,11 +871,11 @@ function OrderPickerDialog({ open, onOpenChange, customerId, onPick }: {
   useEffect(() => {
     if (!open) return;
     let q = supabase.from("orders")
-      .select("id, order_no, order_date, promised_date, estimated_total, advance_paid, customers(full_name), order_items(id, status)")
+      .select("id, order_no, order_date, promised_date, estimated_total, advance_paid, customers(full_name), order_items(id, status, quantity, received_qty, stocked_qty, billed_qty)")
       .in("status", ["open", "in_production", "ready"])
       .order("order_date", { ascending: false });
     if (customerId) q = q.eq("customer_id", customerId);
-    q.then(({ data }) => setRows((data ?? []).filter((o: any) => (o.order_items ?? []).some((i: any) => i.status === "in_stock"))));
+    q.then(({ data }) => setRows((data ?? []).filter((o: any) => (o.order_items ?? []).some((i: any) => lineProgress(i).billable > 0))));
   }, [open, customerId]);
 
   return (
@@ -848,7 +895,7 @@ function OrderPickerDialog({ open, onOpenChange, customerId, onPick }: {
                   <div className="font-medium">{o.order_no} · {o.customers?.full_name}</div>
                   <div className="text-xs text-muted-foreground">
                     Ordered {o.order_date}{o.promised_date ? ` · promised ${o.promised_date}` : ""} ·
-                    {" "}{(o.order_items ?? []).filter((i: any) => i.status === "in_stock").length} ready
+                    {" "}{(o.order_items ?? []).reduce((a: number, i: any) => a + lineProgress(i).billable, 0)} pc ready
                   </div>
                 </div>
                 <div className="text-right text-xs">
