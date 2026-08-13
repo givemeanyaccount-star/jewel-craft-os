@@ -748,6 +748,101 @@ export type Database = {
           },
         ]
       }
+      order_item_receipts: {
+        Row: {
+          batch_no: number
+          created_at: string
+          created_by: string | null
+          id: string
+          inventory_item_id: string | null
+          invoice_id: string | null
+          issued_gross_weight: number | null
+          issued_net_weight: number | null
+          karigar_id: string | null
+          karigar_name: string | null
+          note: string | null
+          order_item_id: string
+          quantity: number
+          received_at: string
+          received_gross_weight: number
+          received_net_weight: number
+          received_stone_weight: number
+          status: Database["public"]["Enums"]["order_item_status"]
+          updated_at: string
+        }
+        Insert: {
+          batch_no?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          invoice_id?: string | null
+          issued_gross_weight?: number | null
+          issued_net_weight?: number | null
+          karigar_id?: string | null
+          karigar_name?: string | null
+          note?: string | null
+          order_item_id: string
+          quantity?: number
+          received_at?: string
+          received_gross_weight?: number
+          received_net_weight?: number
+          received_stone_weight?: number
+          status?: Database["public"]["Enums"]["order_item_status"]
+          updated_at?: string
+        }
+        Update: {
+          batch_no?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          invoice_id?: string | null
+          issued_gross_weight?: number | null
+          issued_net_weight?: number | null
+          karigar_id?: string | null
+          karigar_name?: string | null
+          note?: string | null
+          order_item_id?: string
+          quantity?: number
+          received_at?: string
+          received_gross_weight?: number
+          received_net_weight?: number
+          received_stone_weight?: number
+          status?: Database["public"]["Enums"]["order_item_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_item_receipts_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_receipts_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_receipts_karigar_id_fkey"
+            columns: ["karigar_id"]
+            isOneToOne: false
+            referencedRelation: "karigars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_receipts_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_item_status_log: {
         Row: {
           changed_at: string
@@ -807,6 +902,7 @@ export type Database = {
       }
       order_items: {
         Row: {
+          billed_qty: number
           category_id: string | null
           created_at: string
           description: string
@@ -837,14 +933,17 @@ export type Database = {
           received_at: string | null
           received_gross_weight: number | null
           received_net_weight: number | null
+          received_qty: number
           received_stone_weight: number | null
           status: Database["public"]["Enums"]["order_item_status"]
+          stocked_qty: number
           stone_value: number
           updated_at: string
           wastage_input: number
           wastage_type: Database["public"]["Enums"]["wastage_type"]
         }
         Insert: {
+          billed_qty?: number
           category_id?: string | null
           created_at?: string
           description: string
@@ -875,14 +974,17 @@ export type Database = {
           received_at?: string | null
           received_gross_weight?: number | null
           received_net_weight?: number | null
+          received_qty?: number
           received_stone_weight?: number | null
           status?: Database["public"]["Enums"]["order_item_status"]
+          stocked_qty?: number
           stone_value?: number
           updated_at?: string
           wastage_input?: number
           wastage_type?: Database["public"]["Enums"]["wastage_type"]
         }
         Update: {
+          billed_qty?: number
           category_id?: string | null
           created_at?: string
           description?: string
@@ -913,8 +1015,10 @@ export type Database = {
           received_at?: string | null
           received_gross_weight?: number | null
           received_net_weight?: number | null
+          received_qty?: number
           received_stone_weight?: number | null
           status?: Database["public"]["Enums"]["order_item_status"]
+          stocked_qty?: number
           stone_value?: number
           updated_at?: string
           wastage_input?: number
