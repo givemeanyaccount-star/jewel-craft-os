@@ -272,7 +272,6 @@ export async function cancelOrderLine(opts: {
 
 /** Hard-delete an order line that has no receipts against it. */
 export async function deleteOrderLine(orderItemId: string, orderId: string) {
-  await supabase.from("order_item_status_log").delete().eq("order_item_id", orderItemId);
   const { error } = await supabase.from("order_items").delete().eq("id", orderItemId);
   if (error) throw error;
   await syncOrderStatus(orderId);
