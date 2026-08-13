@@ -18,36 +18,15 @@ import { npr, computeNetWeight, round2 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
-import { KarigarSelect, useKarigars } from "@/components/KarigarSelect";
-import { PuritySelect } from "@/components/PuritySelect";
+import { useKarigars } from "@/components/KarigarSelect";
+import {
+  OrderLineFields, OrderLine, blankOrderLine, lineNet, lineEstimate,
+} from "@/components/orders/OrderLineFields";
 import {
   ORDER_STATUS_LABEL, ORDER_ITEM_LABEL, ORDER_ITEM_COLOR,
-  estimateOrderLine, fetchRateOn, nextOrderNo, todayISO, logOrderItemStatus,
+  fetchRateOn, nextOrderNo, todayISO, logOrderItemStatus, saveLinePhotos,
 } from "@/lib/orders";
 
-const METALS = ["gold", "silver"];
-
-function blankLine() {
-  return {
-    key: crypto.randomUUID(),
-    description: "",
-    category_id: null as string | null,
-    metal: "gold",
-    purity: "22K",
-    quantity: 1,
-    expected_gross_weight: 0,
-    expected_stone_weight: 0,
-    rate: 0,
-    rate_date: todayISO(),
-    making_input: 0,
-    making_type: "per_gram",
-    wastage_input: 0,
-    wastage_type: "percentage",
-    stone_value: 0,
-    karigar_id: null as string | null,
-    karigar_name: "",
-  };
-}
 
 export default function Orders() {
   const [list, setList] = useState<any[]>([]);
