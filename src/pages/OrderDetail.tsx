@@ -40,11 +40,12 @@ export default function OrderDetail() {
 
   const [order, setOrder] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
+  const [receipts, setReceipts] = useState<any[]>([]);
   const [advances, setAdvances] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [issueFor, setIssueFor] = useState<any>(null);
   const [receiveFor, setReceiveFor] = useState<any>(null);
-  const [stockFor, setStockFor] = useState<any>(null);
+  const [stockFor, setStockFor] = useState<{ item: any; receipt: any } | null>(null);
   const [advOpen, setAdvOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
@@ -58,9 +59,13 @@ export default function OrderDetail() {
     setOrder(o); setItems(its ?? []); setAdvances(pays ?? []);
     const ids = (its ?? []).map((i: any) => i.id);
     if (ids.length) {
-      const { data: lg } = await supabase.from("order_item_status_log").select("*").in("order_item_id", ids).order("changed_at", { ascending: false });
-      setLogs(lg ?? []);
-    } else setLogs([]);
+      const [{ data: lg }, { data: rc }] = await Promise.all([
+        supabase.from("order_item_status_log").select("*").in("order_item_id", ids).order("changed_at", { ascending: false }),
+        supabase.from("order_item_receipts").select("*, inventory_items(id, sku, status), invoices(id, invoice_number)")
+          .in("order_item_id", ids).order("batch_no"),
+      ]);
+      setLogs(lg ?? []); setReceipts(rc ?? []);
+    } else { setLogs([]); setReceipts([]); }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -70,7 +75,7 @@ export default function OrderDetail() {
     () => round2(items.filter((i) => i.status !== "cancelled").reduce((a, i) => a + Number(i.estimated_amount ?? 0), 0)),
     [items],
   );
-  const readyLines = items.filter((i) => i.status === "in_stock");
+  const billableCount = items.reduce((a, i) => a + (i.status === "cancelled" ? 0 : lineProgress(i).billable), 0);
 
   async function refresh() {
     if (id) await syncOrderStatus(id);
@@ -83,6 +88,7 @@ export default function OrderDetail() {
     await logOrderItemStatus({ order_item_id: item.id, status: status as any, note: note ?? null, changed_by: user?.id });
     await refresh();
   }
+
 
   if (!order) return <AppLayout title="Order"><p className="text-muted-foreground">Loading…</p></AppLayout>;
 
