@@ -157,7 +157,7 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
   const [orderDate, setOrderDate] = useState(todayISO());
   const [promised, setPromised] = useState("");
   const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<any[]>([blankLine()]);
+  const [lines, setLines] = useState<OrderLine[]>([blankOrderLine(todayISO())]);
   const [cats, setCats] = useState<any[]>([]);
   const [advance, setAdvance] = useState(0);
   const [advanceMethod, setAdvanceMethod] = useState("cash");
@@ -167,24 +167,22 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
     if (!open) return;
     setCustomer(initialCustomer ?? null);
     setOrderDate(todayISO()); setPromised(""); setNotes("");
-    setLines([blankLine()]); setAdvance(0); setAdvanceMethod("cash");
+    setLines([blankOrderLine(todayISO())]); setAdvance(0); setAdvanceMethod("cash");
     supabase.from("categories").select("id, name").order("name").then(({ data }) => setCats(data ?? []));
   }, [open]);
 
-  function patch(key: string, p: any) {
+  function patch(key: string, p: Partial<OrderLine>) {
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...p } : l)));
   }
 
-  async function pullRate(l: any) {
+  async function pullRate(l: OrderLine) {
     const r = await fetchRateOn(l.metal, l.purity, orderDate);
     if (!r.rate) return toast.warning(`No ${l.metal} ${l.purity} rate on or before ${orderDate}`);
     patch(l.key, { rate: r.rate, rate_date: r.effective_date });
     if (!r.exact) toast.info(`Using rate from ${r.effective_date} (nearest before ${orderDate})`);
   }
 
-  const total = round2(lines.reduce((a, l) => a + estimateOrderLine({
-    ...l, expected_net_weight: computeNetWeight(Number(l.expected_gross_weight || 0), Number(l.expected_stone_weight || 0)),
-  }), 0));
+  const total = round2(lines.reduce((a, l) => a + lineEstimate(l), 0));
 
   async function save() {
     if (!customer) return toast.error("Select a customer");
@@ -199,11 +197,14 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
       } as any).select().single();
       if (error) throw error;
 
-      const rows = lines.filter((l) => l.description.trim()).map((l) => {
-        const net = computeNetWeight(Number(l.expected_gross_weight || 0), Number(l.expected_stone_weight || 0));
-        return {
+      const kept = lines.filter((l) => l.description.trim());
+      const rows = [] as any[];
+      for (const l of kept) {
+        const net = lineNet(l);
+        rows.push({
           order_id: order.id,
           description: l.description.trim(),
+          notes: l.notes?.trim() || null,
           category_id: l.category_id,
           metal: l.metal, purity: l.purity,
           quantity: Number(l.quantity || 1),
@@ -214,11 +215,12 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
           making_input: Number(l.making_input || 0), making_type: l.making_type,
           wastage_input: Number(l.wastage_input || 0), wastage_type: l.wastage_type,
           stone_value: Number(l.stone_value || 0),
-          estimated_amount: estimateOrderLine({ ...l, expected_net_weight: net }),
+          estimated_amount: lineEstimate(l),
+          photos: await saveLinePhotos(l.photos, l.newFiles),
           karigar_id: l.karigar_id, karigar_name: l.karigar_name || null,
           status: l.karigar_id ? "assigned" : "pending",
-        };
-      });
+        });
+      }
       const { data: created, error: lErr } = await supabase.from("order_items").insert(rows as any).select("id, status, karigar_id, karigar_name");
       if (lErr) throw lErr;
 
@@ -261,109 +263,28 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
                 </SelectContent>
               </Select>
             </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">Old metal trade-in advances are added from the order page.</p>
           </div>
         </div>
 
         <div className="mt-2 space-y-3">
-          {lines.map((l, idx) => {
-            const net = computeNetWeight(Number(l.expected_gross_weight || 0), Number(l.expected_stone_weight || 0));
-            const est = estimateOrderLine({ ...l, expected_net_weight: net });
-            return (
-              <div key={l.key} className="rounded-md border p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-medium">Item {idx + 1}</span>
-                  {lines.length > 1 && (
-                    <Button size="icon" variant="ghost" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <div className="grid gap-3 sm:grid-cols-4">
-                  <div className="sm:col-span-2">
-                    <Label>Description *</Label>
-                    <Input value={l.description} onChange={(e) => patch(l.key, { description: e.target.value })} placeholder="e.g. Custom bridal necklace" />
-                  </div>
-                  <div>
-                    <Label>Category</Label>
-                    <Select value={l.category_id ?? "none"} onValueChange={(v) => patch(l.key, { category_id: v === "none" ? null : v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">—</SelectItem>
-                        {cats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Karigar</Label>
-                    <KarigarSelect karigars={karigars} value={l.karigar_id} valueName={l.karigar_name}
-                      onChange={(id, name) => patch(l.key, { karigar_id: id, karigar_name: name })}
-                      onKarigarCreated={refresh} />
-                  </div>
-                  <div>
-                    <Label>Metal</Label>
-                    <Select value={l.metal} onValueChange={(v) => patch(l.key, { metal: v, purity: v === "silver" ? "999" : "22K" })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Purity</Label>
-                    <PuritySelect metal={l.metal} value={l.purity} onChange={(v) => patch(l.key, { purity: v })} allowPercent />
-                  </div>
-                  <div>
-                    <Label>Expected gross wt (g)</Label>
-                    <NumberField decimals={3} value={l.expected_gross_weight} onChange={(v) => patch(l.key, { expected_gross_weight: v })} />
-                  </div>
-                  <div>
-                    <Label>Stone wt (g)</Label>
-                    <NumberField decimals={3} value={l.expected_stone_weight} onChange={(v) => patch(l.key, { expected_stone_weight: v })} />
-                  </div>
-                  <div>
-                    <Label>Rate/g (order date)</Label>
-                    <div className="flex gap-1">
-                      <NumberField value={l.rate} onChange={(v) => patch(l.key, { rate: v })} className="text-right" />
-                      <Button type="button" size="sm" variant="outline" onClick={() => pullRate(l)}>Fetch</Button>
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Making</Label>
-                    <div className="flex gap-1">
-                      <NumberField value={l.making_input} onChange={(v) => patch(l.key, { making_input: v })} className="text-right" />
-                      <Select value={l.making_type} onValueChange={(v) => patch(l.key, { making_type: v })}>
-                        <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="per_gram">/gram</SelectItem>
-                          <SelectItem value="fixed">Fixed</SelectItem>
-                          <SelectItem value="percentage">%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Wastage</Label>
-                    <div className="flex gap-1">
-                      <NumberField value={l.wastage_input} onChange={(v) => patch(l.key, { wastage_input: v })} className="text-right" />
-                      <Select value={l.wastage_type} onValueChange={(v) => patch(l.key, { wastage_type: v })}>
-                        <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="percentage">%</SelectItem>
-                          <SelectItem value="weight">Weight</SelectItem>
-                          <SelectItem value="fixed">Fixed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div><Label>Stone value</Label><NumberField value={l.stone_value} onChange={(v) => patch(l.key, { stone_value: v })} className="text-right" /></div>
-                  <div><Label>Qty</Label><NumberField decimals={0} value={l.quantity} onChange={(v) => patch(l.key, { quantity: v || 1 })} /></div>
-                  <div className="sm:col-span-2 flex items-end justify-end text-sm">
-                    <span className="text-muted-foreground">Net {net.toFixed(3)} g · Estimate&nbsp;</span>
-                    <span className="font-semibold">{npr(est)}</span>
-                  </div>
-                </div>
+          {lines.map((l, idx) => (
+            <div key={l.key} className="rounded-md border p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-medium">Item {idx + 1}</span>
+                {lines.length > 1 && (
+                  <Button size="icon" variant="ghost" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
-            );
-          })}
-          <Button variant="outline" size="sm" onClick={() => setLines((ls) => [...ls, blankLine()])}>
+              <OrderLineFields
+                line={l} patch={(p) => patch(l.key, p)} cats={cats} karigars={karigars}
+                onKarigarCreated={refresh} onFetchRate={() => pullRate(l)}
+              />
+            </div>
+          ))}
+          <Button variant="outline" size="sm" onClick={() => setLines((ls) => [...ls, blankOrderLine(orderDate)])}>
             <Plus className="mr-1 h-4 w-4" /> Add item
           </Button>
         </div>
@@ -381,3 +302,4 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
     </Dialog>
   );
 }
+
