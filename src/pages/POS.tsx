@@ -449,7 +449,7 @@ export default function POS() {
         let remaining = appliedAdvance;
         if (remaining > 0) {
           const { data: adv } = await supabase.from("payments")
-            .select("id, amount").eq("order_id", order.id).is("invoice_id", null).order("paid_at");
+            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null).order("paid_at");
           for (const p of (adv ?? []) as any[]) {
             if (remaining <= 0.004) break;
             const amt = Number(p.amount ?? 0);
