@@ -24,8 +24,9 @@ import { ImageCaptureButton } from "@/components/ImageCapture";
 import { uploadImage } from "@/lib/storage";
 import {
   ORDER_ITEM_LABEL, ORDER_ITEM_COLOR, ORDER_STATUS_LABEL,
-  estimateOrderLine, logOrderItemStatus, syncOrderStatus,
+  estimateOrderLine, logOrderItemStatus, syncOrderStatus, recalcOrderItem, lineProgress, progressLabel,
 } from "@/lib/orders";
+
 
 const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
