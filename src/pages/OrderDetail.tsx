@@ -361,38 +361,66 @@ function IssueDialog({ item, onOpenChange, onDone, userId }: {
 function ReceiveDialog({ item, onOpenChange, onDone, userId }: {
   item: any; onOpenChange: (v: boolean) => void; onDone: () => void; userId?: string;
 }) {
+  const [qty, setQty] = useState(1);
   const [gross, setGross] = useState(0);
   const [stone, setStone] = useState(0);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const prog = item ? lineProgress(item) : null;
+  const outstanding = prog?.outstanding ?? 0;
+
   useEffect(() => {
     if (!item) return;
-    setGross(Number(item.issued_gross_weight ?? item.expected_gross_weight ?? 0));
-    setStone(Number(item.expected_stone_weight ?? 0));
+    const p = lineProgress(item);
+    setQty(Math.max(1, p.outstanding));
+    const perPiece = Number(item.expected_gross_weight ?? 0) / Math.max(1, p.quantity);
+    setGross(round2(perPiece * Math.max(1, p.outstanding)) || Number(item.issued_gross_weight ?? 0));
+    setStone(Number(item.expected_stone_weight ?? 0) / Math.max(1, p.quantity) * Math.max(1, p.outstanding));
     setNote("");
   }, [item]);
 
   const net = computeNetWeight(gross, stone);
-  const loss = item?.issued_net_weight != null ? round2(Number(item.issued_net_weight) - net) : null;
 
   async function save() {
     if (gross <= 0) return toast.error("Enter the received gross weight");
+    if (qty < 1 || qty > outstanding) return toast.error(`Quantity must be between 1 and ${outstanding}`);
     setSaving(true);
     try {
-      const { error } = await supabase.from("order_items").update({
+      const { count } = await supabase.from("order_item_receipts")
+        .select("id", { count: "exact", head: true }).eq("order_item_id", item.id);
+      const { error } = await supabase.from("order_item_receipts").insert({
+        order_item_id: item.id,
+        batch_no: (count ?? 0) + 1,
+        quantity: qty,
+        karigar_id: item.karigar_id ?? null, karigar_name: item.karigar_name ?? null,
         received_at: new Date().toISOString(),
         received_gross_weight: gross, received_stone_weight: stone, received_net_weight: net,
-        status: "received" as any,
-      }).eq("id", item.id);
+        status: "received",
+        note: note || null,
+        created_by: userId ?? null,
+      } as any);
       if (error) throw error;
+
+      // keep the legacy roll-up columns in sync for reporting
+      const { data: all } = await supabase.from("order_item_receipts")
+        .select("received_gross_weight, received_stone_weight, received_net_weight").eq("order_item_id", item.id);
+      const sum = (k: string) => round2((all ?? []).reduce((a: number, r: any) => a + Number(r[k] ?? 0), 0));
+      await supabase.from("order_items").update({
+        received_at: new Date().toISOString(),
+        received_gross_weight: sum("received_gross_weight"),
+        received_stone_weight: sum("received_stone_weight"),
+        received_net_weight: sum("received_net_weight"),
+      }).eq("id", item.id);
+
+      await recalcOrderItem(item.id);
       await logOrderItemStatus({
         order_item_id: item.id, status: "received", karigar_id: item.karigar_id, karigar_name: item.karigar_name,
         gross_weight: gross, stone_weight: stone, net_weight: net,
-        note: note || (loss ? `Weight difference ${loss > 0 ? "-" : "+"}${Math.abs(loss).toFixed(3)} g` : "Received from karigar"),
+        note: note || `Received ${qty} of ${prog?.quantity ?? 1} pc(s) from karigar`,
         changed_by: userId,
       });
-      toast.success("Item received");
+      toast.success(`Received ${qty} piece(s)`);
       onDone();
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
@@ -402,28 +430,28 @@ function ReceiveDialog({ item, onOpenChange, onDone, userId }: {
       <DialogContent>
         <DialogHeader><DialogTitle>Receive from karigar</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>Gross wt received (g)</Label><NumberField decimals={3} value={gross} onChange={setGross} /></div>
+          {prog && prog.quantity > 1 && (
+            <p className="text-xs text-muted-foreground">
+              {prog.received} of {prog.quantity} already received · {outstanding} still with the karigar.
+            </p>
+          )}
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>Qty in this batch</Label><NumberField decimals={0} value={qty} onChange={setQty} /></div>
+            <div><Label>Gross wt (g)</Label><NumberField decimals={3} value={gross} onChange={setGross} /></div>
             <div><Label>Stone wt (g)</Label><NumberField decimals={3} value={stone} onChange={setStone} /></div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Net received: <strong>{net.toFixed(3)} g</strong>
-            {loss != null && Math.abs(loss) > 0.0005 && (
-              <span className={loss > 0 ? " text-destructive" : " text-emerald-600"}>
-                {" "}· {loss > 0 ? "loss" : "gain"} {Math.abs(loss).toFixed(3)} g vs issued
-              </span>
-            )}
-          </p>
+          <p className="text-xs text-muted-foreground">Net received in this batch: <strong>{net.toFixed(3)} g</strong></p>
           <div><Label>Note</Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Receive"}</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Receive batch"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
 
 function ToStockDialog({ item, onOpenChange, onDone, userId }: {
   item: any; onOpenChange: (v: boolean) => void; onDone: () => void; userId?: string;
