@@ -539,7 +539,7 @@ export default function POS() {
               {order && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Billing custom order <strong>{order.order_no}</strong>
-                  {advance > 0 && <> · advance of <strong>{npr(advance)}</strong> already collected and applied</>}
+                  {advance > 0 && <> · advance of <strong>{npr(advance)}</strong> held{appliedAdvance < advance ? <> — <strong>{npr(appliedAdvance)}</strong> applied to this bill, {npr(round2(advance - appliedAdvance))} kept for the remaining pieces</> : " applied to this bill"}</>}
                 </p>
               )}
               {!order && (
@@ -741,7 +741,7 @@ export default function POS() {
                 ))}
               </div>
               <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                <span>Paid: {npr(paid)}{advance > 0 ? ` (incl. advance ${npr(advance)})` : ""}</span>
+                <span>Paid: {npr(paid)}{appliedAdvance > 0 ? ` (incl. advance ${npr(appliedAdvance)})` : ""}</span>
                 <span>Balance: {npr(balance)}</span>
               </div>
             </div>
