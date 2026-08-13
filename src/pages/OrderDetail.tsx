@@ -137,8 +137,9 @@ export default function OrderDetail() {
                     ? round2(Number(it.issued_net_weight) - receivedNet) : null;
                   const active = it.status !== "billed" && it.status !== "cancelled";
                   return (
-                    <>
-                    <TableRow key={it.id}>
+                    <Fragment key={it.id}>
+                    <TableRow>
+
                       <TableCell>
                         <div className="font-medium">{it.description}</div>
                         <div className="text-xs text-muted-foreground capitalize">
