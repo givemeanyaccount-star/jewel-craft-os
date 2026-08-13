@@ -1929,6 +1929,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      log_audit_event: {
+        Args: {
+          _action: string
+          _details?: Json
+          _target_email?: string
+          _target_user_id?: string
+        }
+        Returns: string
+      }
       next_category_sku: { Args: { _category_id: string }; Returns: string }
     }
     Enums: {
