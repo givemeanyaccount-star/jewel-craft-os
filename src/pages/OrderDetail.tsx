@@ -130,24 +130,32 @@ export default function OrderDetail() {
               </TableRow></TableHeader>
               <TableBody>
                 {items.map((it) => {
-                  const loss = it.issued_net_weight != null && it.received_net_weight != null
-                    ? round2(Number(it.issued_net_weight) - Number(it.received_net_weight)) : null;
+                  const p = lineProgress(it);
+                  const batches = receipts.filter((r) => r.order_item_id === it.id);
+                  const receivedNet = round2(batches.reduce((a, r) => a + Number(r.received_net_weight ?? 0), 0));
+                  const loss = it.issued_net_weight != null && receivedNet > 0
+                    ? round2(Number(it.issued_net_weight) - receivedNet) : null;
+                  const active = it.status !== "billed" && it.status !== "cancelled";
                   return (
+                    <>
                     <TableRow key={it.id}>
                       <TableCell>
                         <div className="font-medium">{it.description}</div>
                         <div className="text-xs text-muted-foreground capitalize">
                           {it.metal} {it.purity}{it.categories?.name ? ` · ${it.categories.name}` : ""}
-                          {it.inventory_items?.sku ? ` · ${it.inventory_items.sku}` : ""}
+                          {` · qty ${p.quantity}`}
                         </div>
+                        {progressLabel(it) && (
+                          <div className="text-xs text-muted-foreground">{progressLabel(it)}</div>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm">{it.karigar_name ?? "-"}</TableCell>
                       <TableCell className="text-right">{gms(it.expected_net_weight)}</TableCell>
                       <TableCell className="text-right text-xs">
                         {it.issued_net_weight != null ? `${gms(it.issued_net_weight)} out` : "—"}
                         <br />
-                        {it.received_net_weight != null ? `${gms(it.received_net_weight)} in` : "—"}
-                        {loss != null && Math.abs(loss) > 0.0005 && (
+                        {receivedNet > 0 ? `${gms(receivedNet)} in` : "—"}
+                        {loss != null && Math.abs(loss) > 0.0005 && p.outstanding === 0 && (
                           <div className={loss > 0 ? "text-destructive" : "text-emerald-600"}>
                             {loss > 0 ? "loss" : "gain"} {gms(Math.abs(loss))}
                           </div>
@@ -156,16 +164,17 @@ export default function OrderDetail() {
                       <TableCell className="text-right">{npr(it.estimated_amount)}</TableCell>
                       <TableCell><Badge variant="secondary" className={ORDER_ITEM_COLOR[it.status]}>{ORDER_ITEM_LABEL[it.status]}</Badge></TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        {canManage && it.status !== "billed" && it.status !== "cancelled" && (
+                        {canManage && active && (
                           <div className="flex justify-end gap-1">
-                            {(it.status === "pending" || it.status === "assigned") && (
-                              <Button size="sm" variant="outline" onClick={() => setIssueFor(it)}><Hammer className="mr-1 h-3.5 w-3.5" /> Issue</Button>
+                            {p.outstanding > 0 && (
+                              <Button size="sm" variant="outline" onClick={() => setIssueFor(it)}>
+                                <Hammer className="mr-1 h-3.5 w-3.5" /> {it.issued_at ? "Re-issue" : "Issue"}
+                              </Button>
                             )}
-                            {it.status === "in_progress" && (
-                              <Button size="sm" variant="outline" onClick={() => setReceiveFor(it)}>Receive</Button>
-                            )}
-                            {it.status === "received" && (
-                              <Button size="sm" onClick={() => setStockFor(it)}><PackageCheck className="mr-1 h-3.5 w-3.5" /> Add to stock</Button>
+                            {p.outstanding > 0 && it.issued_at && (
+                              <Button size="sm" variant="outline" onClick={() => setReceiveFor(it)}>
+                                Receive{p.quantity > 1 ? ` (${p.outstanding} left)` : ""}
+                              </Button>
                             )}
                             <Button size="sm" variant="ghost" onClick={() => {
                               if (window.confirm("Cancel this order line?")) setStatus(it, "cancelled", "Line cancelled");
@@ -174,9 +183,34 @@ export default function OrderDetail() {
                         )}
                       </TableCell>
                     </TableRow>
+                    {batches.map((r) => (
+                      <TableRow key={r.id} className="bg-muted/30">
+                        <TableCell className="pl-6 text-xs">
+                          Batch {r.batch_no} · {r.quantity} pc{r.quantity > 1 ? "s" : ""}
+                          {r.inventory_items?.sku ? ` · ${r.inventory_items.sku}` : ""}
+                          {r.invoices?.invoice_number ? ` · ${r.invoices.invoice_number}` : ""}
+                        </TableCell>
+                        <TableCell className="text-xs">{r.karigar_name ?? "-"}</TableCell>
+                        <TableCell className="text-right text-xs">{new Date(r.received_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right text-xs">{gms(r.received_net_weight)} in</TableCell>
+                        <TableCell />
+                        <TableCell>
+                          <Badge variant="secondary" className={ORDER_ITEM_COLOR[r.status] ?? ""}>{ORDER_ITEM_LABEL[r.status] ?? r.status}</Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-right">
+                          {canManage && !r.inventory_item_id && r.status !== "cancelled" && (
+                            <Button size="sm" onClick={() => setStockFor({ item: it, receipt: r })}>
+                              <PackageCheck className="mr-1 h-3.5 w-3.5" /> Add to stock
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    </>
                   );
                 })}
               </TableBody>
+
             </Table>
           </CardContent>
         </Card>
