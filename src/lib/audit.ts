@@ -19,16 +19,11 @@ export interface AuditEntry {
 /** Records an action in the audit log. Never throws — logging must not break the action. */
 export async function logAudit(entry: AuditEntry) {
   try {
-    const { data } = await supabase.auth.getUser();
-    const actor = data.user;
-    if (!actor) return;
-    await supabase.from("audit_logs").insert({
-      actor_id: actor.id,
-      actor_email: actor.email ?? null,
-      action: entry.action,
-      target_user_id: entry.target_user_id ?? null,
-      target_email: entry.target_email ?? null,
-      details: (entry.details ?? {}) as never,
+    await supabase.rpc("log_audit_event", {
+      _action: entry.action,
+      _target_user_id: entry.target_user_id ?? null,
+      _target_email: entry.target_email ?? null,
+      _details: (entry.details ?? {}) as never,
     });
   } catch {
     /* ignore */
