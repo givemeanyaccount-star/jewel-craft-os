@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.enforce_order_item_karigar_update() FROM PUBLIC, anon, authenticated;

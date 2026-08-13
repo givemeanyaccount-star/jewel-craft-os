@@ -13,10 +13,12 @@ import {
   OutstandingCreditCard,
   PendingCreditCard,
   PendingQuotationsCard,
+  OrdersCard,
   RepairStagesCard,
   TodaySalesCard,
 } from "@/components/dashboard/OpsCards";
 import { pendingQuotationStats, sweepExpiredQuotations, PendingQuotationStats } from "@/lib/quotations";
+import { orderDashboardStats, OrderDashboardStats } from "@/lib/orders";
 import { DailyRateDialog, todayIsoDate } from "@/components/DailyRateDialog";
 import { AlertCircle } from "lucide-react";
 
@@ -44,6 +46,7 @@ export default function Dashboard() {
   const [rates, setRates] = useState<Record<string, { latest: number | null; history: RatePoint[] }>>({});
   const [volume, setVolume] = useState<VolumePoint[]>([]);
   const [quoteStats, setQuoteStats] = useState<PendingQuotationStats>({ count: 0, value: 0, expiringSoon: 0 });
+  const [orderStats, setOrderStats] = useState<OrderDashboardStats | null>(null);
 
   useEffect(() => {
     load();
@@ -120,6 +123,7 @@ export default function Dashboard() {
     setMissingIdCount(missingId.count ?? 0);
     await sweepExpiredQuotations();
     setQuoteStats(await pendingQuotationStats());
+    if (hasPermission("order_view")) setOrderStats(await orderDashboardStats());
     if ((todayRate.data ?? []).length === 0 && hasPermission("metal_rate_manage")) setRateDialog(true);
 
     // ── metal rates ───────────────────────────────────────
@@ -242,6 +246,10 @@ export default function Dashboard() {
           <RepairStagesCard counts={repairCounts} />
           <PendingCreditCard amount={stats?.pendingBalance ?? 0} customers={stats?.creditCustomers ?? 0} />
           <PendingQuotationsCard count={quoteStats.count} value={quoteStats.value} expiringSoon={quoteStats.expiringSoon} />
+          {orderStats && hasPermission("order_view") && (
+            <OrdersCard open={orderStats.open} dueThisWeek={orderStats.dueThisWeek}
+              readyToBill={orderStats.readyToBill} advanceHeld={orderStats.advanceHeld} />
+          )}
           {missingIdCount > 0 && hasPermission("old_gold_purchase") ? (
             <MissingIdCard count={missingIdCount} />
           ) : (

@@ -21,7 +21,10 @@ export type AppPermission =
   | "settings_manage"
   | "role_manage"
   | "report_view"
-  | "old_gold_purchase";
+  | "old_gold_purchase"
+  | "order_view"
+  | "order_manage"
+  | "order_bill";
 
 export const ALL_PERMISSIONS: AppPermission[] = [
   "view_dashboard",
@@ -42,6 +45,9 @@ export const ALL_PERMISSIONS: AppPermission[] = [
   "role_manage",
   "report_view",
   "old_gold_purchase",
+  "order_view",
+  "order_manage",
+  "order_bill",
 ];
 
 export const ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
@@ -57,11 +63,15 @@ export const ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "customer_manage",
     "metal_rate_manage",
     "old_gold_purchase",
+    "order_view",
+    "order_manage",
+    "order_bill",
   ],
   karigar: [
     "view_dashboard",
     "inventory_view",
     "repair_manage",
+    "order_view",
   ],
   accountant: [
     "view_dashboard",
@@ -69,11 +79,13 @@ export const ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "credit_view",
     "metal_rate_manage",
     "report_view",
+    "order_view",
   ],
   viewer: [
     "view_dashboard",
     "inventory_view",
     "invoice_view",
+    "order_view",
   ],
 };
 

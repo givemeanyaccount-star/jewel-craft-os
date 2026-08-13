@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Plus, ArrowLeft, Pencil, Hammer, X } from "lucide-react";
 import { npr, gms } from "@/lib/format";
 import { STATUS_LABEL, STATUS_COLOR } from "./Repairs";
+import { ORDER_ITEM_LABEL, ORDER_ITEM_COLOR } from "@/lib/orders";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ export default function Karigars() {
   const [selected, setSelected] = useState<any>(null);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const [orderJobs, setOrderJobs] = useState<any[]>([]);
   const nav = useNavigate();
 
   useEffect(() => { load(); }, []);
@@ -32,7 +34,13 @@ export default function Karigars() {
   }
 
   useEffect(() => {
-    if (!selected) { setJobs([]); return; }
+    if (!selected) { setJobs([]); setOrderJobs([]); return; }
+    supabase
+      .from("order_items")
+      .select("*, orders(id, order_no, order_date, promised_date, customers(full_name))")
+      .eq("karigar_id", selected.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setOrderJobs(data ?? []));
     let cancelled = false;
     setLoadingJobs(true);
     supabase
@@ -138,6 +146,51 @@ export default function Karigars() {
                         </TableRow>
                       );
                     })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {selected && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Hammer className="h-5 w-5" /> {selected.name} — custom order jobs</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {orderJobs.length} job{orderJobs.length === 1 ? "" : "s"} ·
+              {" "}{orderJobs.filter((j) => !["billed", "in_stock", "cancelled"].includes(j.status)).length} in hand
+            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            {orderJobs.length === 0 ? (
+              <p className="p-6 text-center text-muted-foreground">No custom order items assigned to this karigar yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Order #</TableHead><TableHead>Customer</TableHead><TableHead>Item</TableHead>
+                    <TableHead>Metal</TableHead><TableHead className="text-right">Issued wt</TableHead>
+                    <TableHead className="text-right">Received wt</TableHead><TableHead>Status</TableHead>
+                    <TableHead className="text-right">Est. value</TableHead><TableHead>Promised</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {orderJobs.map((j) => (
+                      <TableRow key={j.id}>
+                        <TableCell className="font-medium">
+                          {j.orders ? <Link to={`/orders/${j.orders.id}`} className="text-primary hover:underline">{j.orders.order_no}</Link> : "—"}
+                        </TableCell>
+                        <TableCell>{j.orders?.customers?.full_name ?? "—"}</TableCell>
+                        <TableCell className="max-w-[240px] truncate">{j.description}</TableCell>
+                        <TableCell className="capitalize">{j.metal}{j.purity ? ` · ${j.purity}` : ""}</TableCell>
+                        <TableCell className="text-right">{j.issued_weight != null ? gms(Number(j.issued_weight)) : "—"}</TableCell>
+                        <TableCell className="text-right">{j.received_gross_weight != null ? gms(Number(j.received_gross_weight)) : "—"}</TableCell>
+                        <TableCell><Badge className={ORDER_ITEM_COLOR[j.status]}>{ORDER_ITEM_LABEL[j.status]}</Badge></TableCell>
+                        <TableCell className="text-right">{npr(Number(j.estimated_amount ?? 0))}</TableCell>
+                        <TableCell className="whitespace-nowrap text-xs">{j.orders?.promised_date ?? "—"}</TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
