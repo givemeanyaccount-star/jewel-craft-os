@@ -734,33 +734,196 @@ function CancelOrderDialog({ open, onOpenChange, order, items, receipts, advance
   );
 }
 
-function printAdvanceReceipt(order: any, advances: any[], total: number) {
-  const rows = advances.map((p) => `
-    <tr>
-      <td style="padding:4px 0">${new Date(p.paid_at).toLocaleDateString()}</td>
-      <td style="text-transform:capitalize">${String(p.method).replace("_", " ")}</td>
-      <td>${p.reference ?? ""}</td>
-      <td style="text-align:right">${npr(p.amount)}</td>
-    </tr>`).join("");
-  openPrintPreview({
-    title: `Advance Receipt ${order.order_no}`,
-    fileName: `Advance-${order.order_no}`,
-    page: "a4",
-    css: "body{font-family:system-ui,sans-serif;color:#111} table{width:100%;border-collapse:collapse;font-size:13px} th{text-align:left;border-bottom:1px solid #999;padding-bottom:4px}",
-    html: `
-      <h2 style="margin:0 0 4px">Order Advance Receipt</h2>
-      <div style="font-size:13px;margin-bottom:12px">
-        Order <strong>${order.order_no}</strong> · Order date ${order.order_date}<br/>
-        Customer: <strong>${order.customers?.full_name ?? ""}</strong> ${order.customers?.phone ?? ""}<br/>
-        ${order.promised_date ? `Promised delivery: ${order.promised_date}` : ""}
-      </div>
-      <table>
-        <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th style="text-align:right">Amount</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      <div style="margin-top:10px;text-align:right;font-size:14px"><strong>Total advance: ${npr(total)}</strong></div>
-      <div style="margin-top:6px;font-size:12px;color:#555">Estimated order value: ${npr(order.estimated_total)} · Balance on delivery: ${npr(Math.max(0, Number(order.estimated_total ?? 0) - total))}</div>
-      <p style="margin-top:24px;font-size:11px;color:#666">Final price is confirmed on delivery using the agreed rate basis and actual finished weight.</p>
-    `,
-  });
+/** Edit an existing order line (details, karigar, photos). */
+function EditLineDialog({ item, onOpenChange, onDone, userId }: {
+  item: any; onOpenChange: (v: boolean) => void; onDone: () => void; userId?: string;
+}) {
+  const { karigars, refresh } = useKarigars();
+  const [line, setLine] = useState<OrderLine | null>(null);
+  const [cats, setCats] = useState<any[]>([]);
+  const [minQty, setMinQty] = useState(1);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!item) return setLine(null);
+    setLine(lineFromRow(item));
+    supabase.from("categories").select("id, name").order("name").then(({ data }) => setCats(data ?? []));
+    receivedQuantity(item.id).then((q) => setMinQty(Math.max(1, q)));
+  }, [item?.id]);
+
+  async function pullRate() {
+    if (!line) return;
+    const r = await fetchRateOn(line.metal, line.purity, line.rate_date ?? new Date().toISOString().slice(0, 10));
+    if (!r.rate) return toast.warning("No saved rate found for that metal/purity");
+    setLine({ ...line, rate: r.rate, rate_date: r.effective_date });
+  }
+
+  async function save() {
+    if (!line || !item) return;
+    if (!line.description.trim()) return toast.error("Description required");
+    setSaving(true);
+    try {
+      const net = lineNet(line);
+      const photos = await saveLinePhotos(line.photos, line.newFiles);
+      const karigarChanged = (line.karigar_id ?? null) !== (item.karigar_id ?? null);
+      const { error } = await supabase.from("order_items").update({
+        description: line.description.trim(), notes: line.notes?.trim() || null,
+        category_id: line.category_id, metal: line.metal as any, purity: line.purity,
+        quantity: Math.max(minQty, Number(line.quantity || 1)),
+        expected_gross_weight: Number(line.expected_gross_weight || 0),
+        expected_stone_weight: Number(line.expected_stone_weight || 0),
+        expected_net_weight: net,
+        rate: Number(line.rate || 0), rate_date: line.rate_date,
+        making_input: Number(line.making_input || 0), making_type: line.making_type,
+        wastage_input: Number(line.wastage_input || 0), wastage_type: line.wastage_type as any,
+        stone_value: Number(line.stone_value || 0),
+        estimated_amount: lineEstimate(line),
+        photos,
+        karigar_id: line.karigar_id, karigar_name: line.karigar_name || null,
+      }).eq("id", item.id);
+      if (error) throw error;
+      await logOrderItemStatus({
+        order_item_id: item.id, status: item.status,
+        karigar_id: line.karigar_id, karigar_name: line.karigar_name,
+        note: karigarChanged
+          ? `Item updated · karigar set to ${line.karigar_name || "unassigned"}`
+          : "Item details updated",
+        changed_by: userId,
+      });
+      toast.success("Item updated");
+      onDone();
+    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={!!item} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
+        <DialogHeader><DialogTitle>Edit order item</DialogTitle></DialogHeader>
+        {line && (
+          <OrderLineFields line={line} patch={(p) => setLine({ ...line, ...p })}
+            cats={cats} karigars={karigars} onKarigarCreated={refresh}
+            onFetchRate={pullRate} minQuantity={minQty} />
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
+
+/** Remove (or cancel) a single order line. */
+function RemoveLineDialog({ target, onOpenChange, onDone, userId }: {
+  target: { item: any; batches: any[] } | null; onOpenChange: (v: boolean) => void; onDone: () => void; userId?: string;
+}) {
+  const [reason, setReason] = useState("");
+  const [stockAction, setStockAction] = useState("release");
+  const [saving, setSaving] = useState(false);
+  const batches = target?.batches ?? [];
+  const clean = batches.length === 0;
+  const produced = batches.filter((r) => r.inventory_item_id && r.status !== "billed");
+
+  useEffect(() => { if (target) { setReason(""); setStockAction("release"); } }, [target]);
+
+  async function save() {
+    if (!target) return;
+    if (!clean && !reason.trim()) return toast.error("Enter a reason");
+    setSaving(true);
+    try {
+      if (clean) await deleteOrderLine(target.item.id, target.item.order_id);
+      else await cancelOrderLine({
+        orderItemId: target.item.id, orderId: target.item.order_id,
+        reason: reason.trim(), stockAction: stockAction as any, userId,
+      });
+      toast.success(clean ? "Item removed from order" : "Item cancelled");
+      onDone();
+    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={!!target} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{clean ? "Remove item from order" : "Cancel this order item"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <p className="text-muted-foreground">{target?.item?.description}</p>
+          {clean ? (
+            <p>Nothing has been received against this item, so it will be deleted from the order entirely.</p>
+          ) : (
+            <>
+              <p>Production has already started, so the item is cancelled rather than deleted and stays in the order history.</p>
+              <div><Label>Reason *</Label><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
+              {produced.length > 0 && (
+                <div>
+                  <Label>{produced.length} finished piece(s) already in stock</Label>
+                  <Select value={stockAction} onValueChange={setStockAction}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="release">Release to normal inventory</SelectItem>
+                      <SelectItem value="melt">Mark as melted</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Keep item</Button>
+          <Button variant="destructive" onClick={save} disabled={saving}>
+            {saving ? "Working..." : clean ? "Remove item" : "Cancel item"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Edit order header details. */
+function EditOrderDialog({ open, onOpenChange, order, onDone }: {
+  open: boolean; onOpenChange: (v: boolean) => void; order: any; onDone: () => void;
+}) {
+  const [orderDate, setOrderDate] = useState("");
+  const [promised, setPromised] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open || !order) return;
+    setOrderDate(order.order_date ?? ""); setPromised(order.promised_date ?? ""); setNotes(order.notes ?? "");
+  }, [open, order]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("orders").update({
+        order_date: orderDate, promised_date: promised || null, notes: notes || null,
+      }).eq("id", order.id);
+      if (error) throw error;
+      toast.success("Order updated");
+      onDone();
+    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Edit order details</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Order date</Label><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></div>
+            <div><Label>Promised delivery</Label><Input type="date" value={promised} onChange={(e) => setPromised(e.target.value)} /></div>
+          </div>
+          <div><Label>Notes</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
