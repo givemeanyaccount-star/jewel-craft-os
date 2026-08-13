@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Users, FileText, Receipt,
   Settings, LogOut, Menu, ShieldCheck, TrendingUp,
-  Wrench, Truck, ShoppingCart, Home, Undo2
+  Wrench, Truck, ShoppingCart, Home, Undo2, ClipboardList
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { to: "/pos", label: "POS / New Sale", icon: Receipt, permission: "pos_create_sale" },
   { to: "/inventory", label: "Inventory", icon: Package, permission: "inventory_view" },
   { to: "/customers", label: "Customers", icon: Users, permission: "customer_manage" },
+  { to: "/orders", label: "Orders", icon: ClipboardList, permission: "order_view" },
   { to: "/quotations", label: "Quotations", icon: FileText, permission: "quotation_create_edit" },
   { to: "/invoices", label: "Invoices", icon: Receipt, permission: "invoice_view" },
   { to: "/returns", label: "Sales Returns", icon: Undo2, permission: "invoice_cancel_refund" },

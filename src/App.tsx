@@ -31,6 +31,8 @@ import RepairDetail from "./pages/RepairDetail";
 import PurchaseDetail from "./pages/PurchaseDetail";
 import Suppliers from "./pages/Suppliers";
 import Karigars from "./pages/Karigars";
+import Orders from "./pages/Orders";
+import OrderDetail from "./pages/OrderDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +65,8 @@ const App = () => (
             <Route path="/credit" element={<ProtectedRoute roles={["admin", "manager", "accountant"]}><CreditLedger /></ProtectedRoute>} />
 
             <Route path="/invoices/:id" element={<ProtectedRoute roles={["admin", "manager", "sales", "accountant", "viewer"]}><InvoiceDetail /></ProtectedRoute>} />
+            <Route path="/orders" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><Orders /></ProtectedRoute>} />
+            <Route path="/orders/:id" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><OrderDetail /></ProtectedRoute>} />
             <Route path="/purchases" element={<ProtectedRoute roles={["admin", "manager"]}><Purchases /></ProtectedRoute>} />
             <Route path="/rates" element={<ProtectedRoute roles={["admin", "manager", "accountant", "sales"]}><MetalRates /></ProtectedRoute>} />
             <Route path="/repairs" element={<ProtectedRoute roles={["admin", "manager", "karigar"]}><Repairs /></ProtectedRoute>} />
