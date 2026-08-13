@@ -122,25 +122,100 @@ export async function logOrderItemStatus(entry: {
   await supabase.from("order_item_status_log").insert(entry as any);
 }
 
+/** Quantity progress of a single order line. */
+export interface LineProgress {
+  quantity: number;
+  received: number;
+  stocked: number;
+  billed: number;
+  /** pieces still with the karigar / not yet received */
+  outstanding: number;
+  /** received batches not yet turned into stock */
+  awaitingStock: number;
+  /** stocked pieces not yet billed */
+  billable: number;
+}
+
+export function lineProgress(item: any): LineProgress {
+  const quantity = Math.max(1, Number(item?.quantity ?? 1));
+  const received = Math.min(quantity, Number(item?.received_qty ?? 0));
+  const stocked = Math.min(received, Number(item?.stocked_qty ?? 0));
+  const billed = Math.min(stocked, Number(item?.billed_qty ?? 0));
+  return {
+    quantity, received, stocked, billed,
+    outstanding: Math.max(0, quantity - received),
+    awaitingStock: Math.max(0, received - stocked),
+    billable: Math.max(0, stocked - billed),
+  };
+}
+
+/** Status a line should carry given its quantity progress. */
+export function deriveLineStatus(item: any): OrderItemStatus {
+  if (item?.status === "cancelled") return "cancelled";
+  const p = lineProgress(item);
+  if (p.billed >= p.quantity) return "billed";
+  if (p.stocked >= p.quantity) return "in_stock";
+  if (p.awaitingStock > 0) return "received";
+  if (item?.issued_at) return "in_progress";
+  if (item?.karigar_id || item?.karigar_name) return "assigned";
+  return "pending";
+}
+
+/** Short human summary such as "2 of 5 received · 1 billed". */
+export function progressLabel(item: any): string {
+  const p = lineProgress(item);
+  if (p.quantity === 1 && p.billed === 0 && p.received <= 1) return "";
+  const parts = [`${p.received}/${p.quantity} received`];
+  if (p.stocked) parts.push(`${p.stocked} in stock`);
+  if (p.billed) parts.push(`${p.billed} billed`);
+  return parts.join(" · ");
+}
+
+/** Recompute a line's quantities + status from its receipt batches. */
+export async function recalcOrderItem(orderItemId: string) {
+  const [{ data: line }, { data: receipts }] = await Promise.all([
+    supabase.from("order_items").select("*").eq("id", orderItemId).maybeSingle(),
+    supabase.from("order_item_receipts").select("quantity, status, inventory_item_id, invoice_id").eq("order_item_id", orderItemId),
+  ]);
+  if (!line) return;
+  const rows = (receipts ?? []) as any[];
+  const qty = (f: (r: any) => boolean) => rows.filter(f).reduce((a, r) => a + Number(r.quantity ?? 0), 0);
+  const received_qty = qty(() => true);
+  const stocked_qty = qty((r) => !!r.inventory_item_id);
+  const billed_qty = qty((r) => r.status === "billed" || !!r.invoice_id);
+  const next = { ...line, received_qty, stocked_qty, billed_qty };
+  await supabase.from("order_items").update({
+    received_qty, stocked_qty, billed_qty,
+    status: deriveLineStatus(next) as any,
+  }).eq("id", orderItemId);
+}
+
 /** Roll the header status up from its lines. */
-export function rollupOrderStatus(items: Array<{ status: string }>): string {
+export function rollupOrderStatus(items: Array<any>): string {
   const live = items.filter((i) => i.status !== "cancelled");
   if (!live.length) return items.length ? "cancelled" : "open";
-  if (live.every((i) => i.status === "billed")) return "completed";
-  if (live.every((i) => i.status === "in_stock" || i.status === "billed")) return "ready";
-  if (live.some((i) => i.status === "assigned" || i.status === "in_progress" || i.status === "received")) return "in_production";
+  const prog = live.map(lineProgress);
+  if (prog.every((p) => p.billed >= p.quantity)) return "completed";
+  if (prog.every((p) => p.stocked >= p.quantity)) return "ready";
+  if (prog.some((p) => p.received > 0 || p.billed > 0) ||
+      live.some((i) => ["assigned", "in_progress", "received"].includes(i.status))) return "in_production";
   return "open";
 }
 
 export async function syncOrderStatus(orderId: string) {
-  const { data: items } = await supabase.from("order_items").select("status, estimated_amount").eq("order_id", orderId);
+  const [{ data: items }, { data: pays }] = await Promise.all([
+    supabase.from("order_items").select("*").eq("order_id", orderId),
+    supabase.from("payments").select("amount").eq("order_id", orderId),
+  ]);
   if (!items) return;
   const status = rollupOrderStatus(items as any);
   const estimated_total = round2(
     (items as any[]).filter((i) => i.status !== "cancelled").reduce((a, i) => a + Number(i.estimated_amount ?? 0), 0),
   );
-  await supabase.from("orders").update({ status: status as any, estimated_total }).eq("id", orderId);
+  const advance_paid = round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0));
+  await supabase.from("orders").update({ status: status as any, estimated_total, advance_paid }).eq("id", orderId);
 }
+
 
 /** Total advance recorded against an order. */
 export async function fetchOrderAdvance(orderId: string): Promise<number> {
