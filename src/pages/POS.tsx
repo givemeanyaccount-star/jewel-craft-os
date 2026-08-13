@@ -871,11 +871,11 @@ function OrderPickerDialog({ open, onOpenChange, customerId, onPick }: {
   useEffect(() => {
     if (!open) return;
     let q = supabase.from("orders")
-      .select("id, order_no, order_date, promised_date, estimated_total, advance_paid, customers(full_name), order_items(id, status)")
+      .select("id, order_no, order_date, promised_date, estimated_total, advance_paid, customers(full_name), order_items(id, status, quantity, received_qty, stocked_qty, billed_qty)")
       .in("status", ["open", "in_production", "ready"])
       .order("order_date", { ascending: false });
     if (customerId) q = q.eq("customer_id", customerId);
-    q.then(({ data }) => setRows((data ?? []).filter((o: any) => (o.order_items ?? []).some((i: any) => i.status === "in_stock"))));
+    q.then(({ data }) => setRows((data ?? []).filter((o: any) => (o.order_items ?? []).some((i: any) => lineProgress(i).billable > 0))));
   }, [open, customerId]);
 
   return (
@@ -895,7 +895,7 @@ function OrderPickerDialog({ open, onOpenChange, customerId, onPick }: {
                   <div className="font-medium">{o.order_no} · {o.customers?.full_name}</div>
                   <div className="text-xs text-muted-foreground">
                     Ordered {o.order_date}{o.promised_date ? ` · promised ${o.promised_date}` : ""} ·
-                    {" "}{(o.order_items ?? []).filter((i: any) => i.status === "in_stock").length} ready
+                    {" "}{(o.order_items ?? []).reduce((a: number, i: any) => a + lineProgress(i).billable, 0)} pc ready
                   </div>
                 </div>
                 <div className="text-right text-xs">
