@@ -207,7 +207,7 @@ export default function OrderDetail() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    </>
+                    </Fragment>
                   );
                 })}
               </TableBody>
