@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil } from "lucide-react";
+import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil, ClipboardList } from "lucide-react";
 import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
@@ -370,6 +370,12 @@ export default function POS() {
         discount, old_gold_credit: oldGoldCredit, total: tax.total,
         amount_paid: paid, balance_due: balance,
         notes: notes || null, status, created_by: user?.id,
+        order_date: orderDate || null,
+        order_id: order?.id ?? null,
+        rate_basis: rateBasis,
+        issued_at: canBackdate && issueDate && issueDate !== todayISO()
+          ? new Date(`${issueDate}T12:00:00`).toISOString()
+          : new Date().toISOString(),
       } as any).select().single();
       if (error) throw error;
 
@@ -403,6 +409,21 @@ export default function POS() {
       const itemIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
       if (itemIds.length) {
         await supabase.from("inventory_items").update({ status: "sold" }).in("id", itemIds);
+      }
+
+      if (order) {
+        const lineIds = cart
+          .map((r) => (r.inventory_item_id ? orderLineByItem[r.inventory_item_id] : null))
+          .filter(Boolean) as string[];
+        if (lineIds.length) {
+          await supabase.from("order_items").update({ status: "billed" as any, invoice_id: inv.id }).in("id", lineIds);
+          await Promise.all(lineIds.map((lid) => logOrderItemStatus({
+            order_item_id: lid, status: "billed", note: `Billed on invoice ${invNumber}`, changed_by: user?.id,
+          })));
+        }
+        // Advances already collected on the order now belong to this invoice.
+        await supabase.from("payments").update({ invoice_id: inv.id }).eq("order_id", order.id).is("invoice_id", null);
+        await syncOrderStatus(order.id);
       }
 
       if (oldGoldPurchaseId) {
@@ -447,6 +468,38 @@ export default function POS() {
                 </Button>
               </div>
               {!customerId && <p className="mt-1.5 text-xs text-muted-foreground">Every sale must be linked to a customer.</p>}
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <div>
+                  <Label className="text-xs">Order date</Label>
+                  <Input type="date" className="h-9" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Rate basis</Label>
+                  <Select value={rateBasis} onValueChange={(v) => applyRateBasis(v as any)} disabled={!orderDate}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="order">Rate of order date</SelectItem>
+                      <SelectItem value="current">Today's rate</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Invoice date</Label>
+                  <Input type="date" className="h-9" value={issueDate} disabled={!canBackdate}
+                    onChange={(e) => setIssueDate(e.target.value)} />
+                </div>
+              </div>
+              {order && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Billing custom order <strong>{order.order_no}</strong>
+                  {advance > 0 && <> · advance of <strong>{npr(advance)}</strong> already collected and applied</>}
+                </p>
+              )}
+              {!order && (
+                <Button variant="outline" size="sm" className="mt-2" onClick={() => setOrderPickerOpen(true)}>
+                  <ClipboardList className="mr-1 h-4 w-4" /> Bill a custom order
+                </Button>
+              )}
               {quotationNumber && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Converting quotation <strong>{quotationNumber}</strong> — it will be removed once this sale is completed.
@@ -641,7 +694,7 @@ export default function POS() {
                 ))}
               </div>
               <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                <span>Paid: {npr(paid)}</span>
+                <span>Paid: {npr(paid)}{advance > 0 ? ` (incl. advance ${npr(advance)})` : ""}</span>
                 <span>Balance: {npr(balance)}</span>
               </div>
             </div>
@@ -661,6 +714,8 @@ export default function POS() {
       <OldGoldPurchaseDialog open={ogOpen} onOpenChange={setOgOpen}
         initialCustomer={customers.find((c) => c.id === customerId) ? { id: customerId!, full_name: customers.find((c) => c.id === customerId)!.full_name, phone: customers.find((c) => c.id === customerId)!.phone ?? null } : null}
         onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); setOldGoldMetal(result.metal ?? "gold"); toast.success(`Old metal credit set to ${npr(result.total)}`); }} />
+      <OrderPickerDialog open={orderPickerOpen} onOpenChange={setOrderPickerOpen} customerId={customerId}
+        onPick={(id) => { setOrderPickerOpen(false); void loadOrder(id); }} />
       <ItemDialog open={newItemOpen} onOpenChange={setNewItemOpen}
         editing={null} cats={categories as any} locs={locations as any}
         onSaved={(created) => {
@@ -759,4 +814,52 @@ export function Detail({ label, value }: { label: string; value: string }) {
 
 function Row({ label, value }: { label: string; value: string }) {
   return <div className="flex justify-between text-sm"><span className="text-muted-foreground">{label}</span><span>{value}</span></div>;
+}
+
+
+function OrderPickerDialog({ open, onOpenChange, customerId, onPick }: {
+  open: boolean; onOpenChange: (v: boolean) => void; customerId: string | null; onPick: (orderId: string) => void;
+}) {
+  const [rows, setRows] = useState<any[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    let q = supabase.from("orders")
+      .select("id, order_no, order_date, promised_date, estimated_total, advance_paid, customers(full_name), order_items(id, status)")
+      .in("status", ["open", "in_production", "ready"])
+      .order("order_date", { ascending: false });
+    if (customerId) q = q.eq("customer_id", customerId);
+    q.then(({ data }) => setRows((data ?? []).filter((o: any) => (o.order_items ?? []).some((i: any) => i.status === "in_stock"))));
+  }, [open, customerId]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>Bill a custom order</DialogTitle></DialogHeader>
+        {rows.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No orders with finished items ready to bill{customerId ? " for this customer" : ""}.
+          </p>
+        ) : (
+          <div className="max-h-96 overflow-y-auto rounded border">
+            {rows.map((o) => (
+              <button key={o.id} onClick={() => onPick(o.id)}
+                className="flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-muted">
+                <div>
+                  <div className="font-medium">{o.order_no} · {o.customers?.full_name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Ordered {o.order_date}{o.promised_date ? ` · promised ${o.promised_date}` : ""} ·
+                    {" "}{(o.order_items ?? []).filter((i: any) => i.status === "in_stock").length} ready
+                  </div>
+                </div>
+                <div className="text-right text-xs">
+                  <div>{npr(o.estimated_total)}</div>
+                  {Number(o.advance_paid) > 0 && <div className="text-muted-foreground">adv {npr(o.advance_paid)}</div>}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
