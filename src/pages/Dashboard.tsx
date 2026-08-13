@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [rates, setRates] = useState<Record<string, { latest: number | null; history: RatePoint[] }>>({});
   const [volume, setVolume] = useState<VolumePoint[]>([]);
   const [quoteStats, setQuoteStats] = useState<PendingQuotationStats>({ count: 0, value: 0, expiringSoon: 0 });
+  const [orderStats, setOrderStats] = useState<OrderDashboardStats | null>(null);
 
   useEffect(() => {
     load();
