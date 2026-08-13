@@ -110,3 +110,24 @@ export function PendingQuotationsCard({ count, value, expiringSoon }: { count: n
     </Link>
   );
 }
+
+export function OrdersCard({ open, dueThisWeek, readyToBill, advanceHeld }: {
+  open: number; dueThisWeek: number; readyToBill: number; advanceHeld: number;
+}) {
+  return (
+    <Link to="/orders">
+      <Card className="h-full transition hover:shadow-md">
+        <CardContent className="p-4">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Custom orders</p>
+          <p className="text-xl font-semibold">{open} active</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {dueThisWeek} due this week · {npr(advanceHeld)} advance held
+          </p>
+          {readyToBill > 0 && (
+            <p className="mt-1 text-xs font-medium text-primary">{readyToBill} ready to bill</p>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}

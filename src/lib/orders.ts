@@ -151,3 +151,26 @@ export async function fetchOrderAdvance(orderId: string): Promise<number> {
 export function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
+
+export interface OrderDashboardStats {
+  open: number;
+  dueThisWeek: number;
+  readyToBill: number;
+  advanceHeld: number;
+}
+
+export async function orderDashboardStats(): Promise<OrderDashboardStats> {
+  const today = todayISO();
+  const weekAhead = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("orders")
+    .select("id, status, promised_date, advance_paid, order_items(status)")
+    .in("status", ["open", "in_production", "ready"]);
+  const rows = (data ?? []) as any[];
+  return {
+    open: rows.length,
+    dueThisWeek: rows.filter((o) => o.promised_date && o.promised_date >= today && o.promised_date <= weekAhead).length,
+    readyToBill: rows.filter((o) => (o.order_items ?? []).some((i: any) => i.status === "in_stock")).length,
+    advanceHeld: round2(rows.reduce((a, o) => a + Number(o.advance_paid ?? 0), 0)),
+  };
+}
