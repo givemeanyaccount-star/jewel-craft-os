@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
-import { npr } from "@/lib/format";
+import { AlertCircle, Scale } from "lucide-react";
+import { npr, gms } from "@/lib/format";
 
 const STAGES = [
   { key: "in_progress", label: "In workshop" },
@@ -40,6 +40,25 @@ export function RepairStagesCard({ counts }: { counts: Record<string, number> })
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+export function KarigarMetalCard({ totalGrams, karigarCount, overdueCount }: { totalGrams: number; karigarCount: number; overdueCount: number }) {
+  return (
+    <Link to="/repairs/karigars">
+      <Card className="h-full transition hover:shadow-md">
+        <CardContent className="p-4">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            <Scale className="h-3.5 w-3.5" /> Metal with karigars
+          </p>
+          <p className="text-xl font-semibold">{gms(totalGrams)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            outstanding across {karigarCount} karigar{karigarCount === 1 ? "" : "s"}
+            {overdueCount > 0 && <span className="text-destructive"> · {overdueCount} overdue (14+ days)</span>}
+          </p>
         </CardContent>
       </Card>
     </Link>

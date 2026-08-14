@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Users, FileText, Receipt,
   Settings, LogOut, Menu, ShieldCheck, TrendingUp,
-  Wrench, Truck, ShoppingCart, Home, Undo2, ClipboardList
+  Wrench, Truck, ShoppingCart, Home, Undo2, ClipboardList, Hammer
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -24,27 +24,55 @@ interface NavItem {
   permission?: AppPermission;
 }
 
-const NAV: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
-  { to: "/pos", label: "POS / New Sale", icon: Receipt, permission: "pos_create_sale" },
-  { to: "/inventory", label: "Inventory", icon: Package, permission: "inventory_view" },
-  { to: "/customers", label: "Customers", icon: Users, permission: "customer_manage" },
-  { to: "/orders", label: "Orders", icon: ClipboardList, permission: "order_view" },
-  { to: "/quotations", label: "Quotations", icon: FileText, permission: "quotation_create_edit" },
-  { to: "/invoices", label: "Invoices", icon: Receipt, permission: "invoice_view" },
-  { to: "/returns", label: "Sales Returns", icon: Undo2, permission: "invoice_cancel_refund" },
-  { to: "/purchases", label: "Purchases", icon: ShoppingCart, permission: "purchase_manage" },
-  { to: "/rates", label: "Metal Rates", icon: TrendingUp, permission: "metal_rate_manage" },
-  { to: "/repairs", label: "Repairs", icon: Wrench, permission: "repair_manage" },
-  { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "supplier_manage" },
-  { to: "/settings", label: "Settings", icon: Settings, permission: "settings_manage" },
-  { to: "/admin/roles", label: "Role Management", icon: ShieldCheck, permission: "role_manage" },
+const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Sell",
+    items: [
+      { to: "/", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
+      { to: "/pos", label: "POS / New Sale", icon: Receipt, permission: "pos_create_sale" },
+      { to: "/quotations", label: "Quotations", icon: FileText, permission: "quotation_create_edit" },
+      { to: "/invoices", label: "Invoices", icon: Receipt, permission: "invoice_view" },
+      { to: "/returns", label: "Sales Returns", icon: Undo2, permission: "invoice_cancel_refund" },
+    ],
+  },
+  {
+    label: "Operate",
+    items: [
+      { to: "/orders", label: "Orders", icon: ClipboardList, permission: "order_view" },
+      { to: "/repairs", label: "Repairs", icon: Wrench, permission: "repair_manage" },
+      { to: "/repairs/karigars", label: "Karigars", icon: Hammer, permission: "repair_manage" },
+      { to: "/inventory", label: "Inventory", icon: Package, permission: "inventory_view" },
+    ],
+  },
+  {
+    label: "Source",
+    items: [
+      { to: "/purchases", label: "Purchases", icon: ShoppingCart, permission: "purchase_manage" },
+      { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "supplier_manage" },
+      { to: "/rates", label: "Metal Rates", icon: TrendingUp, permission: "metal_rate_manage" },
+    ],
+  },
+  {
+    label: "People",
+    items: [
+      { to: "/customers", label: "Customers", icon: Users, permission: "customer_manage" },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { to: "/settings", label: "Settings", icon: Settings, permission: "settings_manage" },
+      { to: "/admin/roles", label: "Role Management", icon: ShieldCheck, permission: "role_manage" },
+    ],
+  },
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user, roles, signOut } = useAuth();
   const { hasPermission } = usePermission();
-  const visible = NAV.filter((n) => !n.permission || hasPermission(n.permission));
+  const sections = NAV_SECTIONS
+    .map((s) => ({ ...s, items: s.items.filter((n) => !n.permission || hasPermission(n.permission)) }))
+    .filter((s) => s.items.length > 0);
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <Link to="/" onClick={onNavigate} className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
@@ -54,25 +82,34 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <div className="text-[10px] uppercase tracking-widest text-sidebar-primary">OS · Kathmandu</div>
         </div>
       </Link>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-        {visible.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === "/"}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-              )
-            }
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            <span className="truncate">{item.label}</span>
-          </NavLink>
+      <nav className="flex-1 space-y-4 overflow-y-auto p-3">
+        {sections.map((section) => (
+          <div key={section.label}>
+            <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">
+              {section.label}
+            </div>
+            <div className="space-y-0.5">
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === "/"}
+                  onClick={onNavigate}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                    )
+                  }
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
       <div className="border-t border-sidebar-border p-3">
@@ -94,7 +131,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AppLayout({ children, title, actions }: { children: ReactNode; title?: string; actions?: ReactNode }) {
   const location = useLocation();
-  const current = NAV.find((n) => n.to === location.pathname);
+  const current = NAV_SECTIONS.flatMap((s) => s.items).find((n) => n.to === location.pathname);
   const isHome = location.pathname === "/";
   useEscapeBack();
   return (

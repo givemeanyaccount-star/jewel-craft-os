@@ -11,12 +11,13 @@ import { ActivityLog, ActivityEntry } from "@/components/dashboard/ActivityLog";
 import {
   MissingIdCard,
   OutstandingCreditCard,
-  PendingCreditCard,
+  KarigarMetalCard,
   PendingQuotationsCard,
   OrdersCard,
   RepairStagesCard,
   TodaySalesCard,
 } from "@/components/dashboard/OpsCards";
+import { fetchShopWideKarigarMetal } from "@/lib/karigarLedger";
 import { pendingQuotationStats, sweepExpiredQuotations, PendingQuotationStats } from "@/lib/quotations";
 import { orderDashboardStats, OrderDashboardStats } from "@/lib/orders";
 import { DailyRateDialog, todayIsoDate } from "@/components/DailyRateDialog";
@@ -47,6 +48,7 @@ export default function Dashboard() {
   const [volume, setVolume] = useState<VolumePoint[]>([]);
   const [quoteStats, setQuoteStats] = useState<PendingQuotationStats>({ count: 0, value: 0, expiringSoon: 0 });
   const [orderStats, setOrderStats] = useState<OrderDashboardStats | null>(null);
+  const [karigarMetal, setKarigarMetal] = useState<{ totalGrams: number; karigarCount: number; overdueCount: number } | null>(null);
 
   useEffect(() => {
     load();
@@ -124,6 +126,7 @@ export default function Dashboard() {
     await sweepExpiredQuotations();
     setQuoteStats(await pendingQuotationStats());
     if (hasPermission("order_view")) setOrderStats(await orderDashboardStats());
+    if (hasPermission("repair_manage")) setKarigarMetal(await fetchShopWideKarigarMetal());
     if ((todayRate.data ?? []).length === 0 && hasPermission("metal_rate_manage")) setRateDialog(true);
 
     // ── metal rates ───────────────────────────────────────
@@ -244,7 +247,9 @@ export default function Dashboard() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <OutstandingCreditCard amount={stats?.pendingBalance ?? 0} customers={stats?.creditCustomers ?? 0} />
           <RepairStagesCard counts={repairCounts} />
-          <PendingCreditCard amount={stats?.pendingBalance ?? 0} customers={stats?.creditCustomers ?? 0} />
+          {karigarMetal && hasPermission("repair_manage") && (
+            <KarigarMetalCard totalGrams={karigarMetal.totalGrams} karigarCount={karigarMetal.karigarCount} overdueCount={karigarMetal.overdueCount} />
+          )}
           <PendingQuotationsCard count={quoteStats.count} value={quoteStats.value} expiringSoon={quoteStats.expiringSoon} />
           {orderStats && hasPermission("order_view") && (
             <OrdersCard open={orderStats.open} dueThisWeek={orderStats.dueThisWeek}
