@@ -359,6 +359,12 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
             {tot("SD Taxable Amt", n2(sdTaxable))}
             {tot(`SD Tax (${sdRate}%)`, n2(sdTax))}
             {tot("Net Total", n2(netTotal), { fontWeight: "bold", fontSize: "13px", borderTop: bd, borderBottom: bd })}
+            {advanceReceived > 0 && (
+              <>
+                {tot("Less: Advance Received", n2(advanceReceived))}
+                {tot("Net Payable", n2(Math.max(0, netTotal - advanceReceived)), { fontWeight: "bold", fontSize: "13px", borderBottom: bd })}
+              </>
+            )}
           </div>
         </div>
 
