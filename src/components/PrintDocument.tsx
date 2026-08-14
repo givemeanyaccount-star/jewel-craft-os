@@ -154,6 +154,23 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const netTotal = Number(doc.total ?? 0);
   // Cash-type advances collected on the linked order and settled against this bill.
   const advanceReceived = advanceReceivedFromPayments(payments as any);
+  const netPayable = netPayableOf(netTotal, advanceReceived);
+  // At-sale payment modes (advance rows excluded — they print as their own line).
+  const modeRows = (() => {
+    const m = new Map<string, number>();
+    for (const p of payments as any[]) {
+      if (p?.order_id && p?.method !== "old_gold") continue; // counted as advance
+      const key = String(p?.method ?? "other");
+      m.set(key, (m.get(key) ?? 0) + (Number(p?.amount ?? 0) || 0));
+    }
+    return Array.from(m.entries()).filter(([, v]) => v !== 0);
+  })();
+  const atSaleTotal = modeRows.reduce((s, [, v]) => s + v, 0);
+  const totalReceived = oldGold + advanceReceived + atSaleTotal;
+  const balanceDue = Math.max(0, doc.balance_due != null
+    ? Number(doc.balance_due)
+    : netPayable - atSaleTotal);
+
 
 
   const oldGoldEq = oldGold > 0
@@ -327,15 +344,6 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
                 <tbody>
                   <tr><th colSpan={2} style={{ border: bd, padding: "3px", textAlign: "center" }}>Payment Mode</th></tr>
-                  {payments.length === 0 && (
-                    <tr><td style={{ border: bd, padding: "3px 6px" }} colSpan={2}>—</td></tr>
-                  )}
-                  {payments.map((p, i) => (
-                    <tr key={p.id ?? i}>
-                      <td style={{ border: bd, padding: "3px 6px" }}>{PAYMENT_LABEL[p.method] ?? p.method}</td>
-                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(Number(p.amount))}</td>
-                    </tr>
-                  ))}
                   {oldGold > 0 && (
                     <tr>
                       <td style={{ border: bd, padding: "3px 6px" }}>Old Metal</td>
@@ -343,6 +351,31 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                         {n2(oldGold)}
                         {oldGoldEq && <div style={{ fontSize: "8px", color: "#777" }}>{oldGoldEq}</div>}
                       </td>
+                    </tr>
+                  )}
+                  {advanceReceived > 0 && (
+                    <tr>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Advance (order)</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(advanceReceived)}</td>
+                    </tr>
+                  )}
+                  {modeRows.map(([method, amt]) => (
+                    <tr key={method}>
+                      <td style={{ border: bd, padding: "3px 6px" }}>{PAYMENT_LABEL[method] ?? method}</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(amt)}</td>
+                    </tr>
+                  ))}
+                  {totalReceived === 0 && (
+                    <tr><td style={{ border: bd, padding: "3px 6px" }} colSpan={2}>—</td></tr>
+                  )}
+                  <tr>
+                    <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Total Received</td>
+                    <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(totalReceived)}</td>
+                  </tr>
+                  {balanceDue > 0 && (
+                    <tr>
+                      <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Balance Due</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(balanceDue)}</td>
                     </tr>
                   )}
 
@@ -365,12 +398,9 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
             {tot("SD Taxable Amt", n2(sdTaxable))}
             {tot(`SD Tax (${sdRate}%)`, n2(sdTax))}
             {tot("Net Total", n2(netTotal), { fontWeight: "bold", fontSize: "13px", borderTop: bd, borderBottom: bd })}
-            {advanceReceived > 0 && (
-              <>
-                {tot("Less: Advance Received", n2(advanceReceived))}
-                {tot("Net Payable", n2(netPayableOf(netTotal, advanceReceived)), { fontWeight: "bold", fontSize: "13px", borderBottom: bd })}
-              </>
-            )}
+            {advanceReceived > 0 && tot("Less: Advance Paid", n2(advanceReceived))}
+            {tot("Net Payable", n2(netPayable), { fontWeight: "bold", fontSize: "13px", borderBottom: bd })}
+
           </div>
         </div>
 
