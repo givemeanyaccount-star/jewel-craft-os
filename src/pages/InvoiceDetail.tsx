@@ -69,7 +69,14 @@ export default function InvoiceDetail() {
   }
 
   // Cash-type advances taken on the linked order and settled against this bill.
-  const advanceReceived = advanceReceivedFromPayments(payments);
+  // Same helper the printed bill renders from, so screen and paper can't drift.
+  const pay = paymentBreakdown({
+    payments,
+    oldGoldCredit: inv?.old_gold_credit,
+    netTotal: inv?.total,
+    balanceDue: inv?.balance_due,
+  });
+  const advanceReceived = pay.advanceReceived;
 
 
 
