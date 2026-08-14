@@ -170,7 +170,7 @@ export default function InvoiceDetail() {
                 <>
                   <Row label="Less: advance received on order" value={`- ${npr(advanceReceived)}`} />
                   <div className="flex justify-between border-t pt-2 text-base font-semibold">
-                    <span>Net payable</span><span>{npr(Math.max(0, Number(inv.total) - advanceReceived))}</span>
+                    <span>Net payable</span><span>{npr(netPayableOf(Number(inv.total), advanceReceived))}</span>
                   </div>
                 </>
               )}
