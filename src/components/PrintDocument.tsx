@@ -169,7 +169,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const totalReceived = oldGold + advanceReceived + atSaleTotal;
   const balanceDue = Math.max(0, doc.balance_due != null
     ? Number(doc.balance_due)
-    : netTotal - advanceReceived - atSaleTotal);
+    : netPayable - atSaleTotal);
 
 
 
