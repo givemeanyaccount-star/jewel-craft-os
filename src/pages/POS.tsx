@@ -16,8 +16,9 @@ import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil,
 import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal,
-  round2,
+  round2, netPayableOf,
 } from "@/lib/format";
+
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
@@ -355,7 +356,7 @@ export default function POS() {
     [advance, tax.total, manualPaid],
   );
   // What the customer still has to settle now, after the cash advance is deducted.
-  const netPayable = useMemo(() => round2(Math.max(0, tax.total - appliedAdvance)), [tax.total, appliedAdvance]);
+  const netPayable = useMemo(() => netPayableOf(tax.total, appliedAdvance), [tax.total, appliedAdvance]);
   const paid = useMemo(() => round2(manualPaid + appliedAdvance), [manualPaid, appliedAdvance]);
 
   const balance = round2(Math.max(0, tax.total - paid));

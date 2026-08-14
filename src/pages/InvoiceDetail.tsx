@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { PrintDocument, printDocument } from "@/components/PrintDocument";
-import { npr } from "@/lib/format";
+import { npr, advanceReceivedFromPayments, netPayableOf } from "@/lib/format";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -69,9 +69,8 @@ export default function InvoiceDetail() {
   }
 
   // Cash-type advances taken on the linked order and settled against this bill.
-  const advanceReceived = Math.round(payments
-    .filter((p) => p.order_id && p.method !== "old_gold")
-    .reduce((a, p) => a + Number(p.amount ?? 0), 0) * 100) / 100;
+  const advanceReceived = advanceReceivedFromPayments(payments);
+
 
 
   const oldGoldEq = inv && Number(inv.old_gold_credit) > 0
@@ -171,7 +170,7 @@ export default function InvoiceDetail() {
                 <>
                   <Row label="Less: advance received on order" value={`- ${npr(advanceReceived)}`} />
                   <div className="flex justify-between border-t pt-2 text-base font-semibold">
-                    <span>Net payable</span><span>{npr(Math.max(0, Number(inv.total) - advanceReceived))}</span>
+                    <span>Net payable</span><span>{npr(netPayableOf(Number(inv.total), advanceReceived))}</span>
                   </div>
                 </>
               )}

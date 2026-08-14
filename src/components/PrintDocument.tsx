@@ -4,6 +4,8 @@ import { getSignedUrls } from "@/lib/storage";
 import { toBS, toADDate, toADDateTime, toNepaliDigits } from "@/lib/nepaliDate";
 import { amountInWords } from "@/lib/numberToWords";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
+import { advanceReceivedFromPayments, netPayableOf } from "@/lib/format";
+
 import logoAsset from "@/assets/logo.png";
 import { openPrintPreview } from "@/components/PrintPreview";
 
@@ -151,9 +153,8 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const vat = Number(doc.vat_amount ?? 0);
   const netTotal = Number(doc.total ?? 0);
   // Cash-type advances collected on the linked order and settled against this bill.
-  const advanceReceived = Math.round(payments
-    .filter((p: any) => p.order_id && p.method !== "old_gold")
-    .reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0) * 100) / 100;
+  const advanceReceived = advanceReceivedFromPayments(payments as any);
+
 
   const oldGoldEq = oldGold > 0
     ? fineEquivalentNote(oldGold, billFineRate(items, tradeMetal, fineRates), tradeMetal)
@@ -367,7 +368,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
             {advanceReceived > 0 && (
               <>
                 {tot("Less: Advance Received", n2(advanceReceived))}
-                {tot("Net Payable", n2(Math.max(0, netTotal - advanceReceived)), { fontWeight: "bold", fontSize: "13px", borderBottom: bd })}
+                {tot("Net Payable", n2(netPayableOf(netTotal, advanceReceived)), { fontWeight: "bold", fontSize: "13px", borderBottom: bd })}
               </>
             )}
           </div>
