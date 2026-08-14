@@ -84,8 +84,8 @@ export default function CreditLedger() {
               const key = g.customerId ?? "walkin";
               const open = openId === key;
               return (
-                <>
-                  <TableRow key={key} className="cursor-pointer" onClick={() => setOpenId(open ? null : key)}>
+                <Fragment key={key}>
+                  <TableRow className="cursor-pointer" onClick={() => setOpenId(open ? null : key)}>
                     <TableCell>
                       <div className="flex items-center gap-1.5 font-medium">
                         {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
