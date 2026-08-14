@@ -121,7 +121,7 @@ export default function CreditLedger() {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </TableBody>
