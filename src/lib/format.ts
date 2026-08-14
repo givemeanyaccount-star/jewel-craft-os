@@ -68,6 +68,27 @@ export function computeInvoiceTaxes(opts: {
   };
 }
 
+/**
+ * Cash-type advances collected on a linked order and settled against this bill.
+ * Old-metal advances are excluded: they are already deducted through the invoice's
+ * old metal credit line (pre-tax), so counting them here would double-deduct.
+ * Shared by POS, InvoiceDetail and the printed bill so all three agree.
+ */
+export function advanceReceivedFromPayments(
+  payments: Array<{ order_id?: string | null; method?: string | null; amount?: number | string | null }> = [],
+): number {
+  return round2(payments
+    .filter((p) => p?.order_id && p?.method !== "old_gold")
+    .reduce((s, p) => s + (Number(p?.amount ?? 0) || 0), 0));
+}
+
+/** What the customer still has to settle now, after the cash advance is deducted. */
+export function netPayableOf(total: number, advanceReceived: number): number {
+  return round2(Math.max(0, (Number(total) || 0) - (Number(advanceReceived) || 0)));
+}
+
+
+
 // Back-solve the discount so the final total equals a desired net amount.
 export function discountForTargetTotal(opts: {
   subtotal: number;
