@@ -368,7 +368,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
             {advanceReceived > 0 && (
               <>
                 {tot("Less: Advance Received", n2(advanceReceived))}
-                {tot("Net Payable", n2(Math.max(0, netTotal - advanceReceived)), { fontWeight: "bold", fontSize: "13px", borderBottom: bd })}
+                {tot("Net Payable", n2(netPayableOf(netTotal, advanceReceived)), { fontWeight: "bold", fontSize: "13px", borderBottom: bd })}
               </>
             )}
           </div>
