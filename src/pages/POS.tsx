@@ -474,11 +474,19 @@ export default function POS() {
             });
           }));
         }
-        // Apply the order advance to this invoice, only up to what this bill needs.
+        // Old-metal advances are already deducted through the old metal credit line,
+        // so just attach them to this invoice so they can't be counted again later.
+        if (advanceOldMetal > 0) {
+          await supabase.from("payments")
+            .update({ invoice_id: inv.id, notes: `Old metal advance credited on invoice ${invNumber}` } as any)
+            .eq("order_id", order.id).is("invoice_id", null).eq("method", "old_gold" as any);
+        }
+        // Apply the cash advance to this invoice, only up to what this bill needs.
         let remaining = appliedAdvance;
         if (remaining > 0) {
           const { data: adv } = await supabase.from("payments")
-            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null).order("paid_at");
+            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null)
+            .neq("method", "old_gold" as any).order("paid_at");
           for (const p of (adv ?? []) as any[]) {
             if (remaining <= 0.004) break;
             const amt = Number(p.amount ?? 0);
@@ -498,6 +506,7 @@ export default function POS() {
             }
           }
         }
+
         await syncOrderStatus(order.id);
       }
 
