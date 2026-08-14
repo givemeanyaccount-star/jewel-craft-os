@@ -370,13 +370,25 @@ export default function POS() {
     const t = Number(targetTotal);
     if (!t || t <= 0) return toast.error("Enter target net payable amount");
     // The target is the net payable, so solve for a total of target + cash advance.
+    const wanted = round2(t + appliedAdvance);
     const d = discountForTargetTotal({
-      subtotal, stonesTotal, oldGoldCredit, targetTotal: round2(t + appliedAdvance),
+      subtotal, stonesTotal, oldGoldCredit, targetTotal: wanted,
       vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
     });
     setDiscount(d);
+    // Check the target is actually reachable (it is not when it needs a negative discount).
+    const reached = computeInvoiceTaxes({
+      subtotal, stonesTotal, discount: d, oldGoldCredit,
+      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
+    }).total;
+    const reachedNet = round2(Math.max(0, reached - Math.min(advance, Math.max(0, reached - manualPaid))));
+    if (Math.abs(reachedNet - t) > 0.05) {
+      toast.warning(`Cannot reach ${npr(t)} — the lowest net payable without a discount is ${npr(reachedNet)}`);
+      return;
+    }
     toast.success(`Discount set to ${npr(d)} to reach a net payable of ${npr(t)}`);
   }
+
 
 
   async function checkout() {
