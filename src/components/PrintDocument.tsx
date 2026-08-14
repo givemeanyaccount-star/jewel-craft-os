@@ -150,6 +150,10 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const sdTaxable = Math.max(0, afterDiscount - stones - oldGold);
   const vat = Number(doc.vat_amount ?? 0);
   const netTotal = Number(doc.total ?? 0);
+  // Cash-type advances collected on the linked order and settled against this bill.
+  const advanceReceived = payments
+    .filter((p: any) => p.order_id && p.method !== "old_gold")
+    .reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0);
   const oldGoldEq = oldGold > 0
     ? fineEquivalentNote(oldGold, billFineRate(items, tradeMetal, fineRates), tradeMetal)
     : null;
