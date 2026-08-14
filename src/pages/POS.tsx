@@ -566,8 +566,11 @@ export default function POS() {
         const itemIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
         if (itemIds.length) {
           const { data: stillSold } = await supabase.from("inventory_items").select("id").eq("status", "sold").in("id", itemIds);
-          const toRelease = (stillSold ?? []).map((r: any) => r.id);
-          if (toRelease.length) await supabase.from("inventory_items").update({ status: "in_stock" }).in("id", toRelease);
+          for (const r of (stillSold ?? []) as any[]) {
+            await supabase.from("inventory_items")
+              .update({ status: (priorStatus.get(r.id) ?? "in_stock") as any }).eq("id", r.id);
+          }
+
         }
       }
       toast.error(e.message);
