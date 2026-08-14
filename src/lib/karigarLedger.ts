@@ -1,5 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import { round2 } from "@/lib/format";
+import { wastageGrams, metalOwed } from "@/lib/production";
+
+/**
+ * Wastage is metal PAID TO the karigar, not shrinkage the shop absorbs.
+ * A job is settled when: issued - received - wastage allowance = 0.
+ * See src/lib/production.ts for the full model.
+ */
 
 export interface MetalBalanceRow {
   metal: string;
@@ -23,8 +30,10 @@ export interface WastageRow {
   type: "order" | "repair";
   refNo: string;
   description: string;
-  expectedLoss: number | null;
-  actualLoss: number;
+  issued: number;
+  received: number;
+  allowance: number;
+  balance: number;
   flagged: boolean;
 }
 
@@ -37,29 +46,22 @@ export interface KarigarLedger {
   payments: any[];
 }
 
-function makingChargeEstimate(row: any): number {
-  const metalValue = Number(row.expected_net_weight ?? 0) * Number(row.rate ?? 0);
-  const type = row.making_type ?? "per_gram";
-  const input = Number(row.making_input ?? 0);
-  if (type === "per_gram") return input * Number(row.expected_net_weight ?? 0);
-  if (type === "percentage") return metalValue * (input / 100);
-  return input * Number(row.quantity ?? 1); // fixed
-}
-
 function daysBetween(from: string) {
   return Math.floor((Date.now() - new Date(from).getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export async function fetchKarigarLedger(karigarId: string): Promise<KarigarLedger> {
-  const [orderItemsRes, repairItemsRes, paymentsRes] = await Promise.all([
+  const [orderItemsRes, repairItemsRes, paymentsRes, accrualsRes] = await Promise.all([
     supabase.from("order_items").select("*, orders(order_no)").eq("karigar_id", karigarId),
     supabase.from("repair_items").select("*, repairs(repair_no, received_at)").eq("karigar_id", karigarId),
     supabase.from("karigar_payments").select("*").eq("karigar_id", karigarId).order("payment_date", { ascending: false }),
+    supabase.from("karigar_accruals").select("amount").eq("karigar_id", karigarId),
   ]);
 
   const orderItems = orderItemsRes.data ?? [];
   const repairItems = repairItemsRes.data ?? [];
   const payments = paymentsRes.data ?? [];
+  const accruals = accrualsRes.data ?? [];
 
   // Multi-batch receipts, needed to net out partial receiving against issued weight.
   const orderItemIds = orderItems.map((o: any) => o.id);
@@ -74,14 +76,16 @@ export async function fetchKarigarLedger(karigarId: string): Promise<KarigarLedg
   const balanceByMetal: Record<string, { grams: number; jobs: number }> = {};
   const outstandingJobs: OutstandingJobRow[] = [];
   const wastage: WastageRow[] = [];
-  let completedJobsValue = 0;
 
   const OPEN_ORDER_STATUSES = new Set(["pending", "assigned", "in_progress"]);
   const CLOSED_ORDER_STATUSES = new Set(["received", "in_stock", "billed"]);
 
   for (const o of orderItems as any[]) {
-    const received = receiptsByItem[o.id] ?? Number(o.received_gross_weight ?? 0);
+    const received = receiptsByItem[o.id] ?? Number(o.received_net_weight ?? 0);
     const issued = Number(o.issued_gross_weight ?? 0);
+    const allowance = o.karigar_wastage_grams != null
+      ? Number(o.karigar_wastage_grams)
+      : wastageGrams(o.karigar_wastage_type ?? o.wastage_type, Number(o.karigar_wastage_value ?? o.wastage_input ?? 0), issued);
 
     if (o.issued_at && OPEN_ORDER_STATUSES.has(o.status)) {
       const outstanding = round2(issued - received);
@@ -99,18 +103,11 @@ export async function fetchKarigarLedger(karigarId: string): Promise<KarigarLedg
     }
 
     if (o.issued_at && CLOSED_ORDER_STATUSES.has(o.status) && issued > 0) {
-      const actualLoss = round2(issued - received);
-      let expectedLoss: number | null = null;
-      if (o.wastage_type === "weight") expectedLoss = Number(o.wastage_input ?? 0);
-      else if (o.wastage_type === "percentage") expectedLoss = round2(issued * (Number(o.wastage_input ?? 0) / 100));
+      const balance = metalOwed(issued, received, allowance);
       wastage.push({
         type: "order", refNo: o.orders?.order_no ?? "—", description: o.description,
-        expectedLoss, actualLoss, flagged: expectedLoss != null && actualLoss > expectedLoss,
+        issued, received, allowance, balance, flagged: balance > 0.001,
       });
-    }
-
-    if (o.status === "billed" || o.status === "in_stock") {
-      completedJobsValue += makingChargeEstimate(o);
     }
   }
 
@@ -131,15 +128,13 @@ export async function fetchKarigarLedger(karigarId: string): Promise<KarigarLedg
     }
 
     if (r.net_weight_out != null) {
-      const actualLoss = round2(Number(r.net_weight_in ?? 0) - Number(r.net_weight_out ?? 0));
+      const issued = Number(r.net_weight_in ?? 0);
+      const received = Number(r.net_weight_out ?? 0);
+      const balance = round2(issued - received);
       wastage.push({
         type: "repair", refNo: r.repairs?.repair_no ?? "—", description: r.item_description,
-        expectedLoss: 0, actualLoss, flagged: actualLoss > 0.001,
+        issued, received, allowance: 0, balance, flagged: balance > 0.001,
       });
-    }
-
-    if (r.status === "delivered") {
-      completedJobsValue += Number(r.final_cost ?? r.estimated_cost ?? 0);
     }
   }
 
@@ -149,8 +144,9 @@ export async function fetchKarigarLedger(karigarId: string): Promise<KarigarLedg
   outstandingJobs.sort((a, b) => b.daysHeld - a.daysHeld);
 
   const totalPaid = round2((payments as any[]).reduce((s, p) => s + Number(p.amount ?? 0), 0));
+  const completedJobsValue = round2((accruals as any[]).reduce((s, a) => s + Number(a.amount ?? 0), 0));
 
-  return { metalBalances, outstandingJobs, wastage, completedJobsValue: round2(completedJobsValue), totalPaid, payments };
+  return { metalBalances, outstandingJobs, wastage, completedJobsValue, totalPaid, payments };
 }
 
 /** Shop-wide outstanding metal across every karigar, for the dashboard summary tile. */

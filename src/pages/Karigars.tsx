@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, ArrowLeft, Pencil, Hammer, X, Scale, AlertTriangle, Wallet } from "lucide-react";
 import { npr, gms, round2 } from "@/lib/format";
 import { STATUS_LABEL, STATUS_COLOR } from "./Repairs";
@@ -228,7 +229,11 @@ function KarigarDialog({ open, onOpenChange, karigar, onSaved }: any) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setForm(karigar ? { ...karigar } : { name: "", phone: "", specialty: "", payment_terms: "", notes: "" });
+    setForm(karigar ? { ...karigar } : {
+      name: "", phone: "", specialty: "", payment_terms: "", notes: "",
+      making_rate_type: "per_gram", making_rate: 0,
+      default_wastage_type: "percentage", default_wastage_value: 0,
+    });
   }, [karigar, open]);
 
   async function save() {
@@ -238,6 +243,10 @@ function KarigarDialog({ open, onOpenChange, karigar, onSaved }: any) {
       const payload = {
         name: form.name.trim(), phone: form.phone || null, specialty: form.specialty || null,
         payment_terms: form.payment_terms || null, notes: form.notes || null,
+        making_rate_type: form.making_rate_type || "per_gram",
+        making_rate: Number(form.making_rate) || 0,
+        default_wastage_type: form.default_wastage_type || "percentage",
+        default_wastage_value: Number(form.default_wastage_value) || 0,
       };
       if (karigar?.id) {
         const { error } = await supabase.from("karigars").update(payload).eq("id", karigar.id);
@@ -261,6 +270,32 @@ function KarigarDialog({ open, onOpenChange, karigar, onSaved }: any) {
           <div><Label>Phone</Label><Input value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
           <div><Label>Specialty</Label><Input placeholder="e.g. Stone setting, Polishing" value={form.specialty ?? ""} onChange={(e) => setForm({ ...form, specialty: e.target.value })} /></div>
           <div><Label>Payment terms</Label><Input placeholder="e.g. Per-piece rate, Monthly salary" value={form.payment_terms ?? ""} onChange={(e) => setForm({ ...form, payment_terms: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-2 rounded border p-2">
+            <div className="col-span-2 text-xs font-medium text-muted-foreground">Default job terms (pre-filled when issuing metal)</div>
+            <div>
+              <Label className="text-xs">Making charge basis</Label>
+              <Select value={form.making_rate_type ?? "per_gram"} onValueChange={(v) => setForm({ ...form, making_rate_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="per_gram">Per gram finished</SelectItem>
+                  <SelectItem value="percentage">% of metal value</SelectItem>
+                  <SelectItem value="flat">Flat per piece</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label className="text-xs">Rate</Label><Input type="number" value={form.making_rate ?? 0} onChange={(e) => setForm({ ...form, making_rate: e.target.value })} /></div>
+            <div>
+              <Label className="text-xs">Wastage paid</Label>
+              <Select value={form.default_wastage_type ?? "percentage"} onValueChange={(v) => setForm({ ...form, default_wastage_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">% of issued metal</SelectItem>
+                  <SelectItem value="weight">Fixed grams</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label className="text-xs">Value</Label><Input type="number" step="0.001" value={form.default_wastage_value ?? 0} onChange={(e) => setForm({ ...form, default_wastage_value: e.target.value })} /></div>
+          </div>
           <div><Label>Notes</Label><Textarea rows={2} value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
         <DialogFooter>
@@ -305,25 +340,33 @@ function KarigarLedgerSection({ karigar, ledger, loading, onRecordPayment }: {
       </Card>
 
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4" /> Wastage Variance</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-4 w-4" /> Metal Settlement</CardTitle></CardHeader>
         <CardContent>
           {ledger.wastage.length === 0 ? (
             <p className="text-sm text-muted-foreground">No completed jobs with weight data yet.</p>
           ) : (
             <div className="max-h-48 space-y-1.5 overflow-y-auto">
               {ledger.wastage.slice(0, 8).map((w, i) => (
-                <div key={i} className={cn("flex items-center justify-between rounded px-2 py-1 text-xs", w.flagged && "bg-destructive/10")}>
-                  <span className="truncate">{w.refNo} · {w.description}</span>
-                  <span className={cn("shrink-0 font-medium", w.flagged && "text-destructive")}>
-                    {gms(w.actualLoss)}{w.expectedLoss != null && ` / exp. ${gms(w.expectedLoss)}`}
-                  </span>
+                <div key={i} className={cn("rounded px-2 py-1 text-xs", w.flagged && "bg-destructive/10")}>
+                  <div className="flex items-center justify-between">
+                    <span className="truncate">{w.refNo} · {w.description}</span>
+                    <span className={cn("shrink-0 font-medium", w.flagged ? "text-destructive" : "text-emerald-700")}>
+                      {w.flagged ? `${gms(w.balance)} short` : "settled"}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    issued {gms(w.issued)} − received {gms(w.received)} − allowance {gms(w.allowance)}
+                  </div>
                 </div>
               ))}
             </div>
           )}
           {flaggedWastage.length > 0 && (
-            <p className="mt-2 text-xs text-destructive">{flaggedWastage.length} job(s) lost more metal than priced in.</p>
+            <p className="mt-2 text-xs text-destructive">{flaggedWastage.length} job(s) with metal unaccounted for.</p>
           )}
+          <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+            Wastage allowance is metal paid to the karigar, so "settled" means he returned the piece and kept only his agreed allowance.
+          </p>
         </CardContent>
       </Card>
 
@@ -333,11 +376,11 @@ function KarigarLedgerSection({ karigar, ledger, loading, onRecordPayment }: {
           <Button size="sm" variant="outline" onClick={onRecordPayment}>Record Payment</Button>
         </CardHeader>
         <CardContent className="space-y-1.5 text-sm">
-          <div className="flex justify-between"><span className="text-muted-foreground">Completed jobs (reference value)</span><span>{npr(ledger.completedJobsValue)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Earned (accrued on receipt)</span><span>{npr(ledger.completedJobsValue)}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Paid to karigar</span><span>{npr(ledger.totalPaid)}</span></div>
-          <div className="flex justify-between border-t pt-1.5 font-medium"><span>Difference</span><span className={balance > 0 ? "text-amber-700" : ""}>{npr(balance)}</span></div>
+          <div className="flex justify-between border-t pt-1.5 font-medium"><span>Balance payable</span><span className={balance > 0 ? "text-amber-700" : ""}>{npr(balance)}</span></div>
           <p className="pt-1 text-[11px] leading-snug text-muted-foreground">
-            "Completed jobs" is the making-charge value billed to customers for this karigar's finished work — not necessarily their exact take-home if your shop keeps a margin. Use it as a reference alongside actual payments recorded below.
+            Earned is accrued from Production when each finished piece is received, using that karigar's agreed rate — not what the customer was billed.
           </p>
           {ledger.payments.length > 0 && (
             <div className="mt-2 max-h-32 space-y-1 overflow-y-auto border-t pt-2">
