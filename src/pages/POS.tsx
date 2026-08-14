@@ -125,7 +125,8 @@ export default function POS() {
   const [orderLineByItem, setOrderLineByItem] = useState<Record<string, { receiptId: string; orderItemId: string }>>({});
   const [orderDate, setOrderDate] = useState<string>("");
   const [rateBasis, setRateBasis] = useState<"order" | "current">("current");
-  const [advance, setAdvance] = useState(0);
+  const [advance, setAdvance] = useState(0);            // cash-type advances held on the order
+  const [advanceOldMetal, setAdvanceOldMetal] = useState(0); // old-metal trade-in advances on the order
   const [issueDate, setIssueDate] = useState<string>(todayISO());
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
 
