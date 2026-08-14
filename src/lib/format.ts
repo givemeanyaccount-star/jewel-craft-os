@@ -155,9 +155,19 @@ export function discountForTargetTotal(opts: {
     const mid = (lo + hi) / 2;
     const t = computeInvoiceTaxes({ ...opts, discount: mid }).total;
     if (t > target) lo = mid; else { hi = mid; best = mid; }
-    if (Math.abs(t - target) < 0.01) { best = mid; break; }
+    if (Math.abs(t - target) < 0.001) { best = mid; break; }
   }
-  return Math.round(best * 100) / 100;
+  // computeInvoiceTaxes rounds internally to paisa, so the continuous binary-search
+  // result may not land on the exact target even though it's converged -- snap to
+  // whichever of the neighbouring paisa-rounded discounts is actually closest.
+  const rounded = Math.round(best * 100) / 100;
+  const candidates = [rounded - 0.01, rounded, rounded + 0.01].filter((d) => d >= 0 && d <= subtotal);
+  let closest = rounded, closestDiff = Infinity;
+  for (const d of candidates) {
+    const diff = Math.abs(computeInvoiceTaxes({ ...opts, discount: d }).total - target);
+    if (diff < closestDiff) { closestDiff = diff; closest = d; }
+  }
+  return closest;
 }
 
 /** 1 tola = 11.6638 grams (Nepali bullion standard). */

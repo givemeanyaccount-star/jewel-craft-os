@@ -146,7 +146,7 @@ const scenarios: Scenario[] = [
     name: "every payment mode at once plus old metal credit",
     subtotal: 260000, stonesTotal: 15000, walkInOldMetal: 40000, target: 75000,
     atSalePayments: ALL_MODES,
-    expectModes: ALL_MODES.length + 1, // + old metal row is separate, cash merged
+    expectModes: ALL_MODES.length, // old metal is a separate display row, not one of modeRows
   },
   {
     name: "two cash payments merge into one Cash row",
