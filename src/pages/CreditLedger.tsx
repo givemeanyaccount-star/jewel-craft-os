@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,8 +84,8 @@ export default function CreditLedger() {
               const key = g.customerId ?? "walkin";
               const open = openId === key;
               return (
-                <>
-                  <TableRow key={key} className="cursor-pointer" onClick={() => setOpenId(open ? null : key)}>
+                <Fragment key={key}>
+                  <TableRow className="cursor-pointer" onClick={() => setOpenId(open ? null : key)}>
                     <TableCell>
                       <div className="flex items-center gap-1.5 font-medium">
                         {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -99,7 +99,7 @@ export default function CreditLedger() {
                     <TableCell className="text-right">{g.invoices.length}</TableCell>
                   </TableRow>
                   {open && (
-                    <TableRow key={`${key}-d`} className="bg-muted/30 hover:bg-muted/30">
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
                       <TableCell colSpan={5} className="p-0">
                         <div className="divide-y">
                           {g.invoices.map((inv) => (
@@ -121,7 +121,7 @@ export default function CreditLedger() {
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </TableBody>
