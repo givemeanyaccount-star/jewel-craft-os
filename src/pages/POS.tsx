@@ -348,12 +348,14 @@ export default function POS() {
     () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)),
     [payments],
   );
-  // On a partial batch bill only as much of the order advance as this invoice needs;
+  // On a partial batch bill only as much of the cash advance as this invoice needs;
   // the rest stays on the order for the remaining pieces.
   const appliedAdvance = useMemo(
     () => round2(Math.min(advance, Math.max(0, tax.total - manualPaid))),
     [advance, tax.total, manualPaid],
   );
+  // What the customer still has to settle now, after the cash advance is deducted.
+  const netPayable = useMemo(() => round2(Math.max(0, tax.total - appliedAdvance)), [tax.total, appliedAdvance]);
   const paid = useMemo(() => round2(manualPaid + appliedAdvance), [manualPaid, appliedAdvance]);
 
   const balance = round2(Math.max(0, tax.total - paid));
@@ -366,14 +368,16 @@ export default function POS() {
 
   function applyTargetTotal() {
     const t = Number(targetTotal);
-    if (!t || t <= 0) return toast.error("Enter target net amount");
+    if (!t || t <= 0) return toast.error("Enter target net payable amount");
+    // The target is the net payable, so solve for a total of target + cash advance.
     const d = discountForTargetTotal({
-      subtotal, stonesTotal, oldGoldCredit, targetTotal: t,
+      subtotal, stonesTotal, oldGoldCredit, targetTotal: round2(t + appliedAdvance),
       vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
     });
     setDiscount(d);
-    toast.success(`Discount set to ${npr(d)} to reach ${npr(t)}`);
+    toast.success(`Discount set to ${npr(d)} to reach a net payable of ${npr(t)}`);
   }
+
 
   async function checkout() {
     if (!customerId) return toast.error("Select a customer for this sale");
