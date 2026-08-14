@@ -161,8 +161,17 @@ export default function InvoiceDetail() {
               {oldGoldEq && <div className="text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
 
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(inv.total)}</span></div>
+              {advanceReceived > 0 && (
+                <>
+                  <Row label="Less: advance received on order" value={`- ${npr(advanceReceived)}`} />
+                  <div className="flex justify-between border-t pt-2 text-base font-semibold">
+                    <span>Net payable</span><span>{npr(Math.max(0, Number(inv.total) - advanceReceived))}</span>
+                  </div>
+                </>
+              )}
               <Row label="Paid" value={npr(inv.amount_paid)} />
               <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(inv.balance_due)}</span></div>
+
             </div>
           </CardContent>
         </Card>
