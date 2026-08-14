@@ -753,16 +753,36 @@ export default function POS() {
               </div>
             </div>
             {oldGoldEq && <div className="-mt-1 text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
+            {advanceOldMetal > 0 && (
+              <div className="-mt-1 text-right text-xs text-muted-foreground">
+                includes old metal advance of {npr(advanceOldMetal)} taken on the order
+              </div>
+            )}
 
             <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>
 
+            {appliedAdvance > 0 && (
+              <>
+                <Row label="Less: cash advance received" value={`− ${npr(appliedAdvance)}`} />
+                <div className="flex justify-between border-t pt-2 text-base font-semibold">
+                  <span>Net payable</span><span>{npr(netPayable)}</span>
+                </div>
+              </>
+            )}
+
             <div className="rounded-md border bg-muted/40 p-2">
-              <Label className="text-xs">Set net amount (auto-discount)</Label>
+              <Label className="text-xs">Set net payable amount (auto-discount)</Label>
               <div className="mt-1 flex gap-2">
                 <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                 <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
               </div>
+              {appliedAdvance > 0 && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Amount the customer pays now, after the {npr(appliedAdvance)} cash advance.
+                </p>
+              )}
             </div>
+
 
             <div>
               <div className="flex items-center justify-between">
