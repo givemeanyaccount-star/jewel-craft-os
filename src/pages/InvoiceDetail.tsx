@@ -182,7 +182,10 @@ export default function InvoiceDetail() {
                 </>
               )}
               <Row label="Paid" value={npr(inv.amount_paid)} />
-              <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(inv.balance_due)}</span></div>
+              <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(pay.balanceDue)}</span></div>
+              {pay.surplus > 0 && (
+                <div className="flex justify-between font-medium"><span>Refund due</span><span>{npr(pay.surplus)}</span></div>
+              )}
 
             </div>
           </CardContent>
