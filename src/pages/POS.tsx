@@ -356,7 +356,7 @@ export default function POS() {
     [advance, tax.total, manualPaid],
   );
   // What the customer still has to settle now, after the cash advance is deducted.
-  const netPayable = useMemo(() => round2(Math.max(0, tax.total - appliedAdvance)), [tax.total, appliedAdvance]);
+  const netPayable = useMemo(() => netPayableOf(tax.total, appliedAdvance), [tax.total, appliedAdvance]);
   const paid = useMemo(() => round2(manualPaid + appliedAdvance), [manualPaid, appliedAdvance]);
 
   const balance = round2(Math.max(0, tax.total - paid));
