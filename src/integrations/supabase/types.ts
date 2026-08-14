@@ -233,6 +233,24 @@ export type Database = {
         }
         Relationships: []
       }
+      document_sequences: {
+        Row: {
+          last_value: number
+          prefix: string
+          year: number
+        }
+        Insert: {
+          last_value?: number
+          prefix: string
+          year: number
+        }
+        Update: {
+          last_value?: number
+          prefix?: string
+          year?: number
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           barcode: string | null
@@ -559,10 +577,114 @@ export type Database = {
           },
         ]
       }
+      karigar_accruals: {
+        Row: {
+          accrued_at: string
+          amount: number
+          created_by: string | null
+          description: string | null
+          finished_net_weight: number
+          id: string
+          karigar_id: string
+          making_rate: number | null
+          making_type: string | null
+          reference_no: string | null
+          source_id: string | null
+          source_type: string
+          wastage_grams: number
+        }
+        Insert: {
+          accrued_at?: string
+          amount?: number
+          created_by?: string | null
+          description?: string | null
+          finished_net_weight?: number
+          id?: string
+          karigar_id: string
+          making_rate?: number | null
+          making_type?: string | null
+          reference_no?: string | null
+          source_id?: string | null
+          source_type: string
+          wastage_grams?: number
+        }
+        Update: {
+          accrued_at?: string
+          amount?: number
+          created_by?: string | null
+          description?: string | null
+          finished_net_weight?: number
+          id?: string
+          karigar_id?: string
+          making_rate?: number | null
+          making_type?: string | null
+          reference_no?: string | null
+          source_id?: string | null
+          source_type?: string
+          wastage_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "karigar_accruals_karigar_id_fkey"
+            columns: ["karigar_id"]
+            isOneToOne: false
+            referencedRelation: "karigars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      karigar_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          karigar_id: string
+          method: string | null
+          notes: string | null
+          payment_date: string
+          reference: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          karigar_id: string
+          method?: string | null
+          notes?: string | null
+          payment_date?: string
+          reference?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          karigar_id?: string
+          method?: string | null
+          notes?: string | null
+          payment_date?: string
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "karigar_payments_karigar_id_fkey"
+            columns: ["karigar_id"]
+            isOneToOne: false
+            referencedRelation: "karigars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       karigars: {
         Row: {
           created_at: string
+          default_wastage_type: string
+          default_wastage_value: number
           id: string
+          making_rate: number
+          making_rate_type: string
           name: string
           notes: string | null
           payment_terms: string | null
@@ -572,7 +694,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_wastage_type?: string
+          default_wastage_value?: number
           id?: string
+          making_rate?: number
+          making_rate_type?: string
           name: string
           notes?: string | null
           payment_terms?: string | null
@@ -582,7 +708,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_wastage_type?: string
+          default_wastage_value?: number
           id?: string
+          making_rate?: number
+          making_rate_type?: string
           name?: string
           notes?: string | null
           payment_terms?: string | null
@@ -919,7 +1049,13 @@ export type Database = {
           issued_net_weight: number | null
           issued_purity: string | null
           karigar_id: string | null
+          karigar_making_amount: number | null
+          karigar_making_rate: number | null
+          karigar_making_type: string | null
           karigar_name: string | null
+          karigar_wastage_grams: number | null
+          karigar_wastage_type: string | null
+          karigar_wastage_value: number | null
           making_input: number
           making_type: string
           metal: Database["public"]["Enums"]["metal_type"]
@@ -960,7 +1096,13 @@ export type Database = {
           issued_net_weight?: number | null
           issued_purity?: string | null
           karigar_id?: string | null
+          karigar_making_amount?: number | null
+          karigar_making_rate?: number | null
+          karigar_making_type?: string | null
           karigar_name?: string | null
+          karigar_wastage_grams?: number | null
+          karigar_wastage_type?: string | null
+          karigar_wastage_value?: number | null
           making_input?: number
           making_type?: string
           metal?: Database["public"]["Enums"]["metal_type"]
@@ -1001,7 +1143,13 @@ export type Database = {
           issued_net_weight?: number | null
           issued_purity?: string | null
           karigar_id?: string | null
+          karigar_making_amount?: number | null
+          karigar_making_rate?: number | null
+          karigar_making_type?: string | null
           karigar_name?: string | null
+          karigar_wastage_grams?: number | null
+          karigar_wastage_type?: string | null
+          karigar_wastage_value?: number | null
           making_input?: number
           making_type?: string
           metal?: Database["public"]["Enums"]["metal_type"]
@@ -1939,6 +2087,10 @@ export type Database = {
         Returns: string
       }
       next_category_sku: { Args: { _category_id: string }; Returns: string }
+      next_document_number: {
+        Args: { p_pad?: number; p_prefix: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role:

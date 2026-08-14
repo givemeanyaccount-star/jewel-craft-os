@@ -103,7 +103,7 @@ function toRow(o: any, receivedByItem: Record<string, number>): ProductionRow {
   };
 }
 
-const ACTIVE_ORDER_STATUSES = ["pending", "assigned", "in_progress", "received"];
+const ACTIVE_ORDER_STATUSES = ["pending", "assigned", "in_progress", "received"] as const;
 
 export async function fetchProductionBoard(): Promise<{
   toIssue: ProductionRow[];
