@@ -208,7 +208,7 @@ describe("Net Payable is identical across POS, InvoiceDetail and the printed bil
       const src = readFileSync(path.join(root, f), "utf8");
       expect(src, `${f} should use netPayableOf`).toContain("netPayableOf");
       expect(src, `${f} should not hand-roll the net payable subtraction`)
-        .not.toMatch(/-\s*(applied)?[aA]dvance(Received)?\s*\)/);
+        .not.toMatch(/(total|netTotal)[^\n]*-\s*(applied)?[aA]dvance(Received)?/);
     }
   });
 });
