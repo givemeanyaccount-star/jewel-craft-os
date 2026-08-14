@@ -370,6 +370,12 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(balanceDue)}</td>
                     </tr>
                   )}
+                  {surplus > 0 && (
+                    <tr>
+                      <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Refund Due</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(surplus)}</td>
+                    </tr>
+                  )}
 
                 </tbody>
               </table>
