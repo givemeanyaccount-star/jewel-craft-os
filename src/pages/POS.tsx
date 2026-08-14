@@ -398,25 +398,42 @@ export default function POS() {
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
     setSaving(true);
     let invoiceCreated = false;
+    // Remember each item's status before the claim so a rollback restores it exactly
+    // (a quotation/order reservation must stay reserved, not become in_stock).
+    const priorStatus = new Map<string, string>();
     try {
       // Claim inventory first, atomically, before any financial record is created.
       // If another sale already took one of these items, we abort here with nothing
       // half-created, instead of silently selling the same physical item twice.
       const itemIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
       if (itemIds.length) {
+        const { data: before } = await supabase
+          .from("inventory_items").select("id, sku, name, status").in("id", itemIds);
+        (before ?? []).forEach((r: any) => priorStatus.set(r.id, r.status));
+
         const { data: claimed, error: claimErr } = await supabase
           .from("inventory_items")
           .update({ status: "sold" })
-          .eq("status", "in_stock")
+          .in("status", ["in_stock", "reserved"])
           .in("id", itemIds)
           .select("id");
         if (claimErr) throw claimErr;
         const claimedIds = (claimed ?? []).map((c: any) => c.id);
         if (claimedIds.length !== itemIds.length) {
-          if (claimedIds.length) await supabase.from("inventory_items").update({ status: "in_stock" }).in("id", claimedIds);
-          throw new Error("One or more items in this cart were just sold in another sale. Please remove them and try again.");
+          if (claimedIds.length) {
+            for (const id of claimedIds) {
+              await supabase.from("inventory_items")
+                .update({ status: (priorStatus.get(id) ?? "in_stock") as any }).eq("id", id);
+            }
+          }
+          const blocked = (before ?? []).filter((r: any) => !claimedIds.includes(r.id));
+          const detail = blocked.length
+            ? blocked.map((r: any) => `${r.sku ?? r.name} (${String(r.status).replace("_", " ")})`).join(", ")
+            : "unknown item(s)";
+          throw new Error(`These items are no longer available to sell: ${detail}. Please remove them and try again.`);
         }
       }
+
 
       const { data: invNumber, error: numErr } = await supabase.rpc("next_document_number", { p_prefix: "INV", p_pad: 5 });
       if (numErr) throw numErr;
