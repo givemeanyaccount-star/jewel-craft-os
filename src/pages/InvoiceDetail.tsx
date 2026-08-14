@@ -68,6 +68,11 @@ export default function InvoiceDetail() {
     setInv(i.data); setItems(it.data ?? []); setPayments(p.data ?? []);
   }
 
+  // Cash-type advances taken on the linked order and settled against this bill.
+  const advanceReceived = payments
+    .filter((p) => p.order_id && p.method !== "old_gold")
+    .reduce((a, p) => a + Number(p.amount ?? 0), 0);
+
   const oldGoldEq = inv && Number(inv.old_gold_credit) > 0
     ? fineEquivalentNote(Number(inv.old_gold_credit), billFineRate(items, tradeMetal, fineRates), tradeMetal)
     : null;
