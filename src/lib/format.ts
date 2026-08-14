@@ -87,6 +87,53 @@ export function netPayableOf(total: number, advanceReceived: number): number {
   return round2(Math.max(0, (Number(total) || 0) - (Number(advanceReceived) || 0)));
 }
 
+export interface PaymentBreakdown {
+  advanceReceived: number;            // cash-type advances carried over from the order
+  modeRows: Array<[string, number]>;  // at-sale payments, one row per method
+  atSaleTotal: number;                // sum of modeRows
+  oldGoldCredit: number;
+  grossDue: number;                   // net total + old metal credit = what the bill is worth
+  totalReceived: number;              // old metal + advance + at-sale payments
+  balanceDue: number;                 // never negative
+  surplus: number;                    // over-collection that has to be refunded
+}
+
+/**
+ * Single source of truth for the printed bill's Payment Mode box and the
+ * invoice screen's paid/balance figures, so the two can never drift.
+ *
+ * Reconciliation invariant: totalReceived + balanceDue - surplus === grossDue.
+ */
+export function paymentBreakdown(opts: {
+  payments?: Array<{ order_id?: string | null; method?: string | null; amount?: number | string | null }>;
+  oldGoldCredit?: number | string | null;
+  netTotal?: number | string | null;
+  balanceDue?: number | string | null;
+}): PaymentBreakdown {
+  const payments = opts.payments ?? [];
+  const oldGoldCredit = round2(Number(opts.oldGoldCredit ?? 0) || 0);
+  const netTotal = round2(Number(opts.netTotal ?? 0) || 0);
+  const advanceReceived = advanceReceivedFromPayments(payments);
+
+  const m = new Map<string, number>();
+  for (const p of payments) {
+    if (p?.order_id && p?.method !== "old_gold") continue; // printed as the advance row
+    const key = String(p?.method ?? "other");
+    m.set(key, round2((m.get(key) ?? 0) + (Number(p?.amount ?? 0) || 0)));
+  }
+  const modeRows = Array.from(m.entries()).filter(([, v]) => v !== 0);
+
+  const atSaleTotal = round2(modeRows.reduce((s, [, v]) => s + v, 0));
+  const totalReceived = round2(oldGoldCredit + advanceReceived + atSaleTotal);
+  const grossDue = round2(netTotal + oldGoldCredit);
+  const derived = round2(grossDue - totalReceived);
+  const provided = opts.balanceDue == null ? null : round2(Number(opts.balanceDue) || 0);
+  const balanceDue = Math.max(0, provided ?? derived);
+  const surplus = round2(Math.max(0, totalReceived - grossDue));
+
+  return { advanceReceived, modeRows, atSaleTotal, oldGoldCredit, grossDue, totalReceived, balanceDue, surplus };
+}
+
 
 
 // Back-solve the discount so the final total equals a desired net amount.
