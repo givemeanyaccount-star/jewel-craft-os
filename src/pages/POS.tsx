@@ -207,7 +207,15 @@ export default function POS() {
     setCustomerId(o.customer_id);
     setOrderDate(o.order_date);
     setRateBasis("order");
-    setAdvance(round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0)));
+    // Split the order advances: old-metal trade-ins become an old metal credit on
+    // this bill (so the SD tax base is right), cash-type advances are deducted from
+    // the total to give the net payable amount.
+    const advPays = (pays ?? []) as any[];
+    const oldMetalAdv = round2(advPays.filter((p) => p.method === "old_gold").reduce((a, p) => a + Number(p.amount ?? 0), 0));
+    const cashAdv = round2(advPays.filter((p) => p.method !== "old_gold").reduce((a, p) => a + Number(p.amount ?? 0), 0));
+    setAdvance(cashAdv);
+    setAdvanceOldMetal(oldMetalAdv);
+    if (oldMetalAdv > 0) setOldGoldCredit((c) => round2(c + oldMetalAdv));
     setNotes(o.notes ?? "");
 
     const map: Record<string, { receiptId: string; orderItemId: string }> = {};
