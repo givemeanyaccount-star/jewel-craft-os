@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,17 @@ export function CustomerSelector({
 }) {
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<any[]>([]);
+  const [recent, setRecent] = useState<any[]>([]);
+  const [focused, setFocused] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+
+  // Show a default list (most recently added/updated customers) the moment the
+  // field is focused, so it behaves like a real dropdown instead of a blank box
+  // that only responds once you start typing.
+  useEffect(() => {
+    supabase.from("customers").select("id, full_name, phone").order("updated_at", { ascending: false }).limit(8)
+      .then(({ data }) => setRecent(data ?? []));
+  }, []);
 
   async function search(q: string) {
     setQuery(q);
@@ -34,7 +44,11 @@ export function CustomerSelector({
     onChange({ id: c.id, full_name: c.full_name, phone: c.phone });
     setMatches([]);
     setQuery("");
+    setFocused(false);
   }
+
+  const showList = query.trim().length >= 2 ? matches : recent;
+  const listLabel = query.trim().length >= 2 ? "Matches" : "Recent customers";
 
   if (value) {
     return (
@@ -56,12 +70,18 @@ export function CustomerSelector({
       <Label>{label}</Label>
       <div className="relative">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-8" value={query} onChange={(e) => search(e.target.value)} placeholder="Search by name or phone..." />
+        <Input
+          className="pl-8" value={query} onChange={(e) => search(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setTimeout(() => setFocused(false), 150)}
+          placeholder="Click to browse, or type to search..."
+        />
       </div>
-      {matches.length > 0 && (
+      {focused && showList.length > 0 && (
         <div className="absolute z-10 mt-1 w-full rounded border bg-popover shadow-md">
-          {matches.map((c) => (
-            <button key={c.id} type="button" className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent" onClick={() => pick(c)}>
+          <div className="border-b px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{listLabel}</div>
+          {showList.map((c) => (
+            <button key={c.id} type="button" className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent" onMouseDown={() => pick(c)}>
               <span>{c.full_name} {c.phone && `· ${c.phone}`}</span>
               <Check className="h-4 w-4 opacity-0" />
             </button>

@@ -22,9 +22,7 @@ import { ImageCaptureButton } from "@/components/ImageCapture";
 import { uploadImage } from "@/lib/storage";
 import { printDocument } from "@/components/PrintDocument";
 import { OrderPrintDocument } from "@/components/orders/OrderPrintDocument";
-import { printOldMetalReceipt } from "@/lib/oldMetalReceipt";
-import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
-import { PickedCustomer } from "@/components/CustomerSelector";
+import { AdvanceDialog } from "@/components/AdvanceDialog";
 import {
   OrderLineFields, OrderLine, lineFromRow, lineNet, lineEstimate,
 } from "@/components/orders/OrderLineFields";
@@ -303,8 +301,12 @@ export default function OrderDetail() {
       <IssueDialog item={issueFor} onOpenChange={(v) => !v && setIssueFor(null)} userId={user?.id} onDone={async () => { setIssueFor(null); await refresh(); }} />
       <ReceiveDialog item={receiveFor} onOpenChange={(v) => !v && setReceiveFor(null)} userId={user?.id} onDone={async () => { setReceiveFor(null); await refresh(); }} />
       <ToStockDialog target={stockFor} onOpenChange={(v) => !v && setStockFor(null)} userId={user?.id} onDone={async () => { setStockFor(null); await refresh(); }} />
-      <AdvanceDialog open={advOpen} onOpenChange={setAdvOpen} order={order} userId={user?.id}
-        onDone={async () => { setAdvOpen(false); await load(); setConfirmPrint("advance"); }} />
+      <AdvanceDialog open={advOpen} onOpenChange={setAdvOpen}
+        orderId={order.id} orderNo={order.order_no} customerId={order.customer_id}
+        customer={order.customers ? { id: order.customer_id, full_name: order.customers.full_name, phone: order.customers.phone ?? null } : null}
+        userId={user?.id}
+        onChanged={load}
+        onDone={() => setConfirmPrint("advance")} />
       <CancelOrderDialog open={cancelOpen} onOpenChange={setCancelOpen} order={order} items={items} receipts={receipts} advanceTotal={advanceTotal}
         userId={user?.id} onDone={async () => { setCancelOpen(false); await load(); }} />
       <EditLineDialog item={editingItem} onOpenChange={(v) => !v && setEditingItem(null)} userId={user?.id}
@@ -638,90 +640,6 @@ function ToStockDialog({ target, onOpenChange, onDone, userId }: {
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Add to inventory"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function AdvanceDialog({ open, onOpenChange, order, onDone, userId }: {
-  open: boolean; onOpenChange: (v: boolean) => void; order: any; onDone: () => void; userId?: string;
-}) {
-  const [amount, setAmount] = useState(0);
-  const [method, setMethod] = useState("cash");
-  const [reference, setReference] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => { if (open) { setAmount(0); setMethod("cash"); setReference(""); } }, [open]);
-
-  async function recordPayment(amt: number, m: string, ref: string | null) {
-    const { error } = await supabase.from("payments").insert({
-      order_id: order.id, customer_id: order.customer_id, amount: round2(amt),
-      method: m as any, reference: ref,
-      notes: `Advance for order ${order.order_no}`, created_by: userId,
-    } as any);
-    if (error) throw error;
-    const { data: pays } = await supabase.from("payments").select("amount").eq("order_id", order.id);
-    const total = round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0));
-    await supabase.from("orders").update({ advance_paid: total }).eq("id", order.id);
-  }
-
-  async function save() {
-    if (amount <= 0) return toast.error("Enter an amount");
-    setSaving(true);
-    try {
-      await recordPayment(amount, method, reference || null);
-      toast.success("Advance recorded");
-      onDone();
-    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
-  }
-
-  async function onOldMetalSaved(result: OldGoldSaveResult) {
-    try {
-      await recordPayment(result.total, "old_gold", result.receiptNumber);
-      toast.success("Old metal advance recorded");
-      if (window.confirm("Print the old metal purchase receipt now?")) {
-        await printOldMetalReceipt(result.id, `Advance on order ${order.order_no}`);
-      }
-      onDone();
-    } catch (e: any) { toast.error(e.message); }
-  }
-
-  if (method === "old_gold") {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-          <DialogHeader><DialogTitle>Old metal trade-in as advance</DialogTitle></DialogHeader>
-          <Button size="sm" variant="ghost" className="w-fit" onClick={() => setMethod("cash")}>&larr; Use cash/bank instead</Button>
-          <OldGoldForm compact submitLabel="Record & Apply as Advance"
-            initialCustomer={order?.customers ? { id: order.customer_id, full_name: order.customers.full_name, phone: order.customers.phone ?? null } : null}
-            onSaved={onOldMetalSaved} />
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Record advance</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div><Label>Amount *</Label><NumberField value={amount} onChange={setAmount} className="text-right" /></div>
-          <div>
-            <Label>Method</Label>
-            <Select value={method} onValueChange={setMethod}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}
-                <SelectItem value="old_gold">Old metal trade-in</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div><Label>Reference</Label><Input value={reference} onChange={(e) => setReference(e.target.value)} /></div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

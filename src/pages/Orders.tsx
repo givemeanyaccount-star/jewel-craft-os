@@ -18,6 +18,7 @@ import { npr, computeNetWeight, round2 } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
+import { AdvanceDialog } from "@/components/AdvanceDialog";
 import { useKarigars } from "@/components/KarigarSelect";
 import {
   OrderLineFields, OrderLine, blankOrderLine, lineNet, lineEstimate,
@@ -133,6 +134,7 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
   const { user } = useAuth();
   const { karigars, refresh } = useKarigars();
   const [customer, setCustomer] = useState<PickedCustomer | null>(initialCustomer ?? null);
+  const [createdOrder, setCreatedOrder] = useState<{ id: string; order_no: string } | null>(null);
   const [orderDate, setOrderDate] = useState(todayISO());
   const [promised, setPromised] = useState("");
   const [notes, setNotes] = useState("");
@@ -144,6 +146,7 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
 
   useEffect(() => {
     if (!open) return;
+    setCreatedOrder(null);
     setCustomer(initialCustomer ?? null);
     setOrderDate(todayISO()); setPromised(""); setNotes("");
     setLines([blankOrderLine(todayISO())]); setAdvance(0); setAdvanceMethod("cash");
@@ -216,8 +219,20 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
       }
 
       toast.success(`Order ${order_no} created`);
-      onSaved(order.id);
+      setCreatedOrder({ id: order.id, order_no });
     } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  }
+
+  if (createdOrder) {
+    return (
+      <AdvanceDialog
+        open onOpenChange={() => {}}
+        orderId={createdOrder.id} orderNo={createdOrder.order_no}
+        customerId={customer!.id} customer={customer}
+        userId={user?.id}
+        onDone={() => { const id = createdOrder.id; setCreatedOrder(null); onSaved(id); }}
+      />
+    );
   }
 
   return (
@@ -242,7 +257,7 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
                 </SelectContent>
               </Select>
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">Old metal trade-in advances are added from the order page.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Quick cash/bank advance now. You can add more — including old metal trade-in — right after saving.</p>
           </div>
         </div>
 
