@@ -94,8 +94,8 @@ export function OldGoldForm({
       }
       if (Object.keys(custPatch).length) await supabase.from("customers").update(custPatch).eq("id", customer!.id);
 
-      const num = Math.floor(Date.now() / 1000) % 100000;
-      const receipt = nextNumber("OG", num, 5);
+      const { data: receipt, error: numErr } = await supabase.rpc("next_document_number", { p_prefix: "OG", p_pad: 5 });
+      if (numErr) throw numErr;
       const { data, error } = await supabase.from("old_gold_purchases").insert({
         receipt_number: receipt,
         customer_id: customer!.id, customer_name: customer!.full_name, customer_phone: customer!.phone,

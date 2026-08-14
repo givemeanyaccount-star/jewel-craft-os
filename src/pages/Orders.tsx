@@ -168,7 +168,7 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
     if (!lines.some((l) => l.description.trim())) return toast.error("Add at least one item");
     setSaving(true);
     try {
-      const order_no = nextOrderNo();
+      const order_no = await nextOrderNo();
       const { data: order, error } = await supabase.from("orders").insert({
         order_no, customer_id: customer.id, order_date: orderDate,
         promised_date: promised || null, notes: notes || null,

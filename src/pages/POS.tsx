@@ -371,9 +371,29 @@ export default function POS() {
     if (cart.length === 0) return toast.error("Add at least one item");
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
     setSaving(true);
+    let invoiceCreated = false;
     try {
-      const num = Math.floor(Date.now() / 1000) % 100000;
-      const invNumber = nextNumber("INV", num, 5);
+      // Claim inventory first, atomically, before any financial record is created.
+      // If another sale already took one of these items, we abort here with nothing
+      // half-created, instead of silently selling the same physical item twice.
+      const itemIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
+      if (itemIds.length) {
+        const { data: claimed, error: claimErr } = await supabase
+          .from("inventory_items")
+          .update({ status: "sold" })
+          .eq("status", "in_stock")
+          .in("id", itemIds)
+          .select("id");
+        if (claimErr) throw claimErr;
+        const claimedIds = (claimed ?? []).map((c: any) => c.id);
+        if (claimedIds.length !== itemIds.length) {
+          if (claimedIds.length) await supabase.from("inventory_items").update({ status: "in_stock" }).in("id", claimedIds);
+          throw new Error("One or more items in this cart were just sold in another sale. Please remove them and try again.");
+        }
+      }
+
+      const { data: invNumber, error: numErr } = await supabase.rpc("next_document_number", { p_prefix: "INV", p_pad: 5 });
+      if (numErr) throw numErr;
       const status = paid >= tax.total ? "paid" : paid > 0 ? "partial" : "issued";
 
       const { data: inv, error } = await supabase.from("invoices").insert({
@@ -395,6 +415,7 @@ export default function POS() {
           : new Date().toISOString(),
       } as any).select().single();
       if (error) throw error;
+      invoiceCreated = true;
 
       const lines = cart.map((r) => ({
         invoice_id: inv.id,
@@ -421,11 +442,6 @@ export default function POS() {
           invoice_id: inv.id, customer_id: customerId, amount: Number(p.amount),
           method: p.method as any, created_by: user?.id,
         })));
-      }
-
-      const itemIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
-      if (itemIds.length) {
-        await supabase.from("inventory_items").update({ status: "sold" }).in("id", itemIds);
       }
 
       if (order) {
@@ -491,7 +507,19 @@ export default function POS() {
 
       toast.success(`Invoice ${invNumber} created`);
       nav(`/invoices/${inv.id}`);
-    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+    } catch (e: any) {
+      // Only release claimed items if the invoice itself never got created. If the
+      // invoice exists, the items are legitimately sold even if a later step failed.
+      if (!invoiceCreated) {
+        const itemIds = cart.map((r) => r.inventory_item_id).filter(Boolean) as string[];
+        if (itemIds.length) {
+          const { data: stillSold } = await supabase.from("inventory_items").select("id").eq("status", "sold").in("id", itemIds);
+          const toRelease = (stillSold ?? []).map((r: any) => r.id);
+          if (toRelease.length) await supabase.from("inventory_items").update({ status: "in_stock" }).in("id", toRelease);
+        }
+      }
+      toast.error(e.message);
+    } finally { setSaving(false); }
   }
 
   return (
@@ -813,7 +841,10 @@ function NewCustomerDialog({ open, onOpenChange, onSaved }: {
       full_name: full_name.trim(), phone: phone || null, email: email || null, address: address || null,
     } as any).select("id").single();
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (error.code === "23505") return toast.error("A customer with this phone number already exists — search for them instead of adding a new one.");
+      return toast.error(error.message);
+    }
     onSaved(data.id);
   }
   return (

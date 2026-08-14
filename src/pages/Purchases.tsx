@@ -122,8 +122,8 @@ function NewPurchaseDialog({ open, onOpenChange, onSaved }: any) {
     if (!items.length || items.some((it) => !it.item_name?.trim())) return toast.error("Every line item needs a name");
     setSaving(true);
     try {
-      const num = Math.floor(Date.now() / 1000) % 100000;
-      const purchaseNo = nextNumber("PUR", num, 5);
+      const { data: purchaseNo, error: numErr } = await supabase.rpc("next_document_number", { p_prefix: "PUR", p_pad: 5 });
+      if (numErr) throw numErr;
       const { data: purchase, error } = await supabase.from("purchases").insert({
         purchase_no: purchaseNo,
         supplier_id: form.supplier_id || null,

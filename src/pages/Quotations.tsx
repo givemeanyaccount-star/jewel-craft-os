@@ -295,8 +295,9 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
         const { error: dErr } = await supabase.from("quotation_items").delete().eq("quotation_id", editing.id);
         if (dErr) throw dErr;
       } else {
-        const num = Math.floor(Date.now() / 1000) % 100000;
-        quoteNumber = nextNumber("Q", num, 5);
+        const { data: qNum, error: numErr } = await supabase.rpc("next_document_number", { p_prefix: "Q", p_pad: 5 });
+        if (numErr) throw numErr;
+        quoteNumber = qNum;
         const { data: q, error } = await supabase.from("quotations").insert({
           ...payload, quote_number: quoteNumber, status: "draft", created_by: userId,
         } as any).select().single();

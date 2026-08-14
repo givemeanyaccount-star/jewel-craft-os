@@ -99,7 +99,16 @@ export function CustomerDialog({
         if (error) throw error; saved = data; toast.success("Customer created");
       }
       onSaved(saved);
-    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+    } catch (e: any) {
+      // Postgres unique_violation (23505) — the app-level check above already catches
+      // this in almost all cases, but this is the safety net for the rare race condition
+      // where two people save the same customer at nearly the same instant.
+      if (e.code === "23505") {
+        toast.error("This phone number or ID document already belongs to another customer.");
+      } else {
+        toast.error(e.message);
+      }
+    } finally { setSaving(false); }
   }
 
   return (

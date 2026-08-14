@@ -165,8 +165,8 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
     if (items.some((it) => !it.issue_description?.trim())) return toast.error("Every item needs an issue description");
     setSaving(true);
     try {
-      const num = Math.floor(Date.now() / 1000) % 100000;
-      const repairNo = nextNumber("REP", num, 5);
+      const { data: repairNo, error: numErr } = await supabase.rpc("next_document_number", { p_prefix: "REP", p_pad: 5 });
+      if (numErr) throw numErr;
       const { data: repair, error } = await supabase.from("repairs").insert({
         repair_no: repairNo,
         customer_id: customer.id,

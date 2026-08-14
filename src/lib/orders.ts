@@ -104,8 +104,10 @@ export function estimateOrderLine(l: OrderLineInput): number {
   return round2(lineTotal);
 }
 
-export function nextOrderNo() {
-  return nextNumber("ORD", Math.floor(Date.now() / 1000) % 100000, 5);
+export async function nextOrderNo() {
+  const { data, error } = await supabase.rpc("next_document_number", { p_prefix: "ORD", p_pad: 5 });
+  if (error) throw error;
+  return data as string;
 }
 
 export async function logOrderItemStatus(entry: {
