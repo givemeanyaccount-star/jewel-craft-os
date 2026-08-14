@@ -99,7 +99,7 @@ export default function CreditLedger() {
                     <TableCell className="text-right">{g.invoices.length}</TableCell>
                   </TableRow>
                   {open && (
-                    <TableRow key={`${key}-d`} className="bg-muted/30 hover:bg-muted/30">
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
                       <TableCell colSpan={5} className="p-0">
                         <div className="divide-y">
                           {g.invoices.map((inv) => (
