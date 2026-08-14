@@ -68,6 +68,11 @@ export default function InvoiceDetail() {
     setInv(i.data); setItems(it.data ?? []); setPayments(p.data ?? []);
   }
 
+  // Cash-type advances taken on the linked order and settled against this bill.
+  const advanceReceived = payments
+    .filter((p) => p.order_id && p.method !== "old_gold")
+    .reduce((a, p) => a + Number(p.amount ?? 0), 0);
+
   const oldGoldEq = inv && Number(inv.old_gold_credit) > 0
     ? fineEquivalentNote(Number(inv.old_gold_credit), billFineRate(items, tradeMetal, fineRates), tradeMetal)
     : null;
@@ -161,8 +166,17 @@ export default function InvoiceDetail() {
               {oldGoldEq && <div className="text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
 
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(inv.total)}</span></div>
+              {advanceReceived > 0 && (
+                <>
+                  <Row label="Less: advance received on order" value={`- ${npr(advanceReceived)}`} />
+                  <div className="flex justify-between border-t pt-2 text-base font-semibold">
+                    <span>Net payable</span><span>{npr(Math.max(0, Number(inv.total) - advanceReceived))}</span>
+                  </div>
+                </>
+              )}
               <Row label="Paid" value={npr(inv.amount_paid)} />
               <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(inv.balance_due)}</span></div>
+
             </div>
           </CardContent>
         </Card>

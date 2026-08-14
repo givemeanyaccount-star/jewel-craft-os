@@ -125,7 +125,8 @@ export default function POS() {
   const [orderLineByItem, setOrderLineByItem] = useState<Record<string, { receiptId: string; orderItemId: string }>>({});
   const [orderDate, setOrderDate] = useState<string>("");
   const [rateBasis, setRateBasis] = useState<"order" | "current">("current");
-  const [advance, setAdvance] = useState(0);
+  const [advance, setAdvance] = useState(0);            // cash-type advances held on the order
+  const [advanceOldMetal, setAdvanceOldMetal] = useState(0); // old-metal trade-in advances on the order
   const [issueDate, setIssueDate] = useState<string>(todayISO());
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
 
@@ -193,7 +194,7 @@ export default function POS() {
         .select("*, order_item_receipts(*, inventory_items(*))")
         .eq("order_id", id)
         .neq("status", "cancelled"),
-      supabase.from("payments").select("amount").eq("order_id", id),
+      supabase.from("payments").select("amount, method").eq("order_id", id).is("invoice_id", null),
     ]);
     if (!o) return toast.error("Order not found");
     const billable = ((lines ?? []) as any[]).flatMap((l) =>
@@ -206,7 +207,15 @@ export default function POS() {
     setCustomerId(o.customer_id);
     setOrderDate(o.order_date);
     setRateBasis("order");
-    setAdvance(round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0)));
+    // Split the order advances: old-metal trade-ins become an old metal credit on
+    // this bill (so the SD tax base is right), cash-type advances are deducted from
+    // the total to give the net payable amount.
+    const advPays = (pays ?? []) as any[];
+    const oldMetalAdv = round2(advPays.filter((p) => p.method === "old_gold").reduce((a, p) => a + Number(p.amount ?? 0), 0));
+    const cashAdv = round2(advPays.filter((p) => p.method !== "old_gold").reduce((a, p) => a + Number(p.amount ?? 0), 0));
+    setAdvance(cashAdv);
+    setAdvanceOldMetal(oldMetalAdv);
+    if (oldMetalAdv > 0) setOldGoldCredit((c) => round2(c + oldMetalAdv));
     setNotes(o.notes ?? "");
 
     const map: Record<string, { receiptId: string; orderItemId: string }> = {};
@@ -339,12 +348,14 @@ export default function POS() {
     () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)),
     [payments],
   );
-  // On a partial batch bill only as much of the order advance as this invoice needs;
+  // On a partial batch bill only as much of the cash advance as this invoice needs;
   // the rest stays on the order for the remaining pieces.
   const appliedAdvance = useMemo(
     () => round2(Math.min(advance, Math.max(0, tax.total - manualPaid))),
     [advance, tax.total, manualPaid],
   );
+  // What the customer still has to settle now, after the cash advance is deducted.
+  const netPayable = useMemo(() => round2(Math.max(0, tax.total - appliedAdvance)), [tax.total, appliedAdvance]);
   const paid = useMemo(() => round2(manualPaid + appliedAdvance), [manualPaid, appliedAdvance]);
 
   const balance = round2(Math.max(0, tax.total - paid));
@@ -357,14 +368,16 @@ export default function POS() {
 
   function applyTargetTotal() {
     const t = Number(targetTotal);
-    if (!t || t <= 0) return toast.error("Enter target net amount");
+    if (!t || t <= 0) return toast.error("Enter target net payable amount");
+    // The target is the net payable, so solve for a total of target + cash advance.
     const d = discountForTargetTotal({
-      subtotal, stonesTotal, oldGoldCredit, targetTotal: t,
+      subtotal, stonesTotal, oldGoldCredit, targetTotal: round2(t + appliedAdvance),
       vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
     });
     setDiscount(d);
-    toast.success(`Discount set to ${npr(d)} to reach ${npr(t)}`);
+    toast.success(`Discount set to ${npr(d)} to reach a net payable of ${npr(t)}`);
   }
+
 
   async function checkout() {
     if (!customerId) return toast.error("Select a customer for this sale");
@@ -461,11 +474,19 @@ export default function POS() {
             });
           }));
         }
-        // Apply the order advance to this invoice, only up to what this bill needs.
+        // Old-metal advances are already deducted through the old metal credit line,
+        // so just attach them to this invoice so they can't be counted again later.
+        if (advanceOldMetal > 0) {
+          await supabase.from("payments")
+            .update({ invoice_id: inv.id, notes: `Old metal advance credited on invoice ${invNumber}` } as any)
+            .eq("order_id", order.id).is("invoice_id", null).eq("method", "old_gold" as any);
+        }
+        // Apply the cash advance to this invoice, only up to what this bill needs.
         let remaining = appliedAdvance;
         if (remaining > 0) {
           const { data: adv } = await supabase.from("payments")
-            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null).order("paid_at");
+            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null)
+            .neq("method", "old_gold" as any).order("paid_at");
           for (const p of (adv ?? []) as any[]) {
             if (remaining <= 0.004) break;
             const amt = Number(p.amount ?? 0);
@@ -485,6 +506,7 @@ export default function POS() {
             }
           }
         }
+
         await syncOrderStatus(order.id);
       }
 
@@ -567,7 +589,8 @@ export default function POS() {
               {order && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Billing custom order <strong>{order.order_no}</strong>
-                  {advance > 0 && <> · advance of <strong>{npr(advance)}</strong> held{appliedAdvance < advance ? <> — <strong>{npr(appliedAdvance)}</strong> applied to this bill, {npr(round2(advance - appliedAdvance))} kept for the remaining pieces</> : " applied to this bill"}</>}
+                  {advanceOldMetal > 0 && <> · old metal advance of <strong>{npr(advanceOldMetal)}</strong> credited as old metal on this bill</>}
+                  {advance > 0 && <> · cash advance of <strong>{npr(advance)}</strong> held{appliedAdvance < advance ? <> — <strong>{npr(appliedAdvance)}</strong> deducted on this bill, {npr(round2(advance - appliedAdvance))} kept for the remaining pieces</> : " deducted from this bill"}</>}
                 </p>
               )}
               {!order && (
@@ -731,16 +754,36 @@ export default function POS() {
               </div>
             </div>
             {oldGoldEq && <div className="-mt-1 text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
+            {advanceOldMetal > 0 && (
+              <div className="-mt-1 text-right text-xs text-muted-foreground">
+                includes old metal advance of {npr(advanceOldMetal)} taken on the order
+              </div>
+            )}
 
             <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>
 
+            {appliedAdvance > 0 && (
+              <>
+                <Row label="Less: cash advance received" value={`− ${npr(appliedAdvance)}`} />
+                <div className="flex justify-between border-t pt-2 text-base font-semibold">
+                  <span>Net payable</span><span>{npr(netPayable)}</span>
+                </div>
+              </>
+            )}
+
             <div className="rounded-md border bg-muted/40 p-2">
-              <Label className="text-xs">Set net amount (auto-discount)</Label>
+              <Label className="text-xs">Set net payable amount (auto-discount)</Label>
               <div className="mt-1 flex gap-2">
                 <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                 <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
               </div>
+              {appliedAdvance > 0 && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Amount the customer pays now, after the {npr(appliedAdvance)} cash advance.
+                </p>
+              )}
             </div>
+
 
             <div>
               <div className="flex items-center justify-between">
