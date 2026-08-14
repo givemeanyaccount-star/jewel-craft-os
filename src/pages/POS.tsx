@@ -194,7 +194,7 @@ export default function POS() {
         .select("*, order_item_receipts(*, inventory_items(*))")
         .eq("order_id", id)
         .neq("status", "cancelled"),
-      supabase.from("payments").select("amount").eq("order_id", id),
+      supabase.from("payments").select("amount, method").eq("order_id", id).is("invoice_id", null),
     ]);
     if (!o) return toast.error("Order not found");
     const billable = ((lines ?? []) as any[]).flatMap((l) =>
