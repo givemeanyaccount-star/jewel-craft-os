@@ -116,6 +116,7 @@ export default function POS() {
   const [fineRates, setFineRates] = useState<FineRates>({});
   useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
   const [targetTotal, setTargetTotal] = useState<string>("");
+  const [targetRefund, setTargetRefund] = useState<string>("");
   const [payments, setPayments] = useState<PayLine[]>([{ method: "cash", amount: 0 }]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -388,6 +389,33 @@ export default function POS() {
       return;
     }
     toast.success(`Discount set to ${npr(d)} to reach a net payable of ${npr(t)}`);
+  }
+
+  // Over-collection: advances (+ any payment already entered) exceed the bill.
+  const totalCollected = round2(advance + manualPaid);
+  const refundDue = round2(Math.max(0, totalCollected - tax.total));
+
+  function applyTargetRefund() {
+    const r = Number(targetRefund);
+    if (!(r >= 0)) return toast.error("Enter the refund amount");
+    const wanted = round2(totalCollected - r);
+    if (wanted <= 0) return toast.error(`Refund cannot exceed ${npr(totalCollected)} collected`);
+    const d = discountForTargetTotal({
+      subtotal, stonesTotal, oldGoldCredit, targetTotal: wanted,
+      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
+    });
+    const reached = computeInvoiceTaxes({
+      subtotal, stonesTotal, discount: d, oldGoldCredit,
+      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
+    }).total;
+    if (Math.abs(reached - wanted) > 0.05) {
+      const maxRefund = round2(Math.max(0, totalCollected - reached));
+      toast.warning(`Cannot refund ${npr(r)} — the most refundable without a discount is ${npr(maxRefund)}`);
+      return;
+    }
+    setDiscount(d);
+    setTargetTotal("");
+    toast.success(`Discount set to ${npr(d)} so the refund is ${npr(r)}`);
   }
 
 
