@@ -845,6 +845,23 @@ export default function POS() {
               )}
             </div>
 
+            {refundDue > 0 && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2">
+                <div className="flex justify-between text-sm font-medium">
+                  <span>Refund due (advance over bill)</span><span>{npr(refundDue)}</span>
+                </div>
+                <Label className="mt-2 block text-xs">Set refund amount (auto-discount)</Label>
+                <div className="mt-1 flex gap-2">
+                  <NumberField placeholder={String(refundDue)} value={targetRefund}
+                    onChange={(v) => setTargetRefund(v === null || v === undefined ? "" : String(v))} />
+                  <Button size="sm" variant="secondary" onClick={applyTargetRefund}>Apply</Button>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Discount is calculated so the bill leaves exactly this much to refund from the {npr(totalCollected)} collected.
+                </p>
+              </div>
+            )}
+
 
             <div>
               <div className="flex items-center justify-between">
