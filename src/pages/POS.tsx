@@ -116,6 +116,7 @@ export default function POS() {
   const [fineRates, setFineRates] = useState<FineRates>({});
   useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
   const [targetTotal, setTargetTotal] = useState<string>("");
+  const [targetRefund, setTargetRefund] = useState<string>("");
   const [payments, setPayments] = useState<PayLine[]>([{ method: "cash", amount: 0 }]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -388,6 +389,33 @@ export default function POS() {
       return;
     }
     toast.success(`Discount set to ${npr(d)} to reach a net payable of ${npr(t)}`);
+  }
+
+  // Over-collection: advances (+ any payment already entered) exceed the bill.
+  const totalCollected = round2(advance + manualPaid);
+  const refundDue = round2(Math.max(0, totalCollected - tax.total));
+
+  function applyTargetRefund() {
+    const r = Number(targetRefund);
+    if (!(r >= 0)) return toast.error("Enter the refund amount");
+    const wanted = round2(totalCollected - r);
+    if (wanted <= 0) return toast.error(`Refund cannot exceed ${npr(totalCollected)} collected`);
+    const d = discountForTargetTotal({
+      subtotal, stonesTotal, oldGoldCredit, targetTotal: wanted,
+      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
+    });
+    const reached = computeInvoiceTaxes({
+      subtotal, stonesTotal, discount: d, oldGoldCredit,
+      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
+    }).total;
+    if (Math.abs(reached - wanted) > 0.05) {
+      const maxRefund = round2(Math.max(0, totalCollected - reached));
+      toast.warning(`Cannot refund ${npr(r)} — the most refundable without a discount is ${npr(maxRefund)}`);
+      return;
+    }
+    setDiscount(d);
+    setTargetTotal("");
+    toast.success(`Discount set to ${npr(d)} so the refund is ${npr(r)}`);
   }
 
 
@@ -816,6 +844,23 @@ export default function POS() {
                 </p>
               )}
             </div>
+
+            {refundDue > 0 && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2">
+                <div className="flex justify-between text-sm font-medium">
+                  <span>Refund due (advance over bill)</span><span>{npr(refundDue)}</span>
+                </div>
+                <Label className="mt-2 block text-xs">Set refund amount (auto-discount)</Label>
+                <div className="mt-1 flex gap-2">
+                  <NumberField placeholder={String(refundDue)} value={targetRefund}
+                    onChange={(v) => setTargetRefund(v === null || v === undefined ? "" : String(v))} />
+                  <Button size="sm" variant="secondary" onClick={applyTargetRefund}>Apply</Button>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Discount is calculated so the bill leaves exactly this much to refund from the {npr(totalCollected)} collected.
+                </p>
+              </div>
+            )}
 
 
             <div>
