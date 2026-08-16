@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { PrintDocument, printDocument } from "@/components/PrintDocument";
-import { npr, netPayableOf, paymentBreakdown } from "@/lib/format";
+import { npr, advanceReceivedFromPayments, netPayableOf } from "@/lib/format";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -69,14 +69,7 @@ export default function InvoiceDetail() {
   }
 
   // Cash-type advances taken on the linked order and settled against this bill.
-  // Same helper the printed bill renders from, so screen and paper can't drift.
-  const pay = paymentBreakdown({
-    payments,
-    oldGoldCredit: inv?.old_gold_credit,
-    netTotal: inv?.total,
-    balanceDue: inv?.balance_due,
-  });
-  const advanceReceived = pay.advanceReceived;
+  const advanceReceived = advanceReceivedFromPayments(payments);
 
 
 
@@ -182,10 +175,7 @@ export default function InvoiceDetail() {
                 </>
               )}
               <Row label="Paid" value={npr(inv.amount_paid)} />
-              <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(pay.balanceDue)}</span></div>
-              {pay.surplus > 0 && (
-                <div className="flex justify-between font-medium"><span>Refund due</span><span>{npr(pay.surplus)}</span></div>
-              )}
+              <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(inv.balance_due)}</span></div>
 
             </div>
           </CardContent>

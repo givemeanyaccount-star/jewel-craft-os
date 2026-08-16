@@ -4,7 +4,7 @@ import { getSignedUrls } from "@/lib/storage";
 import { toBS, toADDate, toADDateTime, toNepaliDigits } from "@/lib/nepaliDate";
 import { amountInWords } from "@/lib/numberToWords";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
-import { netPayableOf, paymentBreakdown } from "@/lib/format";
+import { advanceReceivedFromPayments, netPayableOf } from "@/lib/format";
 
 import logoAsset from "@/assets/logo.png";
 import { openPrintPreview } from "@/components/PrintPreview";
@@ -152,16 +152,24 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const sdTaxable = Math.max(0, afterDiscount - stones - oldGold);
   const vat = Number(doc.vat_amount ?? 0);
   const netTotal = Number(doc.total ?? 0);
-  // Cash-type advances collected on the linked order and settled against this bill,
-  // plus the at-sale payment modes — all from one shared helper so the screen agrees.
-  const pay = paymentBreakdown({
-    payments: payments as any,
-    oldGoldCredit: oldGold,
-    netTotal,
-    balanceDue: doc.balance_due,
-  });
-  const { advanceReceived, modeRows, totalReceived, balanceDue, surplus } = pay;
+  // Cash-type advances collected on the linked order and settled against this bill.
+  const advanceReceived = advanceReceivedFromPayments(payments as any);
   const netPayable = netPayableOf(netTotal, advanceReceived);
+  // At-sale payment modes (advance rows excluded — they print as their own line).
+  const modeRows = (() => {
+    const m = new Map<string, number>();
+    for (const p of payments as any[]) {
+      if (p?.order_id && p?.method !== "old_gold") continue; // counted as advance
+      const key = String(p?.method ?? "other");
+      m.set(key, (m.get(key) ?? 0) + (Number(p?.amount ?? 0) || 0));
+    }
+    return Array.from(m.entries()).filter(([, v]) => v !== 0);
+  })();
+  const atSaleTotal = modeRows.reduce((s, [, v]) => s + v, 0);
+  const totalReceived = oldGold + advanceReceived + atSaleTotal;
+  const balanceDue = Math.max(0, doc.balance_due != null
+    ? Number(doc.balance_due)
+    : netPayable - atSaleTotal);
 
 
 
@@ -368,12 +376,6 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                     <tr>
                       <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Balance Due</td>
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(balanceDue)}</td>
-                    </tr>
-                  )}
-                  {surplus > 0 && (
-                    <tr>
-                      <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Refund Due</td>
-                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(surplus)}</td>
                     </tr>
                   )}
 
