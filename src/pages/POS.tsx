@@ -128,6 +128,11 @@ export default function POS() {
   const [rateBasis, setRateBasis] = useState<"order" | "current">("current");
   const [advance, setAdvance] = useState(0);            // cash-type advances held on the order
   const [advanceOldMetal, setAdvanceOldMetal] = useState(0); // old-metal trade-in advances on the order
+  const [applyCashAdv, setApplyCashAdv] = useState(0);       // how much of the cash advance this bill uses
+  const [applyOldMetalAdv, setApplyOldMetalAdv] = useState(0); // how much of the old metal advance this bill uses
+  const [refundInput, setRefundInput] = useState<string>("");  // blank = refund the whole excess
+  const [refundMethod, setRefundMethod] = useState<string>("cash");
+  const [advDialogOpen, setAdvDialogOpen] = useState(false);
   const [issueDate, setIssueDate] = useState<string>(todayISO());
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
 
