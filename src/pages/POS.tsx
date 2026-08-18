@@ -15,8 +15,8 @@ import { toast } from "sonner";
 import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil, ClipboardList } from "lucide-react";
 import {
   npr, computeLineTotal,
-  nextNumber, computeInvoiceTaxes, discountForTargetTotal,
-  round2, netPayableOf,
+  nextNumber, computeInvoiceTaxes, discountForTargetTotal, discountForTargetRefund,
+  round2, netPayableOf, refundDueOf,
 } from "@/lib/format";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
@@ -128,6 +128,11 @@ export default function POS() {
   const [rateBasis, setRateBasis] = useState<"order" | "current">("current");
   const [advance, setAdvance] = useState(0);            // cash-type advances held on the order
   const [advanceOldMetal, setAdvanceOldMetal] = useState(0); // old-metal trade-in advances on the order
+  const [applyCashAdv, setApplyCashAdv] = useState(0);       // how much of the cash advance this bill uses
+  const [applyOldMetalAdv, setApplyOldMetalAdv] = useState(0); // how much of the old metal advance this bill uses
+  const [refundInput, setRefundInput] = useState<string>("");  // blank = refund the whole excess
+  const [refundMethod, setRefundMethod] = useState<string>("cash");
+  const [advDialogOpen, setAdvDialogOpen] = useState(false);
   const [issueDate, setIssueDate] = useState<string>(todayISO());
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
 
@@ -210,13 +215,24 @@ export default function POS() {
     setRateBasis("order");
     // Split the order advances: old-metal trade-ins become an old metal credit on
     // this bill (so the SD tax base is right), cash-type advances are deducted from
-    // the total to give the net payable amount.
+    // the total to give the net payable amount. Both are adjustable — whatever is not
+    // applied here stays on the order for the remaining pieces.
     const advPays = (pays ?? []) as any[];
     const oldMetalAdv = round2(advPays.filter((p) => p.method === "old_gold").reduce((a, p) => a + Number(p.amount ?? 0), 0));
     const cashAdv = round2(advPays.filter((p) => p.method !== "old_gold").reduce((a, p) => a + Number(p.amount ?? 0), 0));
     setAdvance(cashAdv);
     setAdvanceOldMetal(oldMetalAdv);
-    if (oldMetalAdv > 0) setOldGoldCredit((c) => round2(c + oldMetalAdv));
+    setApplyCashAdv(cashAdv);
+    setApplyOldMetalAdv(oldMetalAdv);
+    setRefundInput("");
+    // Pieces of this order that this bill does not cover — the advance may need to be kept.
+    const partial = ((lines ?? []) as any[]).some((l) => {
+      const inBatch = ((l.order_item_receipts ?? []) as any[])
+        .filter((r) => r.inventory_item_id && r.status !== "billed" && r.status !== "cancelled")
+        .reduce((a, r) => a + Number(r.quantity ?? 1), 0);
+      return Number(l.quantity ?? 0) > Number(l.billed_qty ?? 0) + inBatch;
+    });
+    if (partial && (oldMetalAdv > 0 || cashAdv > 0)) setAdvDialogOpen(true);
     setNotes(o.notes ?? "");
 
     const map: Record<string, { receiptId: string; orderItemId: string }> = {};
@@ -340,20 +356,51 @@ export default function POS() {
   const subtotal = useMemo(() => round2(cart.reduce((a, r) => a + r.line_total, 0)), [cart]);
   const stonesTotal = useMemo(() => round2(cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0)), [cart]);
 
+  // Old metal credit on this bill = trade-in bought during the sale + the part of the
+  // order's old metal advance applied here.
+  const appliedOldMetalAdv = useMemo(
+    () => round2(Math.max(0, Math.min(applyOldMetalAdv, advanceOldMetal))),
+    [applyOldMetalAdv, advanceOldMetal],
+  );
+  const totalOldGoldCredit = useMemo(
+    () => round2(oldGoldCredit + appliedOldMetalAdv),
+    [oldGoldCredit, appliedOldMetalAdv],
+  );
+
   const tax = useMemo(() => computeInvoiceTaxes({
-    subtotal, stonesTotal, discount, oldGoldCredit,
+    subtotal, stonesTotal, discount, oldGoldCredit: totalOldGoldCredit,
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
-  }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
+  }), [subtotal, stonesTotal, discount, totalOldGoldCredit, settings]);
 
   const manualPaid = useMemo(
     () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)),
     [payments],
   );
-  // On a partial batch bill only as much of the cash advance as this invoice needs;
-  // the rest stays on the order for the remaining pieces.
-  const appliedAdvance = useMemo(
-    () => round2(Math.min(advance, Math.max(0, tax.total - manualPaid))),
-    [advance, tax.total, manualPaid],
+  // Cash advance this bill draws on (staff can keep part of it on the order).
+  const advanceRequested = useMemo(
+    () => round2(Math.max(0, Math.min(applyCashAdv, advance))),
+    [applyCashAdv, advance],
+  );
+  // Money owed back when the advance drawn exceeds the bill total.
+  const refundDue = useMemo(() => refundDueOf(tax.total, advanceRequested), [tax.total, advanceRequested]);
+  const refund = useMemo(() => {
+    if (refundInput === "") return refundDue;
+    return round2(Math.max(0, Math.min(Number(refundInput) || 0, refundDue)));
+  }, [refundInput, refundDue]);
+  // Advance rows actually consumed by this invoice; the untouched rest stays on the order.
+  const advanceConsumed = useMemo(
+    () => round2(advanceRequested - (refundDue - refund)),
+    [advanceRequested, refundDue, refund],
+  );
+  // Advance value that counts as payment on this bill (consumed minus what is handed back).
+  const appliedAdvance = useMemo(() => round2(advanceConsumed - refund), [advanceConsumed, refund]);
+  const advanceKept = useMemo(
+    () => round2(Math.max(0, advance - advanceConsumed)),
+    [advance, advanceConsumed],
+  );
+  const oldMetalKept = useMemo(
+    () => round2(Math.max(0, advanceOldMetal - appliedOldMetalAdv)),
+    [advanceOldMetal, appliedOldMetalAdv],
   );
   // What the customer still has to settle now, after the cash advance is deducted.
   const netPayable = useMemo(() => netPayableOf(tax.total, appliedAdvance), [tax.total, appliedAdvance]);
@@ -362,27 +409,37 @@ export default function POS() {
   const balance = round2(Math.max(0, tax.total - paid));
 
   // Fine-metal equivalent of the old metal credit, at the bill's rate (or the day's rate).
-  const oldGoldEq = useMemo(() => oldGoldCredit > 0
-    ? fineEquivalentNote(oldGoldCredit, billFineRate(cart as any, oldGoldMetal, fineRates), oldGoldMetal)
-    : null, [oldGoldCredit, cart, oldGoldMetal, fineRates]);
+  const oldGoldEq = useMemo(() => totalOldGoldCredit > 0
+    ? fineEquivalentNote(totalOldGoldCredit, billFineRate(cart as any, oldGoldMetal, fineRates), oldGoldMetal)
+    : null, [totalOldGoldCredit, cart, oldGoldMetal, fineRates]);
 
 
   function applyTargetTotal() {
     const t = Number(targetTotal);
-    if (!t || t <= 0) return toast.error("Enter target net payable amount");
-    // The target is the net payable, so solve for a total of target + cash advance.
-    const wanted = round2(t + appliedAdvance);
-    const d = discountForTargetTotal({
-      subtotal, stonesTotal, oldGoldCredit, targetTotal: wanted,
+    if (!t || t <= 0) return toast.error(refundDue > 0 ? "Enter target refund amount" : "Enter target net payable amount");
+    const taxOpts = {
+      subtotal, stonesTotal, oldGoldCredit: totalOldGoldCredit,
       vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
-    });
+    };
+    const refundMode = refundDue > 0;
+    // In refund mode the target is the money handed back, otherwise it is the net payable.
+    const d = refundMode
+      ? discountForTargetRefund({ ...taxOpts, advanceApplied: advanceRequested, targetRefund: t })
+      : discountForTargetTotal({ ...taxOpts, targetTotal: round2(t + advanceRequested) });
     setDiscount(d);
     // Check the target is actually reachable (it is not when it needs a negative discount).
-    const reached = computeInvoiceTaxes({
-      subtotal, stonesTotal, discount: d, oldGoldCredit,
-      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
-    }).total;
-    const reachedNet = round2(Math.max(0, reached - Math.min(advance, Math.max(0, reached - manualPaid))));
+    const reached = computeInvoiceTaxes({ ...taxOpts, discount: d }).total;
+    if (refundMode) {
+      const reachedRefund = refundDueOf(reached, advanceRequested);
+      if (Math.abs(reachedRefund - t) > 0.05) {
+        toast.warning(`Cannot reach a refund of ${npr(t)} — the most refundable without a discount is ${npr(reachedRefund)}`);
+        return;
+      }
+      setRefundInput("");
+      toast.success(`Discount set to ${npr(d)} to refund ${npr(t)}`);
+      return;
+    }
+    const reachedNet = netPayableOf(reached, Math.min(advanceRequested, reached));
     if (Math.abs(reachedNet - t) > 0.05) {
       toast.warning(`Cannot reach ${npr(t)} — the lowest net payable without a discount is ${npr(reachedNet)}`);
       return;
@@ -447,7 +504,7 @@ export default function POS() {
         vat_rate: settings.vat_enabled ? settings.vat_rate : 0, vat_amount: tax.vat,
         sd_tax_rate: settings.sd_tax_rate, sd_tax: tax.sdTax,
         luxury_tax_rate: 0, luxury_tax: 0,
-        discount, old_gold_credit: oldGoldCredit, total: tax.total,
+        discount, old_gold_credit: totalOldGoldCredit, total: tax.total,
         amount_paid: paid, balance_due: balance,
         notes: notes || null, status, created_by: user?.id,
         order_date: orderDate || null,
@@ -504,37 +561,49 @@ export default function POS() {
             });
           }));
         }
-        // Old-metal advances are already deducted through the old metal credit line,
-        // so just attach them to this invoice so they can't be counted again later.
-        if (advanceOldMetal > 0) {
-          await supabase.from("payments")
-            .update({ invoice_id: inv.id, notes: `Old metal advance credited on invoice ${invNumber}` } as any)
-            .eq("order_id", order.id).is("invoice_id", null).eq("method", "old_gold" as any);
-        }
-        // Apply the cash advance to this invoice, only up to what this bill needs.
-        let remaining = appliedAdvance;
-        if (remaining > 0) {
-          const { data: adv } = await supabase.from("payments")
-            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null)
-            .neq("method", "old_gold" as any).order("paid_at");
+        // Consume order advances up to the amounts applied on this bill; anything left
+        // stays on the order (splitting a row when only part of it is used here).
+        const consumeAdvance = async (isOldMetal: boolean, want: number) => {
+          let remaining = round2(want);
+          if (remaining <= 0.004) return;
+          let q = supabase.from("payments")
+            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null);
+          q = isOldMetal ? q.eq("method", "old_gold" as any) : q.neq("method", "old_gold" as any);
+          const { data: adv } = await q.order("paid_at");
+          const note = isOldMetal
+            ? `Old metal advance credited on invoice ${invNumber}`
+            : `Advance applied to invoice ${invNumber}`;
           for (const p of (adv ?? []) as any[]) {
             if (remaining <= 0.004) break;
             const amt = Number(p.amount ?? 0);
             if (amt <= 0) continue;
             if (amt <= remaining + 0.004) {
-              await supabase.from("payments").update({ invoice_id: inv.id }).eq("id", p.id);
+              await supabase.from("payments").update({ invoice_id: inv.id, notes: note } as any).eq("id", p.id);
               remaining = round2(remaining - amt);
             } else {
               // split: part of this advance settles the current bill, the rest stays on the order
               await supabase.from("payments").update({ amount: round2(amt - remaining) }).eq("id", p.id);
               await supabase.from("payments").insert({
                 order_id: order.id, invoice_id: inv.id, customer_id: order.customer_id,
-                amount: remaining, method: (p.method ?? "cash") as any,
-                notes: `Advance applied to invoice ${invNumber}`, created_by: user?.id,
+                amount: remaining, method: (p.method ?? (isOldMetal ? "old_gold" : "cash")) as any,
+                notes: note, created_by: user?.id,
               } as any);
               remaining = 0;
             }
           }
+        };
+        // Old-metal advances are already deducted through the old metal credit line,
+        // so they are only attached here so they can't be counted again later.
+        await consumeAdvance(true, appliedOldMetalAdv);
+        await consumeAdvance(false, advanceConsumed);
+
+        // Money handed back when the advance exceeded the bill: a negative payment row.
+        if (refund > 0.004) {
+          await supabase.from("payments").insert({
+            invoice_id: inv.id, customer_id: customerId, amount: round2(-refund),
+            method: refundMethod as any, notes: `Refund of excess advance on invoice ${invNumber}`,
+            created_by: user?.id,
+          } as any);
         }
 
         await syncOrderStatus(order.id);
@@ -787,13 +856,40 @@ export default function POS() {
               </div>
             </div>
             {oldGoldEq && <div className="-mt-1 text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
-            {advanceOldMetal > 0 && (
+            {appliedOldMetalAdv > 0 && (
               <div className="-mt-1 text-right text-xs text-muted-foreground">
-                includes old metal advance of {npr(advanceOldMetal)} taken on the order
+                incl. old metal advance of {npr(appliedOldMetalAdv)} from the order
+                {oldMetalKept > 0 && <> · {npr(oldMetalKept)} saved for the remaining items</>}
               </div>
             )}
 
             <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>
+
+            {(advance > 0 || advanceOldMetal > 0) && (
+              <div className="rounded-md border p-2 text-sm">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="font-medium">Order advances</span>
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setAdvDialogOpen(true)}>Adjust</Button>
+                </div>
+                {advanceOldMetal > 0 && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Old metal advance {npr(advanceOldMetal)}</span>
+                    <span>applied {npr(appliedOldMetalAdv)}</span>
+                  </div>
+                )}
+                {advance > 0 && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Cash advance {npr(advance)}</span>
+                    <span>applied {npr(advanceRequested)}</span>
+                  </div>
+                )}
+                {(advanceKept > 0 || oldMetalKept > 0) && (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Saved for the remaining items: {npr(round2(advanceKept + oldMetalKept))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {appliedAdvance > 0 && (
               <>
@@ -804,17 +900,48 @@ export default function POS() {
               </>
             )}
 
+            {refundDue > 0 && (
+              <div className="space-y-1 rounded-md border border-amber-500/40 bg-amber-500/5 p-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Refund to customer</span>
+                  <NumberField className="h-8 w-28 text-right" value={refund}
+                    onChange={(v) => setRefundInput(String(v))} />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Refund mode</span>
+                  <Select value={refundMethod} onValueChange={setRefundMethod}>
+                    <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.filter((m) => m !== "old_gold" && m !== "credit").map((m) => (
+                        <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Advance exceeds the bill by {npr(refundDue)}.
+                  {refund < refundDue && <> {npr(round2(refundDue - refund))} stays on the order for the remaining items.</>}
+                </p>
+              </div>
+            )}
+
             <div className="rounded-md border bg-muted/40 p-2">
-              <Label className="text-xs">Set net payable amount (auto-discount)</Label>
+              <Label className="text-xs">
+                {refundDue > 0 ? "Set refund amount (auto-discount)" : "Set net payable amount (auto-discount)"}
+              </Label>
               <div className="mt-1 flex gap-2">
                 <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                 <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
               </div>
-              {appliedAdvance > 0 && (
+              {refundDue > 0 ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Money handed back after the {npr(advanceRequested)} advance covers this bill.
+                </p>
+              ) : appliedAdvance > 0 ? (
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   Amount the customer pays now, after the {npr(appliedAdvance)} cash advance.
                 </p>
-              )}
+              ) : null}
             </div>
 
 
