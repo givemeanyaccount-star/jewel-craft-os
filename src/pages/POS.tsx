@@ -356,20 +356,51 @@ export default function POS() {
   const subtotal = useMemo(() => round2(cart.reduce((a, r) => a + r.line_total, 0)), [cart]);
   const stonesTotal = useMemo(() => round2(cart.reduce((a, r) => a + (Number(r.stone_value) || 0) * (r.quantity || 1), 0)), [cart]);
 
+  // Old metal credit on this bill = trade-in bought during the sale + the part of the
+  // order's old metal advance applied here.
+  const appliedOldMetalAdv = useMemo(
+    () => round2(Math.max(0, Math.min(applyOldMetalAdv, advanceOldMetal))),
+    [applyOldMetalAdv, advanceOldMetal],
+  );
+  const totalOldGoldCredit = useMemo(
+    () => round2(oldGoldCredit + appliedOldMetalAdv),
+    [oldGoldCredit, appliedOldMetalAdv],
+  );
+
   const tax = useMemo(() => computeInvoiceTaxes({
-    subtotal, stonesTotal, discount, oldGoldCredit,
+    subtotal, stonesTotal, discount, oldGoldCredit: totalOldGoldCredit,
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
-  }), [subtotal, stonesTotal, discount, oldGoldCredit, settings]);
+  }), [subtotal, stonesTotal, discount, totalOldGoldCredit, settings]);
 
   const manualPaid = useMemo(
     () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)),
     [payments],
   );
-  // On a partial batch bill only as much of the cash advance as this invoice needs;
-  // the rest stays on the order for the remaining pieces.
-  const appliedAdvance = useMemo(
-    () => round2(Math.min(advance, Math.max(0, tax.total - manualPaid))),
-    [advance, tax.total, manualPaid],
+  // Cash advance this bill draws on (staff can keep part of it on the order).
+  const advanceRequested = useMemo(
+    () => round2(Math.max(0, Math.min(applyCashAdv, advance))),
+    [applyCashAdv, advance],
+  );
+  // Money owed back when the advance drawn exceeds the bill total.
+  const refundDue = useMemo(() => refundDueOf(tax.total, advanceRequested), [tax.total, advanceRequested]);
+  const refund = useMemo(() => {
+    if (refundInput === "") return refundDue;
+    return round2(Math.max(0, Math.min(Number(refundInput) || 0, refundDue)));
+  }, [refundInput, refundDue]);
+  // Advance rows actually consumed by this invoice; the untouched rest stays on the order.
+  const advanceConsumed = useMemo(
+    () => round2(advanceRequested - (refundDue - refund)),
+    [advanceRequested, refundDue, refund],
+  );
+  // Advance value that counts as payment on this bill (consumed minus what is handed back).
+  const appliedAdvance = useMemo(() => round2(advanceConsumed - refund), [advanceConsumed, refund]);
+  const advanceKept = useMemo(
+    () => round2(Math.max(0, advance - advanceConsumed)),
+    [advance, advanceConsumed],
+  );
+  const oldMetalKept = useMemo(
+    () => round2(Math.max(0, advanceOldMetal - appliedOldMetalAdv)),
+    [advanceOldMetal, appliedOldMetalAdv],
   );
   // What the customer still has to settle now, after the cash advance is deducted.
   const netPayable = useMemo(() => netPayableOf(tax.total, appliedAdvance), [tax.total, appliedAdvance]);
@@ -378,27 +409,37 @@ export default function POS() {
   const balance = round2(Math.max(0, tax.total - paid));
 
   // Fine-metal equivalent of the old metal credit, at the bill's rate (or the day's rate).
-  const oldGoldEq = useMemo(() => oldGoldCredit > 0
-    ? fineEquivalentNote(oldGoldCredit, billFineRate(cart as any, oldGoldMetal, fineRates), oldGoldMetal)
-    : null, [oldGoldCredit, cart, oldGoldMetal, fineRates]);
+  const oldGoldEq = useMemo(() => totalOldGoldCredit > 0
+    ? fineEquivalentNote(totalOldGoldCredit, billFineRate(cart as any, oldGoldMetal, fineRates), oldGoldMetal)
+    : null, [totalOldGoldCredit, cart, oldGoldMetal, fineRates]);
 
 
   function applyTargetTotal() {
     const t = Number(targetTotal);
-    if (!t || t <= 0) return toast.error("Enter target net payable amount");
-    // The target is the net payable, so solve for a total of target + cash advance.
-    const wanted = round2(t + appliedAdvance);
-    const d = discountForTargetTotal({
-      subtotal, stonesTotal, oldGoldCredit, targetTotal: wanted,
+    if (!t || t <= 0) return toast.error(refundDue > 0 ? "Enter target refund amount" : "Enter target net payable amount");
+    const taxOpts = {
+      subtotal, stonesTotal, oldGoldCredit: totalOldGoldCredit,
       vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
-    });
+    };
+    const refundMode = refundDue > 0;
+    // In refund mode the target is the money handed back, otherwise it is the net payable.
+    const d = refundMode
+      ? discountForTargetRefund({ ...taxOpts, advanceApplied: advanceRequested, targetRefund: t })
+      : discountForTargetTotal({ ...taxOpts, targetTotal: round2(t + advanceRequested) });
     setDiscount(d);
     // Check the target is actually reachable (it is not when it needs a negative discount).
-    const reached = computeInvoiceTaxes({
-      subtotal, stonesTotal, discount: d, oldGoldCredit,
-      vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
-    }).total;
-    const reachedNet = round2(Math.max(0, reached - Math.min(advance, Math.max(0, reached - manualPaid))));
+    const reached = computeInvoiceTaxes({ ...taxOpts, discount: d }).total;
+    if (refundMode) {
+      const reachedRefund = refundDueOf(reached, advanceRequested);
+      if (Math.abs(reachedRefund - t) > 0.05) {
+        toast.warning(`Cannot reach a refund of ${npr(t)} — the most refundable without a discount is ${npr(reachedRefund)}`);
+        return;
+      }
+      setRefundInput("");
+      toast.success(`Discount set to ${npr(d)} to refund ${npr(t)}`);
+      return;
+    }
+    const reachedNet = netPayableOf(reached, Math.min(advanceRequested, reached));
     if (Math.abs(reachedNet - t) > 0.05) {
       toast.warning(`Cannot reach ${npr(t)} — the lowest net payable without a discount is ${npr(reachedNet)}`);
       return;
