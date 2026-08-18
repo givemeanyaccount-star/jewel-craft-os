@@ -215,13 +215,24 @@ export default function POS() {
     setRateBasis("order");
     // Split the order advances: old-metal trade-ins become an old metal credit on
     // this bill (so the SD tax base is right), cash-type advances are deducted from
-    // the total to give the net payable amount.
+    // the total to give the net payable amount. Both are adjustable — whatever is not
+    // applied here stays on the order for the remaining pieces.
     const advPays = (pays ?? []) as any[];
     const oldMetalAdv = round2(advPays.filter((p) => p.method === "old_gold").reduce((a, p) => a + Number(p.amount ?? 0), 0));
     const cashAdv = round2(advPays.filter((p) => p.method !== "old_gold").reduce((a, p) => a + Number(p.amount ?? 0), 0));
     setAdvance(cashAdv);
     setAdvanceOldMetal(oldMetalAdv);
-    if (oldMetalAdv > 0) setOldGoldCredit((c) => round2(c + oldMetalAdv));
+    setApplyCashAdv(cashAdv);
+    setApplyOldMetalAdv(oldMetalAdv);
+    setRefundInput("");
+    // Pieces of this order that this bill does not cover — the advance may need to be kept.
+    const partial = ((lines ?? []) as any[]).some((l) => {
+      const inBatch = ((l.order_item_receipts ?? []) as any[])
+        .filter((r) => r.inventory_item_id && r.status !== "billed" && r.status !== "cancelled")
+        .reduce((a, r) => a + Number(r.quantity ?? 1), 0);
+      return Number(l.quantity ?? 0) > Number(l.billed_qty ?? 0) + inBatch;
+    });
+    if (partial && (oldMetalAdv > 0 || cashAdv > 0)) setAdvDialogOpen(true);
     setNotes(o.notes ?? "");
 
     const map: Record<string, { receiptId: string; orderItemId: string }> = {};
