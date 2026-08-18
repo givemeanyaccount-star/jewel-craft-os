@@ -561,37 +561,49 @@ export default function POS() {
             });
           }));
         }
-        // Old-metal advances are already deducted through the old metal credit line,
-        // so just attach them to this invoice so they can't be counted again later.
-        if (advanceOldMetal > 0) {
-          await supabase.from("payments")
-            .update({ invoice_id: inv.id, notes: `Old metal advance credited on invoice ${invNumber}` } as any)
-            .eq("order_id", order.id).is("invoice_id", null).eq("method", "old_gold" as any);
-        }
-        // Apply the cash advance to this invoice, only up to what this bill needs.
-        let remaining = appliedAdvance;
-        if (remaining > 0) {
-          const { data: adv } = await supabase.from("payments")
-            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null)
-            .neq("method", "old_gold" as any).order("paid_at");
+        // Consume order advances up to the amounts applied on this bill; anything left
+        // stays on the order (splitting a row when only part of it is used here).
+        const consumeAdvance = async (isOldMetal: boolean, want: number) => {
+          let remaining = round2(want);
+          if (remaining <= 0.004) return;
+          let q = supabase.from("payments")
+            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null);
+          q = isOldMetal ? q.eq("method", "old_gold" as any) : q.neq("method", "old_gold" as any);
+          const { data: adv } = await q.order("paid_at");
+          const note = isOldMetal
+            ? `Old metal advance credited on invoice ${invNumber}`
+            : `Advance applied to invoice ${invNumber}`;
           for (const p of (adv ?? []) as any[]) {
             if (remaining <= 0.004) break;
             const amt = Number(p.amount ?? 0);
             if (amt <= 0) continue;
             if (amt <= remaining + 0.004) {
-              await supabase.from("payments").update({ invoice_id: inv.id }).eq("id", p.id);
+              await supabase.from("payments").update({ invoice_id: inv.id, notes: note } as any).eq("id", p.id);
               remaining = round2(remaining - amt);
             } else {
               // split: part of this advance settles the current bill, the rest stays on the order
               await supabase.from("payments").update({ amount: round2(amt - remaining) }).eq("id", p.id);
               await supabase.from("payments").insert({
                 order_id: order.id, invoice_id: inv.id, customer_id: order.customer_id,
-                amount: remaining, method: (p.method ?? "cash") as any,
-                notes: `Advance applied to invoice ${invNumber}`, created_by: user?.id,
+                amount: remaining, method: (p.method ?? (isOldMetal ? "old_gold" : "cash")) as any,
+                notes: note, created_by: user?.id,
               } as any);
               remaining = 0;
             }
           }
+        };
+        // Old-metal advances are already deducted through the old metal credit line,
+        // so they are only attached here so they can't be counted again later.
+        await consumeAdvance(true, appliedOldMetalAdv);
+        await consumeAdvance(false, advanceConsumed);
+
+        // Money handed back when the advance exceeded the bill: a negative payment row.
+        if (refund > 0.004) {
+          await supabase.from("payments").insert({
+            invoice_id: inv.id, customer_id: customerId, amount: round2(-refund),
+            method: refundMethod as any, notes: `Refund of excess advance on invoice ${invNumber}`,
+            created_by: user?.id,
+          } as any);
         }
 
         await syncOrderStatus(order.id);
