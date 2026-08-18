@@ -504,7 +504,7 @@ export default function POS() {
         vat_rate: settings.vat_enabled ? settings.vat_rate : 0, vat_amount: tax.vat,
         sd_tax_rate: settings.sd_tax_rate, sd_tax: tax.sdTax,
         luxury_tax_rate: 0, luxury_tax: 0,
-        discount, old_gold_credit: oldGoldCredit, total: tax.total,
+        discount, old_gold_credit: totalOldGoldCredit, total: tax.total,
         amount_paid: paid, balance_due: balance,
         notes: notes || null, status, created_by: user?.id,
         order_date: orderDate || null,
