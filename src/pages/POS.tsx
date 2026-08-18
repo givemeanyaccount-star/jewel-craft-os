@@ -15,8 +15,8 @@ import { toast } from "sonner";
 import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil, ClipboardList } from "lucide-react";
 import {
   npr, computeLineTotal,
-  nextNumber, computeInvoiceTaxes, discountForTargetTotal,
-  round2, netPayableOf,
+  nextNumber, computeInvoiceTaxes, discountForTargetTotal, discountForTargetRefund,
+  round2, netPayableOf, refundDueOf,
 } from "@/lib/format";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
