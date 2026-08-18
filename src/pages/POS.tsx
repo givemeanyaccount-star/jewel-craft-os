@@ -856,13 +856,40 @@ export default function POS() {
               </div>
             </div>
             {oldGoldEq && <div className="-mt-1 text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
-            {advanceOldMetal > 0 && (
+            {appliedOldMetalAdv > 0 && (
               <div className="-mt-1 text-right text-xs text-muted-foreground">
-                includes old metal advance of {npr(advanceOldMetal)} taken on the order
+                incl. old metal advance of {npr(appliedOldMetalAdv)} from the order
+                {oldMetalKept > 0 && <> · {npr(oldMetalKept)} saved for the remaining items</>}
               </div>
             )}
 
             <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>
+
+            {(advance > 0 || advanceOldMetal > 0) && (
+              <div className="rounded-md border p-2 text-sm">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="font-medium">Order advances</span>
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setAdvDialogOpen(true)}>Adjust</Button>
+                </div>
+                {advanceOldMetal > 0 && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Old metal advance {npr(advanceOldMetal)}</span>
+                    <span>applied {npr(appliedOldMetalAdv)}</span>
+                  </div>
+                )}
+                {advance > 0 && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Cash advance {npr(advance)}</span>
+                    <span>applied {npr(advanceRequested)}</span>
+                  </div>
+                )}
+                {(advanceKept > 0 || oldMetalKept > 0) && (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Saved for the remaining items: {npr(round2(advanceKept + oldMetalKept))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {appliedAdvance > 0 && (
               <>
@@ -873,17 +900,48 @@ export default function POS() {
               </>
             )}
 
+            {refundDue > 0 && (
+              <div className="space-y-1 rounded-md border border-amber-500/40 bg-amber-500/5 p-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Refund to customer</span>
+                  <NumberField className="h-8 w-28 text-right" value={refund}
+                    onChange={(v) => setRefundInput(String(v))} />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Refund mode</span>
+                  <Select value={refundMethod} onValueChange={setRefundMethod}>
+                    <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.filter((m) => m !== "old_gold" && m !== "credit").map((m) => (
+                        <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Advance exceeds the bill by {npr(refundDue)}.
+                  {refund < refundDue && <> {npr(round2(refundDue - refund))} stays on the order for the remaining items.</>}
+                </p>
+              </div>
+            )}
+
             <div className="rounded-md border bg-muted/40 p-2">
-              <Label className="text-xs">Set net payable amount (auto-discount)</Label>
+              <Label className="text-xs">
+                {refundDue > 0 ? "Set refund amount (auto-discount)" : "Set net payable amount (auto-discount)"}
+              </Label>
               <div className="mt-1 flex gap-2">
                 <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                 <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
               </div>
-              {appliedAdvance > 0 && (
+              {refundDue > 0 ? (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Money handed back after the {npr(advanceRequested)} advance covers this bill.
+                </p>
+              ) : appliedAdvance > 0 ? (
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   Amount the customer pays now, after the {npr(appliedAdvance)} cash advance.
                 </p>
-              )}
+              ) : null}
             </div>
 
 
