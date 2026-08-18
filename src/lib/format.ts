@@ -87,6 +87,38 @@ export function netPayableOf(total: number, advanceReceived: number): number {
   return round2(Math.max(0, (Number(total) || 0) - (Number(advanceReceived) || 0)));
 }
 
+/** Money handed back when the advance applied to a bill exceeds its total. */
+export function refundDueOf(total: number, advanceApplied: number): number {
+  return round2(Math.max(0, (Number(advanceApplied) || 0) - (Number(total) || 0)));
+}
+
+/**
+ * Refunds recorded against an invoice are negative payment rows (money out).
+ * Shared by POS, InvoiceDetail and the printed bill so all three agree.
+ */
+export function refundPaidFromPayments(
+  payments: Array<{ amount?: number | string | null }> = [],
+): number {
+  return round2(payments
+    .reduce((s, p) => s + Math.min(0, Number(p?.amount ?? 0) || 0), 0) * -1);
+}
+
+/** Back-solve the discount so the refund handed back equals a desired amount. */
+export function discountForTargetRefund(opts: {
+  subtotal: number;
+  stonesTotal: number;
+  oldGoldCredit?: number;
+  advanceApplied: number;
+  targetRefund: number;
+  vatRate?: number;
+  vatEnabled?: boolean;
+  sdTaxRate?: number;
+}): number {
+  const target = Math.max(0, (Number(opts.advanceApplied) || 0) - (Number(opts.targetRefund) || 0));
+  return discountForTargetTotal({ ...opts, targetTotal: target });
+}
+
+
 
 
 // Back-solve the discount so the final total equals a desired net amount.
