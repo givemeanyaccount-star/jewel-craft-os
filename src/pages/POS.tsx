@@ -691,8 +691,9 @@ export default function POS() {
               {order && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Billing custom order <strong>{order.order_no}</strong>
-                  {advanceOldMetal > 0 && <> · old metal advance of <strong>{npr(advanceOldMetal)}</strong> credited as old metal on this bill</>}
-                  {advance > 0 && <> · cash advance of <strong>{npr(advance)}</strong> held{appliedAdvance < advance ? <> — <strong>{npr(appliedAdvance)}</strong> deducted on this bill, {npr(round2(advance - appliedAdvance))} kept for the remaining pieces</> : " deducted from this bill"}</>}
+                  {advanceOldMetal > 0 && <> · old metal advance <strong>{npr(advanceOldMetal)}</strong> — {npr(appliedOldMetalAdv)} credited here</>}
+                  {advance > 0 && <> · cash advance <strong>{npr(advance)}</strong> — {npr(advanceConsumed)} used here</>}
+                  {(advanceKept > 0 || oldMetalKept > 0) && <> · {npr(round2(advanceKept + oldMetalKept))} kept for the remaining pieces</>}
                 </p>
               )}
               {!order && (
