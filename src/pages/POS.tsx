@@ -691,8 +691,9 @@ export default function POS() {
               {order && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Billing custom order <strong>{order.order_no}</strong>
-                  {advanceOldMetal > 0 && <> · old metal advance of <strong>{npr(advanceOldMetal)}</strong> credited as old metal on this bill</>}
-                  {advance > 0 && <> · cash advance of <strong>{npr(advance)}</strong> held{appliedAdvance < advance ? <> — <strong>{npr(appliedAdvance)}</strong> deducted on this bill, {npr(round2(advance - appliedAdvance))} kept for the remaining pieces</> : " deducted from this bill"}</>}
+                  {advanceOldMetal > 0 && <> · old metal advance <strong>{npr(advanceOldMetal)}</strong> — {npr(appliedOldMetalAdv)} credited here</>}
+                  {advance > 0 && <> · cash advance <strong>{npr(advance)}</strong> — {npr(advanceConsumed)} used here</>}
+                  {(advanceKept > 0 || oldMetalKept > 0) && <> · {npr(round2(advanceKept + oldMetalKept))} kept for the remaining pieces</>}
                 </p>
               )}
               {!order && (
@@ -992,6 +993,38 @@ export default function POS() {
       <OldGoldPurchaseDialog open={ogOpen} onOpenChange={setOgOpen}
         initialCustomer={customers.find((c) => c.id === customerId) ? { id: customerId!, full_name: customers.find((c) => c.id === customerId)!.full_name, phone: customers.find((c) => c.id === customerId)!.phone ?? null } : null}
         onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); setOldGoldMetal(result.metal ?? "gold"); toast.success(`Old metal credit set to ${npr(result.total)}`); }} />
+      <Dialog open={advDialogOpen} onOpenChange={setAdvDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Adjust order advances</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This bill covers only part of the order. Choose how much of the advance to settle here —
+            the rest stays on the order for the remaining items.
+          </p>
+          {advanceOldMetal > 0 && (
+            <div className="space-y-1">
+              <Label className="text-xs">Old metal advance to adjust on this bill (of {npr(advanceOldMetal)})</Label>
+              <NumberField value={applyOldMetalAdv} onChange={(v) => setApplyOldMetalAdv(Math.max(0, Math.min(Number(v) || 0, advanceOldMetal)))} />
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setApplyOldMetalAdv(advanceOldMetal)}>Apply all</Button>
+                <Button size="sm" variant="outline" onClick={() => setApplyOldMetalAdv(0)}>Save all for later</Button>
+              </div>
+            </div>
+          )}
+          {advance > 0 && (
+            <div className="space-y-1">
+              <Label className="text-xs">Cash advance to adjust on this bill (of {npr(advance)})</Label>
+              <NumberField value={applyCashAdv} onChange={(v) => setApplyCashAdv(Math.max(0, Math.min(Number(v) || 0, advance)))} />
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setApplyCashAdv(advance)}>Apply all</Button>
+                <Button size="sm" variant="outline" onClick={() => setApplyCashAdv(0)}>Save all for later</Button>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setAdvDialogOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <OrderPickerDialog open={orderPickerOpen} onOpenChange={setOrderPickerOpen} customerId={customerId}
         onPick={(id) => { setOrderPickerOpen(false); void loadOrder(id); }} />
       <ItemDialog open={newItemOpen} onOpenChange={setNewItemOpen}

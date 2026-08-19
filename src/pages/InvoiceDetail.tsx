@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { PrintDocument, printDocument } from "@/components/PrintDocument";
-import { npr, advanceReceivedFromPayments, netPayableOf } from "@/lib/format";
+import { npr, advanceReceivedFromPayments, netPayableOf, refundPaidFromPayments } from "@/lib/format";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -70,6 +70,8 @@ export default function InvoiceDetail() {
 
   // Cash-type advances taken on the linked order and settled against this bill.
   const advanceReceived = advanceReceivedFromPayments(payments);
+  // Money handed back when the advance exceeded the bill (negative payment rows).
+  const refundPaid = refundPaidFromPayments(payments);
 
 
 
@@ -174,6 +176,7 @@ export default function InvoiceDetail() {
                   </div>
                 </>
               )}
+              {refundPaid > 0 && <Row label="Refund paid to customer" value={`- ${npr(refundPaid)}`} />}
               <Row label="Paid" value={npr(inv.amount_paid)} />
               <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(inv.balance_due)}</span></div>
 
