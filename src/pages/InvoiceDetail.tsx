@@ -70,6 +70,8 @@ export default function InvoiceDetail() {
 
   // Cash-type advances taken on the linked order and settled against this bill.
   const advanceReceived = advanceReceivedFromPayments(payments);
+  // Money handed back when the advance exceeded the bill (negative payment rows).
+  const refundPaid = refundPaidFromPayments(payments);
 
 
 
