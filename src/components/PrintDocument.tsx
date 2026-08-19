@@ -411,6 +411,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
             {tot("Net Total", n2(netTotal), { fontWeight: "bold", fontSize: "13px", borderTop: bd, borderBottom: bd })}
             {advanceReceived > 0 && tot("Less: Advance Paid", n2(advanceReceived))}
             {tot("Net Payable", n2(netPayable), { fontWeight: "bold", fontSize: "13px", borderBottom: bd })}
+            {refundPaid > 0 && tot("Refund to Customer", n2(refundPaid), { fontWeight: "bold" })}
 
           </div>
         </div>
