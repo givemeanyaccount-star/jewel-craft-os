@@ -370,6 +370,12 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(amt)}</td>
                     </tr>
                   ))}
+                  {refundPaid > 0 && (
+                    <tr>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Refund Paid</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>({n2(refundPaid)})</td>
+                    </tr>
+                  )}
                   {totalReceived === 0 && (
                     <tr><td style={{ border: bd, padding: "3px 6px" }} colSpan={2}>—</td></tr>
                   )}
