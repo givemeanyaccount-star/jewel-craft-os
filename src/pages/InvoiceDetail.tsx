@@ -174,6 +174,7 @@ export default function InvoiceDetail() {
                   </div>
                 </>
               )}
+              {refundPaid > 0 && <Row label="Refund paid to customer" value={`- ${npr(refundPaid)}`} />}
               <Row label="Paid" value={npr(inv.amount_paid)} />
               <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(inv.balance_due)}</span></div>
 
