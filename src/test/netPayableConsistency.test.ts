@@ -270,9 +270,10 @@ describe("Net Payable is identical across POS, InvoiceDetail and the printed bil
     const { invoice, payments } = checkout(pos, orderPayments, "o1");
     const read = readSurface(invoice, payments, invoice.id);
 
-    expect(pos.refund).toBeCloseTo(45000, 2);
-    expect(read.refundPaid).toBeCloseTo(45000, 2);
-    expect(round2(invoice.total + pos.refund)).toBeCloseTo(150000, 2);
+    // The solver works to the nearest paisa.
+    expect(Math.abs(pos.refund - 45000)).toBeLessThanOrEqual(0.01);
+    expect(read.refundPaid).toBe(pos.refund);
+    expect(Math.abs(round2(invoice.total + pos.refund) - 150000)).toBeLessThanOrEqual(0.01);
     expect(read.netPayable).toBe(0);
   });
 
