@@ -240,6 +240,28 @@ describe("Net Payable is identical across POS, InvoiceDetail and the printed bil
     expect(read.netPayable).toBe(0);
   });
 
+  it("clamps an over-typed refund to the maximum refundable", () => {
+    const orderPayments: Payment[] = [
+      { id: "p1", order_id: "o1", invoice_id: null, method: "cash", amount: 120000 },
+    ];
+    const over = posState({ subtotal: 90000, stonesTotal: 0, orderPayments, refundInput: 999999 });
+    const capped = posState({ subtotal: 90000, stonesTotal: 0, orderPayments });
+
+    expect(over.refund).toBe(over.refundDue);
+    expect(over.refund).toBe(capped.refund);
+    expect(over.appliedAdvance).toBe(capped.appliedAdvance);
+
+    const a = checkout(over, orderPayments.map((p) => ({ ...p })), "o1");
+    const b = checkout(capped, orderPayments.map((p) => ({ ...p })), "o1");
+    expect(a.invoice).toEqual(b.invoice);
+    expect(readSurface(a.invoice, a.payments, a.invoice.id))
+      .toEqual(readSurface(b.invoice, b.payments, b.invoice.id));
+    // Money conserved: advance out = refund + what settled the bill.
+    expect(round2(over.appliedAdvance + over.refund)).toBe(120000);
+  });
+
+
+
   it("saves the old metal advance for later items when it is not adjusted on this bill", () => {
     const orderPayments: Payment[] = [
       { id: "p1", order_id: "o1", invoice_id: null, method: "old_gold", amount: 60000 },

@@ -387,6 +387,14 @@ export default function POS() {
     if (refundInput === "") return refundDue;
     return round2(Math.max(0, Math.min(Number(refundInput) || 0, refundDue)));
   }, [refundInput, refundDue]);
+  // Typed value exceeds what can be handed back — we clamp and warn in real time.
+  const refundOver = useMemo(
+    () => refundInput !== "" && (Number(refundInput) || 0) > refundDue + 0.005,
+    [refundInput, refundDue],
+  );
+  // Clear any typed refund once the bill no longer produces an excess (e.g. discount changed).
+  useEffect(() => { if (refundDue <= 0.004 && refundInput !== "") setRefundInput(""); }, [refundDue]);
+
   // Advance rows actually consumed by this invoice; the untouched rest stays on the order.
   const advanceConsumed = useMemo(
     () => round2(advanceRequested - (refundDue - refund)),
@@ -453,6 +461,12 @@ export default function POS() {
     if (!customerId) return toast.error("Select a customer for this sale");
     if (cart.length === 0) return toast.error("Add at least one item");
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
+    // Re-derive the refund from the live totals: never persist a value larger than the excess.
+    const maxRefund = refundDueOf(tax.total, advanceRequested);
+    if (refund > maxRefund + 0.005) {
+      return toast.error(`Refund cannot exceed ${npr(maxRefund)} — adjust the refund amount.`);
+    }
+
     setSaving(true);
     let invoiceCreated = false;
     // Remember each item's status before the claim so a rollback restores it exactly
@@ -892,9 +906,9 @@ export default function POS() {
               </div>
             )}
 
-            {appliedAdvance > 0 && (
+            {(advance > 0 || appliedAdvance > 0) && (
               <>
-                <Row label="Less: cash advance received" value={`− ${npr(appliedAdvance)}`} />
+                <Row label="Less: cash advance applied" value={`− ${npr(appliedAdvance)}`} />
                 <div className="flex justify-between border-t pt-2 text-base font-semibold">
                   <span>Net payable</span><span>{npr(netPayable)}</span>
                 </div>
@@ -908,6 +922,11 @@ export default function POS() {
                   <NumberField className="h-8 w-28 text-right" value={refund}
                     onChange={(v) => setRefundInput(String(v))} />
                 </div>
+                {refundOver && (
+                  <p className="text-[11px] font-medium text-destructive">
+                    Maximum refundable is {npr(refundDue)} — clamped.
+                  </p>
+                )}
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Refund mode</span>
                   <Select value={refundMethod} onValueChange={setRefundMethod}>
@@ -919,12 +938,20 @@ export default function POS() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="mt-1 space-y-0.5 border-t pt-1 text-[11px] text-muted-foreground">
+                  <div className="flex justify-between"><span>Max refundable</span><span>{npr(refundDue)}</span></div>
+                  <div className="flex justify-between"><span>Advance applied to bill</span><span>{npr(appliedAdvance)}</span></div>
+                  <div className="flex justify-between"><span>Kept on order</span><span>{npr(round2(advanceKept + oldMetalKept))}</span></div>
+                  <div className="flex justify-between"><span>Net payable</span><span>{npr(netPayable)}</span></div>
+                  <div className="flex justify-between"><span>Balance after payments</span><span>{npr(balance)}</span></div>
+                </div>
                 <p className="text-[11px] text-muted-foreground">
                   Advance exceeds the bill by {npr(refundDue)}.
                   {refund < refundDue && <> {npr(round2(refundDue - refund))} stays on the order for the remaining items.</>}
                 </p>
               </div>
             )}
+
 
             <div className="rounded-md border bg-muted/40 p-2">
               <Label className="text-xs">
