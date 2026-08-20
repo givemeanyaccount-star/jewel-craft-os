@@ -387,6 +387,14 @@ export default function POS() {
     if (refundInput === "") return refundDue;
     return round2(Math.max(0, Math.min(Number(refundInput) || 0, refundDue)));
   }, [refundInput, refundDue]);
+  // Typed value exceeds what can be handed back — we clamp and warn in real time.
+  const refundOver = useMemo(
+    () => refundInput !== "" && (Number(refundInput) || 0) > refundDue + 0.005,
+    [refundInput, refundDue],
+  );
+  // Clear any typed refund once the bill no longer produces an excess (e.g. discount changed).
+  useEffect(() => { if (refundDue <= 0.004 && refundInput !== "") setRefundInput(""); }, [refundDue]);
+
   // Advance rows actually consumed by this invoice; the untouched rest stays on the order.
   const advanceConsumed = useMemo(
     () => round2(advanceRequested - (refundDue - refund)),
