@@ -900,9 +900,9 @@ export default function POS() {
               </div>
             )}
 
-            {appliedAdvance > 0 && (
+            {(advance > 0 || appliedAdvance > 0) && (
               <>
-                <Row label="Less: cash advance received" value={`− ${npr(appliedAdvance)}`} />
+                <Row label="Less: cash advance applied" value={`− ${npr(appliedAdvance)}`} />
                 <div className="flex justify-between border-t pt-2 text-base font-semibold">
                   <span>Net payable</span><span>{npr(netPayable)}</span>
                 </div>
@@ -916,6 +916,11 @@ export default function POS() {
                   <NumberField className="h-8 w-28 text-right" value={refund}
                     onChange={(v) => setRefundInput(String(v))} />
                 </div>
+                {refundOver && (
+                  <p className="text-[11px] font-medium text-destructive">
+                    Maximum refundable is {npr(refundDue)} — clamped.
+                  </p>
+                )}
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Refund mode</span>
                   <Select value={refundMethod} onValueChange={setRefundMethod}>
@@ -927,12 +932,20 @@ export default function POS() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="mt-1 space-y-0.5 border-t pt-1 text-[11px] text-muted-foreground">
+                  <div className="flex justify-between"><span>Max refundable</span><span>{npr(refundDue)}</span></div>
+                  <div className="flex justify-between"><span>Advance applied to bill</span><span>{npr(appliedAdvance)}</span></div>
+                  <div className="flex justify-between"><span>Kept on order</span><span>{npr(round2(advanceKept + oldMetalKept))}</span></div>
+                  <div className="flex justify-between"><span>Net payable</span><span>{npr(netPayable)}</span></div>
+                  <div className="flex justify-between"><span>Balance after payments</span><span>{npr(balance)}</span></div>
+                </div>
                 <p className="text-[11px] text-muted-foreground">
                   Advance exceeds the bill by {npr(refundDue)}.
                   {refund < refundDue && <> {npr(round2(refundDue - refund))} stays on the order for the remaining items.</>}
                 </p>
               </div>
             )}
+
 
             <div className="rounded-md border bg-muted/40 p-2">
               <Label className="text-xs">
