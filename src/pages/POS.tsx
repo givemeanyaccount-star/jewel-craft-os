@@ -461,6 +461,12 @@ export default function POS() {
     if (!customerId) return toast.error("Select a customer for this sale");
     if (cart.length === 0) return toast.error("Add at least one item");
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
+    // Re-derive the refund from the live totals: never persist a value larger than the excess.
+    const maxRefund = refundDueOf(tax.total, advanceRequested);
+    if (refund > maxRefund + 0.005) {
+      return toast.error(`Refund cannot exceed ${npr(maxRefund)} — adjust the refund amount.`);
+    }
+
     setSaving(true);
     let invoiceCreated = false;
     // Remember each item's status before the claim so a rollback restores it exactly
