@@ -152,29 +152,13 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const sdTaxable = Math.max(0, afterDiscount - stones - oldGold);
   const vat = Number(doc.vat_amount ?? 0);
   const netTotal = Number(doc.total ?? 0);
-  // Cash-type advances collected on the linked order and settled against this bill.
-  const advanceReceived = advanceReceivedFromPayments(payments as any);
-  // Money handed back when the advance exceeded the bill (negative payment rows).
-  const refundPaid = refundPaidFromPayments(payments as any);
-  const netPayable = netPayableOf(netTotal, advanceReceived);
-  // At-sale payment modes (advance, old metal and refund rows print as their own lines).
-  const modeRows = (() => {
-    const m = new Map<string, number>();
-    for (const p of payments as any[]) {
-      const amt = Number(p?.amount ?? 0) || 0;
-      if (amt < 0) continue;                       // refund — printed separately
-      if (p?.method === "old_gold") continue;      // already in the old metal line
-      if (p?.order_id) continue;                   // counted as advance
-      const key = String(p?.method ?? "other");
-      m.set(key, (m.get(key) ?? 0) + amt);
-    }
-    return Array.from(m.entries()).filter(([, v]) => v !== 0);
-  })();
-  const atSaleTotal = modeRows.reduce((s, [, v]) => s + v, 0);
-  const totalReceived = oldGold + advanceReceived + atSaleTotal - refundPaid;
-  const balanceDue = Math.max(0, doc.balance_due != null
-    ? Number(doc.balance_due)
-    : netPayable - atSaleTotal + refundPaid);
+  // One shared reconciliation — identical figures on screen and on paper.
+  const rec = reconcile({
+    total: netTotal, oldGoldCredit: oldGold, vat, sdTax,
+    balanceDue: doc.balance_due, keptOnOrder, payments: payments as any,
+  });
+  const { advanceApplied: advanceReceived, refundPaid, netPayable, modeRows, totalReceived, balanceDue } = rec;
+
 
 
 
