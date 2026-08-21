@@ -4,7 +4,7 @@ import { getSignedUrls } from "@/lib/storage";
 import { toBS, toADDate, toADDateTime, toNepaliDigits } from "@/lib/nepaliDate";
 import { amountInWords } from "@/lib/numberToWords";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
-import { advanceReceivedFromPayments, netPayableOf, refundPaidFromPayments } from "@/lib/format";
+import { reconcile } from "@/lib/format";
 
 import logoAsset from "@/assets/logo.png";
 import { openPrintPreview } from "@/components/PrintPreview";
@@ -80,11 +80,14 @@ type Props = {
   doc: any;
   items: any[];
   payments?: any[];
+  /** Advance left on the linked order for later batches (not applied to this bill). */
+  keptOnOrder?: number;
   cashierName?: string;
   domId: string;
 };
 
-export function PrintDocument({ kind, doc, items, payments = [], cashierName, domId }: Props) {
+export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0, cashierName, domId }: Props) {
+
   const profile = useCompanyProfile();
   const [logo, setLogo] = useState<string>(logoAsset);
   const [qr, setQr] = useState<string | null>(null);
