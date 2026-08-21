@@ -192,13 +192,16 @@ export default function InvoiceDetail() {
                 <>
                   <Row label="Less: advance received on order" value={`- ${npr(advanceReceived)}`} />
                   <div className="flex justify-between border-t pt-2 text-base font-semibold">
-                    <span>Net payable</span><span>{npr(netPayableOf(Number(inv.total), advanceReceived))}</span>
+                    <span>Net payable</span><span>{npr(rec.netPayable)}</span>
                   </div>
                 </>
               )}
               {refundPaid > 0 && <Row label="Refund paid to customer" value={`- ${npr(refundPaid)}`} />}
+              {rec.keptOnOrder > 0 && <Row label="Advance kept on order" value={npr(rec.keptOnOrder)} />}
+              <Row label="Total received" value={npr(rec.totalReceived)} />
               <Row label="Paid" value={npr(inv.amount_paid)} />
-              <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(inv.balance_due)}</span></div>
+              <div className="flex justify-between font-medium"><span>Balance due</span><span className={rec.balanceDue > 0 ? "text-destructive" : ""}>{npr(rec.balanceDue)}</span></div>
+
 
             </div>
           </CardContent>
