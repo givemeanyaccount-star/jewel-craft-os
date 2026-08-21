@@ -9,6 +9,7 @@ import {
   refundPaidFromPayments,
   netPayableOf,
   refundDueOf,
+  reconcile,
   round2,
 } from "@/lib/format";
 
@@ -299,11 +300,46 @@ describe("Net Payable is identical across POS, InvoiceDetail and the printed bil
     expect(read.netPayable).toBe(0);
   });
 
+  it("reconciles the bill identically for the invoice screen and the printed bill", () => {
+    const orderPayments: Payment[] = [
+      { id: "p1", order_id: "o1", invoice_id: null, method: "old_gold", amount: 40000 },
+      { id: "p2", order_id: "o1", invoice_id: null, method: "cash", amount: 60000 },
+    ];
+    // Only part of the cash advance is applied; the rest stays on the order.
+    const pos = posState({ subtotal: 300000, stonesTotal: 10000, orderPayments, applyCash: 35000, manualPaid: 50000 });
+    const { invoice, payments } = checkout(pos, orderPayments, "o1");
+    const attached = payments.filter((p) => p.invoice_id === invoice.id);
+    const kept = round2(payments.filter((p) => p.invoice_id == null).reduce((a, p) => a + p.amount, 0));
+    // At-sale cash isn't part of the order rows in this model; add it as the POS would.
+    attached.push({ id: "s1", order_id: null, invoice_id: invoice.id, method: "cash", amount: 50000 });
+
+    const rec = reconcile({
+      total: invoice.total,
+      oldGoldCredit: invoice.old_gold_credit,
+      vat: invoice.vat_amount,
+      sdTax: invoice.sd_tax,
+      balanceDue: null,
+      keptOnOrder: kept,
+      payments: attached,
+    });
+
+    expect(rec.advanceApplied).toBe(pos.appliedAdvance);
+    expect(rec.netPayable).toBe(netPayableOf(invoice.total, pos.appliedAdvance));
+    expect(rec.atSaleTotal).toBe(50000);
+    expect(rec.keptOnOrder).toBe(kept);
+    expect(rec.taxes).toBe(round2(invoice.vat_amount + invoice.sd_tax));
+    expect(rec.totalReceived).toBe(
+      round2(rec.oldGold + rec.advanceApplied + rec.atSaleTotal - rec.refundPaid),
+    );
+    expect(rec.balanceDue).toBe(round2(Math.max(0, rec.netPayable - rec.atSaleTotal + rec.refundPaid)));
+  });
+
   it("keeps all three surfaces on the shared helpers (no local re-implementation)", () => {
     const root = path.resolve(__dirname, "../..");
     for (const f of ["src/pages/POS.tsx", "src/pages/InvoiceDetail.tsx", "src/components/PrintDocument.tsx"]) {
       const src = readFileSync(path.join(root, f), "utf8");
-      expect(src, `${f} should use netPayableOf`).toContain("netPayableOf");
+      expect(src, `${f} should use the shared net-payable helpers`)
+        .toMatch(/netPayableOf|reconcile\(/);
       expect(src, `${f} should not hand-roll the net payable subtraction`)
         .not.toMatch(/(total|netTotal)[^\n]*-\s*(applied)?[aA]dvance(Received)?/);
     }

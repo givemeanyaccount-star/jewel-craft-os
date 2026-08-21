@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { PrintDocument, printDocument } from "@/components/PrintDocument";
-import { npr, advanceReceivedFromPayments, netPayableOf, refundPaidFromPayments } from "@/lib/format";
+import { npr, reconcile } from "@/lib/format";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,6 +44,8 @@ export default function InvoiceDetail() {
   const [inv, setInv] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [keptOnOrder, setKeptOnOrder] = useState(0);
+
   const [payOpen, setPayOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [fineRates, setFineRates] = useState<FineRates>({});
@@ -66,12 +68,30 @@ export default function InvoiceDetail() {
       supabase.from("payments").select("*").eq("invoice_id", id).order("paid_at"),
     ]);
     setInv(i.data); setItems(it.data ?? []); setPayments(p.data ?? []);
+
+    // Advance still sitting on the linked order (not applied to this bill).
+    const orderId = (i.data as any)?.order_id;
+    if (orderId) {
+      const { data: rest } = await supabase.from("payments")
+        .select("amount").eq("order_id", orderId).is("invoice_id", null);
+      setKeptOnOrder((rest ?? []).reduce((s: number, r: any) => s + (Number(r.amount ?? 0) || 0), 0));
+    } else setKeptOnOrder(0);
   }
 
-  // Cash-type advances taken on the linked order and settled against this bill.
-  const advanceReceived = advanceReceivedFromPayments(payments);
-  // Money handed back when the advance exceeded the bill (negative payment rows).
-  const refundPaid = refundPaidFromPayments(payments);
+  // One shared reconciliation, identical to the printed bill.
+  const rec = reconcile({
+    total: Number(inv?.total ?? 0),
+    oldGoldCredit: Number(inv?.old_gold_credit ?? 0),
+    vat: Number(inv?.vat_amount ?? 0),
+    sdTax: Number(inv?.sd_tax ?? 0),
+    balanceDue: inv?.balance_due,
+    keptOnOrder,
+    payments,
+  });
+  const advanceReceived = rec.advanceApplied;
+  const refundPaid = rec.refundPaid;
+
+
 
 
 
@@ -172,13 +192,16 @@ export default function InvoiceDetail() {
                 <>
                   <Row label="Less: advance received on order" value={`- ${npr(advanceReceived)}`} />
                   <div className="flex justify-between border-t pt-2 text-base font-semibold">
-                    <span>Net payable</span><span>{npr(netPayableOf(Number(inv.total), advanceReceived))}</span>
+                    <span>Net payable</span><span>{npr(rec.netPayable)}</span>
                   </div>
                 </>
               )}
               {refundPaid > 0 && <Row label="Refund paid to customer" value={`- ${npr(refundPaid)}`} />}
+              {rec.keptOnOrder > 0 && <Row label="Advance kept on order" value={npr(rec.keptOnOrder)} />}
+              <Row label="Total received" value={npr(rec.totalReceived)} />
               <Row label="Paid" value={npr(inv.amount_paid)} />
-              <div className="flex justify-between font-medium"><span>Balance due</span><span className={Number(inv.balance_due) > 0 ? "text-destructive" : ""}>{npr(inv.balance_due)}</span></div>
+              <div className="flex justify-between font-medium"><span>Balance due</span><span className={rec.balanceDue > 0 ? "text-destructive" : ""}>{npr(rec.balanceDue)}</span></div>
+
 
             </div>
           </CardContent>
@@ -210,8 +233,9 @@ export default function InvoiceDetail() {
       </div>
 
       {/* Hidden, print-only, isolated layout — matches the store's official bill */}
-      <PrintDocument kind="invoice" doc={inv} items={items} payments={payments}
+      <PrintDocument kind="invoice" doc={inv} items={items} payments={payments} keptOnOrder={keptOnOrder}
         domId={`invoice-print-${inv.id}`} />
+
 
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} invoice={inv} userId={user?.id ?? null} onSaved={() => { setPayOpen(false); load(); }} />
       <CancelInvoiceDialog open={cancelOpen} onOpenChange={setCancelOpen} invoice={inv} items={items}

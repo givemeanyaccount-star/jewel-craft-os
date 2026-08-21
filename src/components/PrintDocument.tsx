@@ -4,7 +4,7 @@ import { getSignedUrls } from "@/lib/storage";
 import { toBS, toADDate, toADDateTime, toNepaliDigits } from "@/lib/nepaliDate";
 import { amountInWords } from "@/lib/numberToWords";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
-import { advanceReceivedFromPayments, netPayableOf, refundPaidFromPayments } from "@/lib/format";
+import { reconcile } from "@/lib/format";
 
 import logoAsset from "@/assets/logo.png";
 import { openPrintPreview } from "@/components/PrintPreview";
@@ -80,11 +80,14 @@ type Props = {
   doc: any;
   items: any[];
   payments?: any[];
+  /** Advance left on the linked order for later batches (not applied to this bill). */
+  keptOnOrder?: number;
   cashierName?: string;
   domId: string;
 };
 
-export function PrintDocument({ kind, doc, items, payments = [], cashierName, domId }: Props) {
+export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0, cashierName, domId }: Props) {
+
   const profile = useCompanyProfile();
   const [logo, setLogo] = useState<string>(logoAsset);
   const [qr, setQr] = useState<string | null>(null);
@@ -152,29 +155,13 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
   const sdTaxable = Math.max(0, afterDiscount - stones - oldGold);
   const vat = Number(doc.vat_amount ?? 0);
   const netTotal = Number(doc.total ?? 0);
-  // Cash-type advances collected on the linked order and settled against this bill.
-  const advanceReceived = advanceReceivedFromPayments(payments as any);
-  // Money handed back when the advance exceeded the bill (negative payment rows).
-  const refundPaid = refundPaidFromPayments(payments as any);
-  const netPayable = netPayableOf(netTotal, advanceReceived);
-  // At-sale payment modes (advance, old metal and refund rows print as their own lines).
-  const modeRows = (() => {
-    const m = new Map<string, number>();
-    for (const p of payments as any[]) {
-      const amt = Number(p?.amount ?? 0) || 0;
-      if (amt < 0) continue;                       // refund — printed separately
-      if (p?.method === "old_gold") continue;      // already in the old metal line
-      if (p?.order_id) continue;                   // counted as advance
-      const key = String(p?.method ?? "other");
-      m.set(key, (m.get(key) ?? 0) + amt);
-    }
-    return Array.from(m.entries()).filter(([, v]) => v !== 0);
-  })();
-  const atSaleTotal = modeRows.reduce((s, [, v]) => s + v, 0);
-  const totalReceived = oldGold + advanceReceived + atSaleTotal - refundPaid;
-  const balanceDue = Math.max(0, doc.balance_due != null
-    ? Number(doc.balance_due)
-    : netPayable - atSaleTotal + refundPaid);
+  // One shared reconciliation — identical figures on screen and on paper.
+  const rec = reconcile({
+    total: netTotal, oldGoldCredit: oldGold, vat, sdTax,
+    balanceDue: doc.balance_due, keptOnOrder, payments: payments as any,
+  });
+  const { advanceApplied: advanceReceived, refundPaid, netPayable, modeRows, totalReceived, balanceDue } = rec;
+
 
 
 
@@ -372,7 +359,7 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                   ))}
                   {refundPaid > 0 && (
                     <tr>
-                      <td style={{ border: bd, padding: "3px 6px" }}>Refund Paid</td>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Less: Refund Issued</td>
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>({n2(refundPaid)})</td>
                     </tr>
                   )}
@@ -383,12 +370,30 @@ export function PrintDocument({ kind, doc, items, payments = [], cashierName, do
                     <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Total Received</td>
                     <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(totalReceived)}</td>
                   </tr>
+                  {rec.keptOnOrder > 0 && (
+                    <tr>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Kept on Order</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(rec.keptOnOrder)}</td>
+                    </tr>
+                  )}
+                  {rec.taxes > 0 && (
+                    <tr>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Taxes (VAT + SD)</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(rec.taxes)}</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Net Payable</td>
+                    <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(netPayable)}</td>
+                  </tr>
                   {balanceDue > 0 && (
                     <tr>
                       <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Balance Due</td>
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(balanceDue)}</td>
                     </tr>
                   )}
+
+
 
                 </tbody>
               </table>

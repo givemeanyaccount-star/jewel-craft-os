@@ -103,7 +103,72 @@ export function refundPaidFromPayments(
     .reduce((s, p) => s + Math.min(0, Number(p?.amount ?? 0) || 0), 0) * -1);
 }
 
+/**
+ * One reconciliation of a bill's money, shared by the invoice screen and the printed
+ * bill so both always show identical figures.
+ *
+ *   Old metal + advance applied + at-sale payments − refund issued = total received
+ *   Net payable = net total − advance applied
+ *   Balance due = net payable − at-sale payments + refund issued
+ */
+export interface ReconcileInput {
+  total: number;                 // invoice net total (already after old metal credit and taxes)
+  oldGoldCredit?: number;
+  vat?: number;
+  sdTax?: number;
+  balanceDue?: number | null;    // persisted value wins when present
+  keptOnOrder?: number;          // advance left on the order for later batches
+  payments?: Array<{ order_id?: string | null; method?: string | null; amount?: number | string | null }>;
+}
+
+export interface Reconciliation {
+  oldGold: number;
+  advanceApplied: number;
+  modeRows: Array<[string, number]>;
+  atSaleTotal: number;
+  refundPaid: number;
+  keptOnOrder: number;
+  taxes: number;
+  totalReceived: number;
+  netPayable: number;
+  balanceDue: number;
+}
+
+export function reconcile(input: ReconcileInput): Reconciliation {
+  const payments = input.payments ?? [];
+  const oldGold = round2(Number(input.oldGoldCredit ?? 0) || 0);
+  const advanceApplied = advanceReceivedFromPayments(payments);
+  const refundPaid = refundPaidFromPayments(payments);
+
+  const m = new Map<string, number>();
+  for (const p of payments) {
+    const amt = Number(p?.amount ?? 0) || 0;
+    if (amt < 0) continue;                  // refund — its own line
+    if (p?.method === "old_gold") continue; // already in the old metal line
+    if (p?.order_id) continue;              // counted as advance
+    const key = String(p?.method ?? "other");
+    m.set(key, round2((m.get(key) ?? 0) + amt));
+  }
+  const modeRows = Array.from(m.entries()).filter(([, v]) => v !== 0);
+  const atSaleTotal = round2(modeRows.reduce((s, [, v]) => s + v, 0));
+
+  const total = Number(input.total ?? 0) || 0;
+  const netPayable = netPayableOf(total, advanceApplied);
+  const totalReceived = round2(oldGold + advanceApplied + atSaleTotal - refundPaid);
+  const balanceDue = round2(Math.max(0, input.balanceDue != null
+    ? Number(input.balanceDue) || 0
+    : netPayable - atSaleTotal + refundPaid));
+
+  return {
+    oldGold, advanceApplied, modeRows, atSaleTotal, refundPaid,
+    keptOnOrder: round2(Math.max(0, Number(input.keptOnOrder ?? 0) || 0)),
+    taxes: round2((Number(input.vat ?? 0) || 0) + (Number(input.sdTax ?? 0) || 0)),
+    totalReceived, netPayable, balanceDue,
+  };
+}
+
 /** Back-solve the discount so the refund handed back equals a desired amount. */
+
 export function discountForTargetRefund(opts: {
   subtotal: number;
   stonesTotal: number;
