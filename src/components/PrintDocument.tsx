@@ -359,7 +359,7 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
                   ))}
                   {refundPaid > 0 && (
                     <tr>
-                      <td style={{ border: bd, padding: "3px 6px" }}>Refund Paid</td>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Less: Refund Issued</td>
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>({n2(refundPaid)})</td>
                     </tr>
                   )}
@@ -370,12 +370,30 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
                     <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Total Received</td>
                     <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(totalReceived)}</td>
                   </tr>
+                  {rec.keptOnOrder > 0 && (
+                    <tr>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Kept on Order</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(rec.keptOnOrder)}</td>
+                    </tr>
+                  )}
+                  {rec.taxes > 0 && (
+                    <tr>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Taxes (VAT + SD)</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(rec.taxes)}</td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Net Payable</td>
+                    <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(netPayable)}</td>
+                  </tr>
                   {balanceDue > 0 && (
                     <tr>
                       <td style={{ border: bd, padding: "3px 6px", fontWeight: "bold" }}>Balance Due</td>
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right", fontWeight: "bold" }}>{n2(balanceDue)}</td>
                     </tr>
                   )}
+
+
 
                 </tbody>
               </table>
