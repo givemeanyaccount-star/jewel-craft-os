@@ -233,8 +233,9 @@ export default function InvoiceDetail() {
       </div>
 
       {/* Hidden, print-only, isolated layout — matches the store's official bill */}
-      <PrintDocument kind="invoice" doc={inv} items={items} payments={payments}
+      <PrintDocument kind="invoice" doc={inv} items={items} payments={payments} keptOnOrder={keptOnOrder}
         domId={`invoice-print-${inv.id}`} />
+
 
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} invoice={inv} userId={user?.id ?? null} onSaved={() => { setPayOpen(false); load(); }} />
       <CancelInvoiceDialog open={cancelOpen} onOpenChange={setCancelOpen} invoice={inv} items={items}
