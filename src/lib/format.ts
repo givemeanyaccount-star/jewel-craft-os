@@ -100,14 +100,28 @@ export function refundDueOf(total: number, advanceApplied: number): number {
   return round2(Math.max(0, (Number(advanceApplied) || 0) - (Number(total) || 0)));
 }
 
+/** Marker written on the negative payment row that records over-tender change. */
+export const CHANGE_NOTE = "Change returned";
+
+type PayRow = { order_id?: string | null; method?: string | null; amount?: number | string | null; notes?: string | null };
+
+const isChangeRow = (p: PayRow) => String(p?.notes ?? "").startsWith(CHANGE_NOTE);
+
 /**
  * Refunds recorded against an invoice are negative payment rows (money out).
+ * Change handed back on an over-tender is tracked separately.
  * Shared by POS, InvoiceDetail and the printed bill so all three agree.
  */
-export function refundPaidFromPayments(
-  payments: Array<{ amount?: number | string | null }> = [],
-): number {
+export function refundPaidFromPayments(payments: PayRow[] = []): number {
   return round2(payments
+    .filter((p) => !isChangeRow(p))
+    .reduce((s, p) => s + Math.min(0, Number(p?.amount ?? 0) || 0), 0) * -1);
+}
+
+/** Money given back because the customer tendered more than the net payable. */
+export function changeReturnedFromPayments(payments: PayRow[] = []): number {
+  return round2(payments
+    .filter((p) => isChangeRow(p))
     .reduce((s, p) => s + Math.min(0, Number(p?.amount ?? 0) || 0), 0) * -1);
 }
 
@@ -115,9 +129,9 @@ export function refundPaidFromPayments(
  * One reconciliation of a bill's money, shared by the invoice screen and the printed
  * bill so both always show identical figures.
  *
- *   Old metal + advance applied + at-sale payments − refund issued = total received
+ *   Old metal + advance applied + at-sale payments − refund − change = total received
  *   Net payable = net total − advance applied
- *   Balance due = net payable − at-sale payments + refund issued
+ *   Balance due = net payable − at-sale payments + change returned
  */
 export interface ReconcileInput {
   total: number;                 // invoice net total (already after old metal credit and taxes)
@@ -126,7 +140,7 @@ export interface ReconcileInput {
   sdTax?: number;
   balanceDue?: number | null;    // persisted value wins when present
   keptOnOrder?: number;          // advance left on the order for later batches
-  payments?: Array<{ order_id?: string | null; method?: string | null; amount?: number | string | null }>;
+  payments?: PayRow[];
 }
 
 export interface Reconciliation {
@@ -135,6 +149,7 @@ export interface Reconciliation {
   modeRows: Array<[string, number]>;
   atSaleTotal: number;
   refundPaid: number;
+  changeReturned: number;
   keptOnOrder: number;
   taxes: number;
   totalReceived: number;
@@ -147,11 +162,12 @@ export function reconcile(input: ReconcileInput): Reconciliation {
   const oldGold = round2(Number(input.oldGoldCredit ?? 0) || 0);
   const advanceApplied = advanceReceivedFromPayments(payments);
   const refundPaid = refundPaidFromPayments(payments);
+  const changeReturned = changeReturnedFromPayments(payments);
 
   const m = new Map<string, number>();
   for (const p of payments) {
     const amt = Number(p?.amount ?? 0) || 0;
-    if (amt < 0) continue;                  // refund — its own line
+    if (amt < 0) continue;                  // refund / change — their own lines
     if (p?.method === "old_gold") continue; // already in the old metal line
     if (p?.order_id) continue;              // counted as advance
     const key = String(p?.method ?? "other");
@@ -162,13 +178,13 @@ export function reconcile(input: ReconcileInput): Reconciliation {
 
   const total = Number(input.total ?? 0) || 0;
   const netPayable = netPayableOf(total, advanceApplied);
-  const totalReceived = round2(oldGold + advanceApplied + atSaleTotal - refundPaid);
+  const totalReceived = round2(oldGold + advanceApplied + atSaleTotal - refundPaid - changeReturned);
   const balanceDue = round2(Math.max(0, input.balanceDue != null
     ? Number(input.balanceDue) || 0
-    : netPayable - atSaleTotal + refundPaid));
+    : netPayable - atSaleTotal + changeReturned));
 
   return {
-    oldGold, advanceApplied, modeRows, atSaleTotal, refundPaid,
+    oldGold, advanceApplied, modeRows, atSaleTotal, refundPaid, changeReturned,
     keptOnOrder: round2(Math.max(0, Number(input.keptOnOrder ?? 0) || 0)),
     taxes: round2((Number(input.vat ?? 0) || 0) + (Number(input.sdTax ?? 0) || 0)),
     totalReceived, netPayable, balanceDue,
