@@ -28,9 +28,13 @@ export interface TaxBreakdown {
   taxableStones: number;   // stones portion after proportional discount
   vat: number;             // VAT on stones only (0 when VAT is disabled in settings)
   sdTax: number;           // 0.5% of (gold + making + wastage − old metal credit)
-  oldGoldCredit: number;
+  oldGoldCredit: number;   // credit offered
+  creditApplied: number;   // part of the credit the bill could absorb
+  creditUnused: number;    // surplus credit — refundable, never swallowed
+  grossTotal: number;      // bill value before the old metal credit (goods + taxes)
   total: number;
 }
+
 
 export function computeInvoiceTaxes(opts: {
   subtotal: number;
