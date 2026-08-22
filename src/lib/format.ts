@@ -63,12 +63,16 @@ export function computeInvoiceTaxes(opts: {
   const nonStonePostDiscount = Math.max(0, postDiscount - taxableStones);
   const sdBase = Math.max(0, nonStonePostDiscount - oldGoldCredit);
   const sdTax = sdBase > 0 ? (sdBase * sdRate) / 100 : 0;
-  const total = Math.max(0, postDiscount + vat + sdTax - oldGoldCredit);
+  const grossTotal = postDiscount + vat + sdTax;
+  const total = Math.max(0, grossTotal - oldGoldCredit);
+  const creditApplied = Math.min(oldGoldCredit, grossTotal);
+  const creditUnused = Math.max(0, oldGoldCredit - grossTotal);
 
   return {
     subtotal: round2(subtotal), stonesTotal: round2(stonesTotal), nonStoneTotal: round2(nonStoneTotal),
     discount: round2(discount), taxableStones: round2(taxableStones), vat: round2(vat), sdTax: round2(sdTax),
-    oldGoldCredit: round2(oldGoldCredit), total: round2(total),
+    oldGoldCredit: round2(oldGoldCredit), creditApplied: round2(creditApplied), creditUnused: round2(creditUnused),
+    grossTotal: round2(grossTotal), total: round2(total),
   };
 }
 
