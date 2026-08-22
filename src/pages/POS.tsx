@@ -456,9 +456,10 @@ export default function POS() {
       : discountForTargetTotal({ ...taxOpts, targetTotal: round2(t + advanceRequested) });
     setDiscount(d);
     // Check the target is actually reachable (it is not when it needs a negative discount).
-    const reached = computeInvoiceTaxes({ ...taxOpts, discount: d }).total;
+    const reachedTax = computeInvoiceTaxes({ ...taxOpts, discount: d });
+    const reached = reachedTax.total;
     if (refundMode) {
-      const reachedRefund = refundDueOf(reached, advanceRequested);
+      const reachedRefund = refundDueOfCredits(reachedTax.grossTotal, round2(totalOldGoldCredit + advanceRequested));
       if (Math.abs(reachedRefund - t) > 0.05) {
         toast.warning(`Cannot reach a refund of ${npr(t)} — the most refundable without a discount is ${npr(reachedRefund)}`);
         return;
@@ -482,10 +483,11 @@ export default function POS() {
     if (cart.length === 0) return toast.error("Add at least one item");
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
     // Re-derive the refund from the live totals: never persist a value larger than the excess.
-    const maxRefund = refundDueOf(tax.total, advanceRequested);
+    const maxRefund = refundDueOfCredits(tax.grossTotal, round2(totalOldGoldCredit + advanceRequested));
     if (refund > maxRefund + 0.005) {
       return toast.error(`Refund cannot exceed ${npr(maxRefund)} — adjust the refund amount.`);
     }
+
 
     setSaving(true);
     let invoiceCreated = false;
