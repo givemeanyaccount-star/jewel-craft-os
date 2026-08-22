@@ -16,7 +16,7 @@ import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil,
 import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal, discountForTargetRefund,
-  round2, netPayableOf, refundDueOf,
+  round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE,
 } from "@/lib/format";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
@@ -381,27 +381,41 @@ export default function POS() {
     () => round2(Math.max(0, Math.min(applyCashAdv, advance))),
     [applyCashAdv, advance],
   );
-  // Money owed back when the advance drawn exceeds the bill total.
-  const refundDue = useMemo(() => refundDueOf(tax.total, advanceRequested), [tax.total, advanceRequested]);
+  // Old metal credit the bill cannot absorb — refundable, never swallowed.
+  const oldMetalSurplus = tax.creditUnused;
+  // Excess coming from the cash advance drawn on the order.
+  const advanceExcess = useMemo(() => refundDueOf(tax.total, advanceRequested), [tax.total, advanceRequested]);
+  // Total money owed back to the customer before any payment is tendered.
+  const refundDue = useMemo(() => round2(advanceExcess + oldMetalSurplus), [advanceExcess, oldMetalSurplus]);
   const refund = useMemo(() => {
     if (refundInput === "") return refundDue;
-    return round2(Math.max(0, Math.min(Number(refundInput) || 0, refundDue)));
-  }, [refundInput, refundDue]);
+    // The old metal surplus cannot be kept back (there is no order to hold it).
+    return round2(Math.max(oldMetalSurplus, Math.min(Number(refundInput) || 0, refundDue)));
+  }, [refundInput, refundDue, oldMetalSurplus]);
   // Typed value exceeds what can be handed back — we clamp and warn in real time.
   const refundOver = useMemo(
     () => refundInput !== "" && (Number(refundInput) || 0) > refundDue + 0.005,
     [refundInput, refundDue],
   );
+  const refundUnder = useMemo(
+    () => refundInput !== "" && (Number(refundInput) || 0) < oldMetalSurplus - 0.005,
+    [refundInput, oldMetalSurplus],
+  );
   // Clear any typed refund once the bill no longer produces an excess (e.g. discount changed).
   useEffect(() => { if (refundDue <= 0.004 && refundInput !== "") setRefundInput(""); }, [refundDue]);
 
+  // Part of the refund funded by the cash advance (old metal surplus is paid out first).
+  const refundFromAdvance = useMemo(
+    () => round2(Math.max(0, refund - oldMetalSurplus)),
+    [refund, oldMetalSurplus],
+  );
   // Advance rows actually consumed by this invoice; the untouched rest stays on the order.
   const advanceConsumed = useMemo(
-    () => round2(advanceRequested - (refundDue - refund)),
-    [advanceRequested, refundDue, refund],
+    () => round2(advanceRequested - (advanceExcess - refundFromAdvance)),
+    [advanceRequested, advanceExcess, refundFromAdvance],
   );
   // Advance value that counts as payment on this bill (consumed minus what is handed back).
-  const appliedAdvance = useMemo(() => round2(advanceConsumed - refund), [advanceConsumed, refund]);
+  const appliedAdvance = useMemo(() => round2(advanceConsumed - refundFromAdvance), [advanceConsumed, refundFromAdvance]);
   const advanceKept = useMemo(
     () => round2(Math.max(0, advance - advanceConsumed)),
     [advance, advanceConsumed],
@@ -412,9 +426,15 @@ export default function POS() {
   );
   // What the customer still has to settle now, after the cash advance is deducted.
   const netPayable = useMemo(() => netPayableOf(tax.total, appliedAdvance), [tax.total, appliedAdvance]);
-  const paid = useMemo(() => round2(manualPaid + appliedAdvance), [manualPaid, appliedAdvance]);
+  // Money tendered above the net payable is change handed straight back over the counter.
+  const changeReturned = useMemo(
+    () => round2(Math.max(0, manualPaid - netPayable)),
+    [manualPaid, netPayable],
+  );
+  const paid = useMemo(() => round2(manualPaid + appliedAdvance - changeReturned), [manualPaid, appliedAdvance, changeReturned]);
 
   const balance = round2(Math.max(0, tax.total - paid));
+
 
   // Fine-metal equivalent of the old metal credit, at the bill's rate (or the day's rate).
   const oldGoldEq = useMemo(() => totalOldGoldCredit > 0
@@ -436,9 +456,10 @@ export default function POS() {
       : discountForTargetTotal({ ...taxOpts, targetTotal: round2(t + advanceRequested) });
     setDiscount(d);
     // Check the target is actually reachable (it is not when it needs a negative discount).
-    const reached = computeInvoiceTaxes({ ...taxOpts, discount: d }).total;
+    const reachedTax = computeInvoiceTaxes({ ...taxOpts, discount: d });
+    const reached = reachedTax.total;
     if (refundMode) {
-      const reachedRefund = refundDueOf(reached, advanceRequested);
+      const reachedRefund = refundDueOfCredits(reachedTax.grossTotal, round2(totalOldGoldCredit + advanceRequested));
       if (Math.abs(reachedRefund - t) > 0.05) {
         toast.warning(`Cannot reach a refund of ${npr(t)} — the most refundable without a discount is ${npr(reachedRefund)}`);
         return;
@@ -462,10 +483,11 @@ export default function POS() {
     if (cart.length === 0) return toast.error("Add at least one item");
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
     // Re-derive the refund from the live totals: never persist a value larger than the excess.
-    const maxRefund = refundDueOf(tax.total, advanceRequested);
+    const maxRefund = refundDueOfCredits(tax.grossTotal, round2(totalOldGoldCredit + advanceRequested));
     if (refund > maxRefund + 0.005) {
       return toast.error(`Refund cannot exceed ${npr(maxRefund)} — adjust the refund amount.`);
     }
+
 
     setSaving(true);
     let invoiceCreated = false;
@@ -518,7 +540,7 @@ export default function POS() {
         vat_rate: settings.vat_enabled ? settings.vat_rate : 0, vat_amount: tax.vat,
         sd_tax_rate: settings.sd_tax_rate, sd_tax: tax.sdTax,
         luxury_tax_rate: 0, luxury_tax: 0,
-        discount, old_gold_credit: totalOldGoldCredit, total: tax.total,
+        discount, old_gold_credit: tax.creditApplied, total: tax.total,
         amount_paid: paid, balance_due: balance,
         notes: notes || null, status, created_by: user?.id,
         order_date: orderDate || null,
@@ -611,17 +633,32 @@ export default function POS() {
         await consumeAdvance(true, appliedOldMetalAdv);
         await consumeAdvance(false, advanceConsumed);
 
-        // Money handed back when the advance exceeded the bill: a negative payment row.
-        if (refund > 0.004) {
-          await supabase.from("payments").insert({
-            invoice_id: inv.id, customer_id: customerId, amount: round2(-refund),
-            method: refundMethod as any, notes: `Refund of excess advance on invoice ${invNumber}`,
-            created_by: user?.id,
-          } as any);
-        }
-
         await syncOrderStatus(order.id);
       }
+
+      // Money handed back because credits (old metal trade-in and/or order advance)
+      // exceeded the bill: a negative payment row so the ledger stays balanced.
+      if (refund > 0.004) {
+        const reason = oldMetalSurplus > 0.004 && refundFromAdvance > 0.004
+          ? "excess old metal and advance"
+          : oldMetalSurplus > 0.004 ? "excess old metal" : "excess advance";
+        await supabase.from("payments").insert({
+          invoice_id: inv.id, customer_id: customerId, amount: round2(-refund),
+          method: refundMethod as any, notes: `Refund of ${reason} on invoice ${invNumber}`,
+          created_by: user?.id,
+        } as any);
+      }
+
+      // Over-tender: money given straight back at the counter.
+      if (changeReturned > 0.004) {
+        await supabase.from("payments").insert({
+          invoice_id: inv.id, customer_id: customerId, amount: round2(-changeReturned),
+          method: (payments[0]?.method ?? "cash") as any,
+          notes: `${CHANGE_NOTE} on invoice ${invNumber}`,
+          created_by: user?.id,
+        } as any);
+      }
+
 
 
       if (oldGoldPurchaseId) {
@@ -927,6 +964,12 @@ export default function POS() {
                     Maximum refundable is {npr(refundDue)} — clamped.
                   </p>
                 )}
+                {refundUnder && (
+                  <p className="text-[11px] font-medium text-destructive">
+                    At least {npr(oldMetalSurplus)} must be refunded — the surplus old metal value
+                    cannot be held on this bill.
+                  </p>
+                )}
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Refund mode</span>
                   <Select value={refundMethod} onValueChange={setRefundMethod}>
@@ -940,15 +983,22 @@ export default function POS() {
                 </div>
                 <div className="mt-1 space-y-0.5 border-t pt-1 text-[11px] text-muted-foreground">
                   <div className="flex justify-between"><span>Max refundable</span><span>{npr(refundDue)}</span></div>
+                  {oldMetalSurplus > 0 && (
+                    <div className="flex justify-between"><span>From surplus old metal</span><span>{npr(oldMetalSurplus)}</span></div>
+                  )}
+                  {advanceExcess > 0 && (
+                    <div className="flex justify-between"><span>From excess advance</span><span>{npr(advanceExcess)}</span></div>
+                  )}
                   <div className="flex justify-between"><span>Advance applied to bill</span><span>{npr(appliedAdvance)}</span></div>
                   <div className="flex justify-between"><span>Kept on order</span><span>{npr(round2(advanceKept + oldMetalKept))}</span></div>
                   <div className="flex justify-between"><span>Net payable</span><span>{npr(netPayable)}</span></div>
                   <div className="flex justify-between"><span>Balance after payments</span><span>{npr(balance)}</span></div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Advance exceeds the bill by {npr(refundDue)}.
-                  {refund < refundDue && <> {npr(round2(refundDue - refund))} stays on the order for the remaining items.</>}
+                  Credits exceed the bill by {npr(refundDue)}.
+                  {refund < refundDue && advance > 0 && <> {npr(round2(refundDue - refund))} stays on the order for the remaining items.</>}
                 </p>
+
               </div>
             )}
 
