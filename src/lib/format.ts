@@ -191,8 +191,15 @@ export function reconcile(input: ReconcileInput): Reconciliation {
   };
 }
 
-/** Back-solve the discount so the refund handed back equals a desired amount. */
+/**
+ * Total credits (old metal + cash advance) minus the bill value before the zero floor:
+ * the money that has to be handed back, whatever its source.
+ */
+export function refundDueOfCredits(grossTotal: number, credits: number): number {
+  return round2(Math.max(0, (Number(credits) || 0) - (Number(grossTotal) || 0)));
+}
 
+/** Back-solve the discount so the refund handed back equals a desired amount. */
 export function discountForTargetRefund(opts: {
   subtotal: number;
   stonesTotal: number;
@@ -203,9 +210,21 @@ export function discountForTargetRefund(opts: {
   vatEnabled?: boolean;
   sdTaxRate?: number;
 }): number {
-  const target = Math.max(0, (Number(opts.advanceApplied) || 0) - (Number(opts.targetRefund) || 0));
-  return discountForTargetTotal({ ...opts, targetTotal: target });
+  const credits = (Number(opts.oldGoldCredit) || 0) + (Number(opts.advanceApplied) || 0);
+  // The bill value (before the old metal credit) that produces the wanted refund.
+  const target = Math.max(0, credits - (Number(opts.targetRefund) || 0));
+  const subtotal = Math.max(0, opts.subtotal || 0);
+  if (subtotal <= 0) return 0;
+  let lo = 0, hi = subtotal, best = 0;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    const g = computeInvoiceTaxes({ ...opts, discount: mid }).grossTotal;
+    if (g > target) lo = mid; else { hi = mid; best = mid; }
+    if (Math.abs(g - target) < 0.01) { best = mid; break; }
+  }
+  return Math.round(best * 100) / 100;
 }
+
 
 
 
