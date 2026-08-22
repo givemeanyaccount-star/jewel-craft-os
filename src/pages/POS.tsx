@@ -381,27 +381,41 @@ export default function POS() {
     () => round2(Math.max(0, Math.min(applyCashAdv, advance))),
     [applyCashAdv, advance],
   );
-  // Money owed back when the advance drawn exceeds the bill total.
-  const refundDue = useMemo(() => refundDueOf(tax.total, advanceRequested), [tax.total, advanceRequested]);
+  // Old metal credit the bill cannot absorb — refundable, never swallowed.
+  const oldMetalSurplus = tax.creditUnused;
+  // Excess coming from the cash advance drawn on the order.
+  const advanceExcess = useMemo(() => refundDueOf(tax.total, advanceRequested), [tax.total, advanceRequested]);
+  // Total money owed back to the customer before any payment is tendered.
+  const refundDue = useMemo(() => round2(advanceExcess + oldMetalSurplus), [advanceExcess, oldMetalSurplus]);
   const refund = useMemo(() => {
     if (refundInput === "") return refundDue;
-    return round2(Math.max(0, Math.min(Number(refundInput) || 0, refundDue)));
-  }, [refundInput, refundDue]);
+    // The old metal surplus cannot be kept back (there is no order to hold it).
+    return round2(Math.max(oldMetalSurplus, Math.min(Number(refundInput) || 0, refundDue)));
+  }, [refundInput, refundDue, oldMetalSurplus]);
   // Typed value exceeds what can be handed back — we clamp and warn in real time.
   const refundOver = useMemo(
     () => refundInput !== "" && (Number(refundInput) || 0) > refundDue + 0.005,
     [refundInput, refundDue],
   );
+  const refundUnder = useMemo(
+    () => refundInput !== "" && (Number(refundInput) || 0) < oldMetalSurplus - 0.005,
+    [refundInput, oldMetalSurplus],
+  );
   // Clear any typed refund once the bill no longer produces an excess (e.g. discount changed).
   useEffect(() => { if (refundDue <= 0.004 && refundInput !== "") setRefundInput(""); }, [refundDue]);
 
+  // Part of the refund funded by the cash advance (old metal surplus is paid out first).
+  const refundFromAdvance = useMemo(
+    () => round2(Math.max(0, refund - oldMetalSurplus)),
+    [refund, oldMetalSurplus],
+  );
   // Advance rows actually consumed by this invoice; the untouched rest stays on the order.
   const advanceConsumed = useMemo(
-    () => round2(advanceRequested - (refundDue - refund)),
-    [advanceRequested, refundDue, refund],
+    () => round2(advanceRequested - (advanceExcess - refundFromAdvance)),
+    [advanceRequested, advanceExcess, refundFromAdvance],
   );
   // Advance value that counts as payment on this bill (consumed minus what is handed back).
-  const appliedAdvance = useMemo(() => round2(advanceConsumed - refund), [advanceConsumed, refund]);
+  const appliedAdvance = useMemo(() => round2(advanceConsumed - refundFromAdvance), [advanceConsumed, refundFromAdvance]);
   const advanceKept = useMemo(
     () => round2(Math.max(0, advance - advanceConsumed)),
     [advance, advanceConsumed],
@@ -412,9 +426,15 @@ export default function POS() {
   );
   // What the customer still has to settle now, after the cash advance is deducted.
   const netPayable = useMemo(() => netPayableOf(tax.total, appliedAdvance), [tax.total, appliedAdvance]);
-  const paid = useMemo(() => round2(manualPaid + appliedAdvance), [manualPaid, appliedAdvance]);
+  // Money tendered above the net payable is change handed straight back over the counter.
+  const changeReturned = useMemo(
+    () => round2(Math.max(0, manualPaid - netPayable)),
+    [manualPaid, netPayable],
+  );
+  const paid = useMemo(() => round2(manualPaid + appliedAdvance - changeReturned), [manualPaid, appliedAdvance, changeReturned]);
 
   const balance = round2(Math.max(0, tax.total - paid));
+
 
   // Fine-metal equivalent of the old metal credit, at the bill's rate (or the day's rate).
   const oldGoldEq = useMemo(() => totalOldGoldCredit > 0
