@@ -633,17 +633,32 @@ export default function POS() {
         await consumeAdvance(true, appliedOldMetalAdv);
         await consumeAdvance(false, advanceConsumed);
 
-        // Money handed back when the advance exceeded the bill: a negative payment row.
-        if (refund > 0.004) {
-          await supabase.from("payments").insert({
-            invoice_id: inv.id, customer_id: customerId, amount: round2(-refund),
-            method: refundMethod as any, notes: `Refund of excess advance on invoice ${invNumber}`,
-            created_by: user?.id,
-          } as any);
-        }
-
         await syncOrderStatus(order.id);
       }
+
+      // Money handed back because credits (old metal trade-in and/or order advance)
+      // exceeded the bill: a negative payment row so the ledger stays balanced.
+      if (refund > 0.004) {
+        const reason = oldMetalSurplus > 0.004 && refundFromAdvance > 0.004
+          ? "excess old metal and advance"
+          : oldMetalSurplus > 0.004 ? "excess old metal" : "excess advance";
+        await supabase.from("payments").insert({
+          invoice_id: inv.id, customer_id: customerId, amount: round2(-refund),
+          method: refundMethod as any, notes: `Refund of ${reason} on invoice ${invNumber}`,
+          created_by: user?.id,
+        } as any);
+      }
+
+      // Over-tender: money given straight back at the counter.
+      if (changeReturned > 0.004) {
+        await supabase.from("payments").insert({
+          invoice_id: inv.id, customer_id: customerId, amount: round2(-changeReturned),
+          method: (payments[0]?.method ?? "cash") as any,
+          notes: `${CHANGE_NOTE} on invoice ${invNumber}`,
+          created_by: user?.id,
+        } as any);
+      }
+
 
 
       if (oldGoldPurchaseId) {
