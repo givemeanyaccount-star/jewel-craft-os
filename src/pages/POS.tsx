@@ -964,6 +964,12 @@ export default function POS() {
                     Maximum refundable is {npr(refundDue)} — clamped.
                   </p>
                 )}
+                {refundUnder && (
+                  <p className="text-[11px] font-medium text-destructive">
+                    At least {npr(oldMetalSurplus)} must be refunded — the surplus old metal value
+                    cannot be held on this bill.
+                  </p>
+                )}
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Refund mode</span>
                   <Select value={refundMethod} onValueChange={setRefundMethod}>
@@ -977,15 +983,22 @@ export default function POS() {
                 </div>
                 <div className="mt-1 space-y-0.5 border-t pt-1 text-[11px] text-muted-foreground">
                   <div className="flex justify-between"><span>Max refundable</span><span>{npr(refundDue)}</span></div>
+                  {oldMetalSurplus > 0 && (
+                    <div className="flex justify-between"><span>From surplus old metal</span><span>{npr(oldMetalSurplus)}</span></div>
+                  )}
+                  {advanceExcess > 0 && (
+                    <div className="flex justify-between"><span>From excess advance</span><span>{npr(advanceExcess)}</span></div>
+                  )}
                   <div className="flex justify-between"><span>Advance applied to bill</span><span>{npr(appliedAdvance)}</span></div>
                   <div className="flex justify-between"><span>Kept on order</span><span>{npr(round2(advanceKept + oldMetalKept))}</span></div>
                   <div className="flex justify-between"><span>Net payable</span><span>{npr(netPayable)}</span></div>
                   <div className="flex justify-between"><span>Balance after payments</span><span>{npr(balance)}</span></div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Advance exceeds the bill by {npr(refundDue)}.
-                  {refund < refundDue && <> {npr(round2(refundDue - refund))} stays on the order for the remaining items.</>}
+                  Credits exceed the bill by {npr(refundDue)}.
+                  {refund < refundDue && advance > 0 && <> {npr(round2(refundDue - refund))} stays on the order for the remaining items.</>}
                 </p>
+
               </div>
             )}
 
