@@ -363,6 +363,13 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>({n2(refundPaid)})</td>
                     </tr>
                   )}
+                  {rec.changeReturned > 0 && (
+                    <tr>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Less: Change Returned</td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>({n2(rec.changeReturned)})</td>
+                    </tr>
+                  )}
+
                   {totalReceived === 0 && (
                     <tr><td style={{ border: bd, padding: "3px 6px" }} colSpan={2}>—</td></tr>
                   )}
