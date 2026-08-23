@@ -1053,6 +1053,12 @@ export default function POS() {
                 <span>Paid: {npr(paid)}{appliedAdvance > 0 ? ` (incl. advance ${npr(appliedAdvance)})` : ""}</span>
                 <span>Balance: {npr(balance)}</span>
               </div>
+              {changeReturned > 0 && (
+                <div className="mt-1 flex justify-between rounded-md bg-amber-500/10 px-2 py-1 text-xs font-medium">
+                  <span>Change returned to customer</span><span>{npr(changeReturned)}</span>
+                </div>
+              )}
+
             </div>
             <div>
               <Label>Notes</Label>
