@@ -197,6 +197,8 @@ export default function InvoiceDetail() {
                 </>
               )}
               {refundPaid > 0 && <Row label="Refund paid to customer" value={`- ${npr(refundPaid)}`} />}
+              {rec.changeReturned > 0 && <Row label="Change returned" value={`- ${npr(rec.changeReturned)}`} />}
+
               {rec.keptOnOrder > 0 && <Row label="Advance kept on order" value={npr(rec.keptOnOrder)} />}
               <Row label="Total received" value={npr(rec.totalReceived)} />
               <Row label="Paid" value={npr(inv.amount_paid)} />

@@ -9,6 +9,9 @@ import {
   refundPaidFromPayments,
   netPayableOf,
   refundDueOf,
+  refundDueOfCredits,
+  changeReturnedFromPayments,
+  CHANGE_NOTE,
   reconcile,
   round2,
 } from "@/lib/format";
@@ -332,6 +335,56 @@ describe("Net Payable is identical across POS, InvoiceDetail and the printed bil
       round2(rec.oldGold + rec.advanceApplied + rec.atSaleTotal - rec.refundPaid),
     );
     expect(rec.balanceDue).toBe(round2(Math.max(0, rec.netPayable - rec.atSaleTotal + rec.refundPaid)));
+  });
+
+
+  it("refunds the surplus when the old metal trade-in exceeds the bill (no order)", () => {
+    const tax = computeInvoiceTaxes({
+      subtotal: 100000, stonesTotal: 0, discount: 0, oldGoldCredit: 150000, ...SETTINGS,
+    });
+    expect(tax.total).toBe(0);                 // the bill never goes negative
+    expect(tax.creditApplied).toBe(tax.grossTotal);
+    expect(round2(tax.creditUnused)).toBe(round2(150000 - tax.grossTotal));
+
+    const refund = refundDueOfCredits(tax.grossTotal, 150000);
+    expect(refund).toBe(tax.creditUnused);
+
+    // Persisted as a negative payment row; money conserves.
+    const payments = [
+      { id: "r1", order_id: null, invoice_id: "i1", method: "cash", amount: -refund },
+    ];
+    const rec = reconcile({
+      total: tax.total, oldGoldCredit: tax.creditApplied, vat: tax.vat, sdTax: tax.sdTax,
+      balanceDue: null, payments,
+    });
+    expect(rec.refundPaid).toBe(refund);
+    expect(rec.netPayable).toBe(0);
+    expect(rec.balanceDue).toBe(0);
+    expect(round2(rec.oldGold + refund)).toBe(150000);
+  });
+
+  it("back-solves the discount from a target refund when the excess comes from old metal", () => {
+    const base = { subtotal: 200000, stonesTotal: 0, oldGoldCredit: 260000, ...SETTINGS };
+    const d = discountForTargetRefund({ ...base, advanceApplied: 0, targetRefund: 80000 });
+    const tax = computeInvoiceTaxes({ ...base, discount: d });
+    expect(Math.abs(refundDueOfCredits(tax.grossTotal, 260000) - 80000)).toBeLessThanOrEqual(0.05);
+  });
+
+  it("records over-tendered cash as change returned, not as extra revenue", () => {
+    const tax = computeInvoiceTaxes({ subtotal: 50000, stonesTotal: 0, ...SETTINGS });
+    const tendered = round2(tax.total + 2500);
+    const change = round2(tendered - tax.total);
+    const payments = [
+      { id: "s1", order_id: null, invoice_id: "i1", method: "cash", amount: tendered },
+      { id: "c1", order_id: null, invoice_id: "i1", method: "cash", amount: -change, notes: `${CHANGE_NOTE} on invoice INV-1` },
+    ];
+    expect(changeReturnedFromPayments(payments)).toBe(change);
+    expect(refundPaidFromPayments(payments)).toBe(0);   // change is not a refund
+
+    const rec = reconcile({ total: tax.total, oldGoldCredit: 0, vat: tax.vat, sdTax: tax.sdTax, balanceDue: null, payments });
+    expect(rec.changeReturned).toBe(change);
+    expect(rec.balanceDue).toBe(0);
+    expect(rec.totalReceived).toBe(tax.total);
   });
 
   it("keeps all three surfaces on the shared helpers (no local re-implementation)", () => {
