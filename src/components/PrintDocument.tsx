@@ -424,6 +424,8 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
             {advanceReceived > 0 && tot("Less: Advance Paid", n2(advanceReceived))}
             {tot("Net Payable", n2(netPayable), { fontWeight: "bold", fontSize: "13px", borderBottom: bd })}
             {refundPaid > 0 && tot("Refund to Customer", n2(refundPaid), { fontWeight: "bold" })}
+            {rec.changeReturned > 0 && tot("Change Returned", n2(rec.changeReturned))}
+
 
           </div>
         </div>
