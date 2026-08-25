@@ -92,6 +92,10 @@ export default function InvoiceDetail() {
   });
   const advanceReceived = rec.advanceApplied;
   const refundPaid = rec.refundPaid;
+  // Accounting view of the same rows — receipts, refund payouts and change.
+  const ledgerRows = paymentLedgerRows(payments);
+  const modeSummary = paymentModeSummary(payments);
+
 
 
 
