@@ -102,10 +102,35 @@ export function refundDueOf(total: number, advanceApplied: number): number {
 
 /** Marker written on the negative payment row that records over-tender change. */
 export const CHANGE_NOTE = "Change returned";
+/** Marker written on the negative payment row that records a refund payout. */
+export const REFUND_NOTE = "Refund";
 
-type PayRow = { order_id?: string | null; method?: string | null; amount?: number | string | null; notes?: string | null };
+export type PayRow = {
+  id?: string | null;
+  order_id?: string | null;
+  invoice_id?: string | null;
+  method?: string | null;
+  amount?: number | string | null;
+  notes?: string | null;
+  reference?: string | null;
+  paid_at?: string | null;
+};
 
-const isChangeRow = (p: PayRow) => String(p?.notes ?? "").startsWith(CHANGE_NOTE);
+/** What a payment row means in the books. */
+export type PaymentKind = "old_metal" | "advance" | "sale" | "refund" | "change";
+
+export function classifyPayment(p: PayRow): PaymentKind {
+  const amt = Number(p?.amount ?? 0) || 0;
+  if (amt < 0) {
+    const tag = `${p?.notes ?? ""} ${p?.reference ?? ""}`;
+    return tag.includes(CHANGE_NOTE) || String(p?.reference ?? "") === "CHANGE" ? "change" : "refund";
+  }
+  if (p?.method === "old_gold") return "old_metal";
+  if (p?.order_id) return "advance";
+  return "sale";
+}
+
+const isChangeRow = (p: PayRow) => classifyPayment(p) === "change";
 
 /**
  * Refunds recorded against an invoice are negative payment rows (money out).
@@ -114,16 +139,17 @@ const isChangeRow = (p: PayRow) => String(p?.notes ?? "").startsWith(CHANGE_NOTE
  */
 export function refundPaidFromPayments(payments: PayRow[] = []): number {
   return round2(payments
-    .filter((p) => !isChangeRow(p))
+    .filter((p) => classifyPayment(p) === "refund")
     .reduce((s, p) => s + Math.min(0, Number(p?.amount ?? 0) || 0), 0) * -1);
 }
 
 /** Money given back because the customer tendered more than the net payable. */
 export function changeReturnedFromPayments(payments: PayRow[] = []): number {
   return round2(payments
-    .filter((p) => isChangeRow(p))
+    .filter(isChangeRow)
     .reduce((s, p) => s + Math.min(0, Number(p?.amount ?? 0) || 0), 0) * -1);
 }
+
 
 /**
  * One reconciliation of a bill's money, shared by the invoice screen and the printed
