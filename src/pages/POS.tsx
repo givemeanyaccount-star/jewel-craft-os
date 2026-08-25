@@ -16,7 +16,7 @@ import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil,
 import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal, discountForTargetRefund,
-  round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE,
+  round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE, REFUND_NOTE,
 } from "@/lib/format";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
@@ -644,20 +644,25 @@ export default function POS() {
           : oldMetalSurplus > 0.004 ? "excess old metal" : "excess advance";
         await supabase.from("payments").insert({
           invoice_id: inv.id, customer_id: customerId, amount: round2(-refund),
-          method: refundMethod as any, notes: `Refund of ${reason} on invoice ${invNumber}`,
+          method: refundMethod as any, reference: "REFUND",
+          notes: `${REFUND_NOTE} of ${reason} on invoice ${invNumber}`,
           created_by: user?.id,
         } as any);
       }
 
-      // Over-tender: money given straight back at the counter.
+      // Over-tender: money given straight back at the counter, in the mode the
+      // largest tendered line used, so the payment-mode ledger nets out per mode.
       if (changeReturned > 0.004) {
+        const biggest = [...validPays].sort((a, b) => Number(b.amount) - Number(a.amount))[0];
         await supabase.from("payments").insert({
           invoice_id: inv.id, customer_id: customerId, amount: round2(-changeReturned),
-          method: (payments[0]?.method ?? "cash") as any,
+          method: (biggest?.method ?? payments[0]?.method ?? "cash") as any,
+          reference: "CHANGE",
           notes: `${CHANGE_NOTE} on invoice ${invNumber}`,
           created_by: user?.id,
         } as any);
       }
+
 
 
 

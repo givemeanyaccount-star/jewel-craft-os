@@ -102,10 +102,35 @@ export function refundDueOf(total: number, advanceApplied: number): number {
 
 /** Marker written on the negative payment row that records over-tender change. */
 export const CHANGE_NOTE = "Change returned";
+/** Marker written on the negative payment row that records a refund payout. */
+export const REFUND_NOTE = "Refund";
 
-type PayRow = { order_id?: string | null; method?: string | null; amount?: number | string | null; notes?: string | null };
+export type PayRow = {
+  id?: string | null;
+  order_id?: string | null;
+  invoice_id?: string | null;
+  method?: string | null;
+  amount?: number | string | null;
+  notes?: string | null;
+  reference?: string | null;
+  paid_at?: string | null;
+};
 
-const isChangeRow = (p: PayRow) => String(p?.notes ?? "").startsWith(CHANGE_NOTE);
+/** What a payment row means in the books. */
+export type PaymentKind = "old_metal" | "advance" | "sale" | "refund" | "change";
+
+export function classifyPayment(p: PayRow): PaymentKind {
+  const amt = Number(p?.amount ?? 0) || 0;
+  if (amt < 0) {
+    const tag = `${p?.notes ?? ""} ${p?.reference ?? ""}`;
+    return tag.includes(CHANGE_NOTE) || String(p?.reference ?? "") === "CHANGE" ? "change" : "refund";
+  }
+  if (p?.method === "old_gold") return "old_metal";
+  if (p?.order_id) return "advance";
+  return "sale";
+}
+
+const isChangeRow = (p: PayRow) => classifyPayment(p) === "change";
 
 /**
  * Refunds recorded against an invoice are negative payment rows (money out).
@@ -114,16 +139,17 @@ const isChangeRow = (p: PayRow) => String(p?.notes ?? "").startsWith(CHANGE_NOTE
  */
 export function refundPaidFromPayments(payments: PayRow[] = []): number {
   return round2(payments
-    .filter((p) => !isChangeRow(p))
+    .filter((p) => classifyPayment(p) === "refund")
     .reduce((s, p) => s + Math.min(0, Number(p?.amount ?? 0) || 0), 0) * -1);
 }
 
 /** Money given back because the customer tendered more than the net payable. */
 export function changeReturnedFromPayments(payments: PayRow[] = []): number {
   return round2(payments
-    .filter((p) => isChangeRow(p))
+    .filter(isChangeRow)
     .reduce((s, p) => s + Math.min(0, Number(p?.amount ?? 0) || 0), 0) * -1);
 }
+
 
 /**
  * One reconciliation of a bill's money, shared by the invoice screen and the printed
@@ -147,6 +173,9 @@ export interface Reconciliation {
   oldGold: number;
   advanceApplied: number;
   modeRows: Array<[string, number]>;
+  /** Mode-wise payouts: refunds and change, per payment method (positive amounts). */
+  refundRows: Array<[string, number]>;
+  changeRows: Array<[string, number]>;
   atSaleTotal: number;
   refundPaid: number;
   changeReturned: number;
@@ -165,15 +194,22 @@ export function reconcile(input: ReconcileInput): Reconciliation {
   const changeReturned = changeReturnedFromPayments(payments);
 
   const m = new Map<string, number>();
+  const refundsByMode = new Map<string, number>();
+  const changeByMode = new Map<string, number>();
   for (const p of payments) {
     const amt = Number(p?.amount ?? 0) || 0;
-    if (amt < 0) continue;                  // refund / change — their own lines
-    if (p?.method === "old_gold") continue; // already in the old metal line
-    if (p?.order_id) continue;              // counted as advance
     const key = String(p?.method ?? "other");
+    const kind = classifyPayment(p);
+    if (kind === "refund") { refundsByMode.set(key, round2((refundsByMode.get(key) ?? 0) - amt)); continue; }
+    if (kind === "change") { changeByMode.set(key, round2((changeByMode.get(key) ?? 0) - amt)); continue; }
+    if (kind === "old_metal") continue; // already in the old metal line
+    if (kind === "advance") continue;   // counted as advance
     m.set(key, round2((m.get(key) ?? 0) + amt));
   }
-  const modeRows = Array.from(m.entries()).filter(([, v]) => v !== 0);
+  const nonZero = (map: Map<string, number>) => Array.from(map.entries()).filter(([, v]) => v !== 0);
+  const modeRows = nonZero(m);
+  const refundRows = nonZero(refundsByMode);
+  const changeRows = nonZero(changeByMode);
   const atSaleTotal = round2(modeRows.reduce((s, [, v]) => s + v, 0));
 
   const total = Number(input.total ?? 0) || 0;
@@ -184,12 +220,13 @@ export function reconcile(input: ReconcileInput): Reconciliation {
     : netPayable - atSaleTotal + changeReturned));
 
   return {
-    oldGold, advanceApplied, modeRows, atSaleTotal, refundPaid, changeReturned,
+    oldGold, advanceApplied, modeRows, refundRows, changeRows, atSaleTotal, refundPaid, changeReturned,
     keptOnOrder: round2(Math.max(0, Number(input.keptOnOrder ?? 0) || 0)),
     taxes: round2((Number(input.vat ?? 0) || 0) + (Number(input.sdTax ?? 0) || 0)),
     totalReceived, netPayable, balanceDue,
   };
 }
+
 
 /**
  * Total credits (old metal + cash advance) minus the bill value before the zero floor:

@@ -12,9 +12,11 @@ import {
   refundDueOfCredits,
   changeReturnedFromPayments,
   CHANGE_NOTE,
+  classifyPayment,
   reconcile,
   round2,
 } from "@/lib/format";
+import { paymentModeSummary, paymentLedgerRows, ledgerNet } from "@/lib/paymentLedger";
 
 /**
  * End-to-end check of the order-advance money trail:
@@ -396,5 +398,47 @@ describe("Net Payable is identical across POS, InvoiceDetail and the printed bil
       expect(src, `${f} should not hand-roll the net payable subtraction`)
         .not.toMatch(/(total|netTotal)[^\n]*-\s*(applied)?[aA]dvance(Received)?/);
     }
+  });
+});
+
+describe("payment-mode and ledger rows for payouts", () => {
+  const pays = [
+    { id: "a1", order_id: "o1", invoice_id: "i1", method: "cash", amount: 5000, notes: "Advance applied" },
+    { id: "s1", order_id: null, invoice_id: "i1", method: "cash", amount: 4000 },
+    { id: "s2", order_id: null, invoice_id: "i1", method: "fonepay", amount: 1000 },
+    { id: "r1", order_id: null, invoice_id: "i1", method: "cash", amount: -1500, reference: "REFUND", notes: "Refund of excess old metal on invoice INV-1" },
+    { id: "c1", order_id: null, invoice_id: "i1", method: "cash", amount: -500, reference: "CHANGE", notes: `${CHANGE_NOTE} on invoice INV-1` },
+  ];
+
+  it("classifies every row and nets out per mode", () => {
+    expect(pays.map(classifyPayment)).toEqual(["advance", "sale", "sale", "refund", "change"]);
+    const s = paymentModeSummary(pays);
+    const cash = s.rows.find((r) => r.method === "cash")!;
+    expect(cash.received).toBe(9000);
+    expect(cash.paidOut).toBe(2000);
+    expect(cash.net).toBe(7000);
+    expect(s.net).toBe(ledgerNet(pays));
+    expect(s.net).toBe(8000);
+  });
+
+  it("emits balanced ledger rows for refunds and change", () => {
+    const rows = paymentLedgerRows(pays);
+    expect(rows).toHaveLength(5);
+    const refund = rows.find((r) => r.kind === "refund")!;
+    expect(refund.debit).toBe("Customer Receivable");
+    expect(refund.credit).toBe("Cash Account");
+    expect(refund.amount).toBe(1500);
+    const change = rows.find((r) => r.kind === "change")!;
+    expect(change.credit).toBe("Cash Account");
+    expect(rows.reduce((t, r) => t + r.signedAmount, 0)).toBe(ledgerNet(pays));
+  });
+
+  it("reconciliation payout rows match the ledger totals", () => {
+    const rec = reconcile({ total: 8000, oldGoldCredit: 0, payments: pays as any });
+    expect(rec.refundRows).toEqual([["cash", 1500]]);
+    expect(rec.changeRows).toEqual([["cash", 500]]);
+    const paidOut = [...rec.refundRows, ...rec.changeRows].reduce((s, [, v]) => s + v, 0);
+    expect(paidOut).toBe(paymentModeSummary(pays).paidOut);
+    expect(rec.totalReceived).toBe(ledgerNet(pays));
   });
 });

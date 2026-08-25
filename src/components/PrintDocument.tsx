@@ -357,18 +357,23 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(amt)}</td>
                     </tr>
                   ))}
-                  {refundPaid > 0 && (
-                    <tr>
-                      <td style={{ border: bd, padding: "3px 6px" }}>Less: Refund Issued</td>
-                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>({n2(refundPaid)})</td>
+                  {rec.refundRows.map(([method, amt]) => (
+                    <tr key={`refund-${method}`}>
+                      <td style={{ border: bd, padding: "3px 6px" }}>
+                        Less: Refund Issued ({PAYMENT_LABEL[method] ?? method})
+                      </td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>({n2(amt)})</td>
                     </tr>
-                  )}
-                  {rec.changeReturned > 0 && (
-                    <tr>
-                      <td style={{ border: bd, padding: "3px 6px" }}>Less: Change Returned</td>
-                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>({n2(rec.changeReturned)})</td>
+                  ))}
+                  {rec.changeRows.map(([method, amt]) => (
+                    <tr key={`change-${method}`}>
+                      <td style={{ border: bd, padding: "3px 6px" }}>
+                        Less: Change Returned ({PAYMENT_LABEL[method] ?? method})
+                      </td>
+                      <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>({n2(amt)})</td>
                     </tr>
-                  )}
+                  ))}
+
 
                   {totalReceived === 0 && (
                     <tr><td style={{ border: bd, padding: "3px 6px" }} colSpan={2}>—</td></tr>

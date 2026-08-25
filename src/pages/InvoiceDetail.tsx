@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { PrintDocument, printDocument } from "@/components/PrintDocument";
 import { npr, reconcile } from "@/lib/format";
+import { paymentLedgerRows, paymentModeSummary } from "@/lib/paymentLedger";
+
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -90,6 +92,10 @@ export default function InvoiceDetail() {
   });
   const advanceReceived = rec.advanceApplied;
   const refundPaid = rec.refundPaid;
+  // Accounting view of the same rows — receipts, refund payouts and change.
+  const ledgerRows = paymentLedgerRows(payments);
+  const modeSummary = paymentModeSummary(payments);
+
 
 
 
@@ -218,18 +224,38 @@ export default function InvoiceDetail() {
           </CardHeader>
           <CardContent>
             {payments.length === 0 ? <p className="text-sm text-muted-foreground">No payments yet</p> :
-              <div className="space-y-2">
-                {payments.map((p) => (
-                  <div key={p.id} className="flex justify-between border-b pb-2 text-sm last:border-0">
-                    <div>
-                      <div className="font-medium">{npr(p.amount)}</div>
-                      <div className="text-xs text-muted-foreground capitalize">{p.method.replace("_", " ")}</div>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  {ledgerRows.map((l, i) => (
+                    <div key={l.id ?? i} className="flex justify-between border-b pb-2 text-sm last:border-0">
+                      <div>
+                        <div className={`font-medium ${l.signedAmount < 0 ? "text-destructive" : ""}`}>
+                          {l.signedAmount < 0 ? `- ${npr(l.amount)}` : npr(l.amount)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{l.methodLabel} · {l.kindLabel}</div>
+                        <div className="text-[11px] text-muted-foreground">{l.debit} → {l.credit}</div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">{l.date ? new Date(l.date).toLocaleDateString() : ""}</div>
                     </div>
-                    <div className="text-xs text-muted-foreground">{new Date(p.paid_at).toLocaleDateString()}</div>
+                  ))}
+                </div>
+                <div className="rounded-md border p-2 text-xs">
+                  <div className="mb-1 font-medium">Payment modes</div>
+                  {modeSummary.rows.map((r) => (
+                    <div key={r.method} className="flex justify-between">
+                      <span>{r.label}</span>
+                      <span>
+                        {npr(r.received)}{r.paidOut > 0 && <span className="text-destructive"> − {npr(r.paidOut)}</span>} = {npr(r.net)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="mt-1 flex justify-between border-t pt-1 font-medium">
+                    <span>Net through payment modes</span><span>{npr(modeSummary.net)}</span>
                   </div>
-                ))}
+                </div>
               </div>
             }
+
           </CardContent>
         </Card>
       </div>
