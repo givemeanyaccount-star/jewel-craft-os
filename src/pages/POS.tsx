@@ -16,7 +16,7 @@ import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil,
 import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, discountForTargetTotal, discountForTargetRefund,
-  round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE,
+  round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE, REFUND_NOTE,
 } from "@/lib/format";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
