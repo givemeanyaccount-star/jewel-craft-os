@@ -465,7 +465,8 @@ export default function POS() {
         return;
       }
       setRefundInput("");
-      toast.success(`Discount set to ${npr(d)} to refund ${npr(t)}`);
+      const off = round2(reachedRefund - t);
+      toast.success(`Discount set to ${npr(d)} to refund ${npr(reachedRefund)}${off ? ` (${npr(Math.abs(off))} round-off)` : ""}`);
       return;
     }
     const reachedNet = netPayableOf(reached, Math.min(advanceRequested, reached));
@@ -473,8 +474,10 @@ export default function POS() {
       toast.warning(`Cannot reach ${npr(t)} — the lowest net payable without a discount is ${npr(reachedNet)}`);
       return;
     }
-    toast.success(`Discount set to ${npr(d)} to reach a net payable of ${npr(t)}`);
+    const off = round2(reachedNet - t);
+    toast.success(`Discount set to ${npr(d)} for a net payable of ${npr(reachedNet)}${off ? ` (${npr(Math.abs(off))} round-off)` : ""}`);
   }
+
 
 
 
