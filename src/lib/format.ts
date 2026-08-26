@@ -31,7 +31,8 @@ export interface TaxBreakdown {
   oldGoldCredit: number;   // credit offered
   creditApplied: number;   // part of the credit the bill could absorb
   creditUnused: number;    // surplus credit — refundable, never swallowed
-  grossTotal: number;      // bill value before the old metal credit (goods + taxes)
+  roundOff: number;        // signed sub-rupee adjustment that lands the bill on the entered amount
+  grossTotal: number;      // bill value before the old metal credit (goods + taxes + round-off)
   total: number;
 }
 
@@ -44,6 +45,8 @@ export function computeInvoiceTaxes(opts: {
   vatRate?: number;
   vatEnabled?: boolean;
   sdTaxRate?: number;
+  /** Signed sub-rupee adjustment applied after taxes so the bill matches an entered amount. */
+  roundOff?: number;
 }): TaxBreakdown {
   const subtotal = Math.max(0, opts.subtotal || 0);
   const stonesTotal = Math.max(0, Math.min(opts.stonesTotal || 0, subtotal));
@@ -53,6 +56,7 @@ export function computeInvoiceTaxes(opts: {
   const vatEnabled = opts.vatEnabled ?? true;
   const vatRate = vatEnabled ? (opts.vatRate ?? VAT_RATE) : 0;
   const sdRate = opts.sdTaxRate ?? SD_TAX_RATE;
+  const roundOff = round2(Number(opts.roundOff ?? 0) || 0);
 
   const postDiscount = Math.max(0, subtotal - discount);
   // proportionally allocate the discount to the stones portion for VAT base
@@ -63,7 +67,7 @@ export function computeInvoiceTaxes(opts: {
   const nonStonePostDiscount = Math.max(0, postDiscount - taxableStones);
   const sdBase = Math.max(0, nonStonePostDiscount - oldGoldCredit);
   const sdTax = sdBase > 0 ? (sdBase * sdRate) / 100 : 0;
-  const grossTotal = postDiscount + vat + sdTax;
+  const grossTotal = Math.max(0, postDiscount + vat + sdTax + roundOff);
   const total = Math.max(0, grossTotal - oldGoldCredit);
   const creditApplied = Math.min(oldGoldCredit, grossTotal);
   const creditUnused = Math.max(0, oldGoldCredit - grossTotal);
@@ -72,9 +76,10 @@ export function computeInvoiceTaxes(opts: {
     subtotal: round2(subtotal), stonesTotal: round2(stonesTotal), nonStoneTotal: round2(nonStoneTotal),
     discount: round2(discount), taxableStones: round2(taxableStones), vat: round2(vat), sdTax: round2(sdTax),
     oldGoldCredit: round2(oldGoldCredit), creditApplied: round2(creditApplied), creditUnused: round2(creditUnused),
-    grossTotal: round2(grossTotal), total: round2(total),
+    roundOff, grossTotal: round2(grossTotal), total: round2(total),
   };
 }
+
 
 /**
  * Cash-type advances collected on a linked order and settled against this bill.
