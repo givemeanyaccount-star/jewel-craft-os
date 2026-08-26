@@ -236,6 +236,31 @@ export function refundDueOfCredits(grossTotal: number, credits: number): number 
   return round2(Math.max(0, (Number(credits) || 0) - (Number(grossTotal) || 0)));
 }
 
+/**
+ * Snap a solved discount onto the paisa grid: scan the neighbourhood at 0.01 steps
+ * and keep the discount whose recomputed value is closest to the target.
+ * Ties prefer the smaller discount.
+ */
+function snapDiscount(
+  candidate: number,
+  subtotal: number,
+  target: number,
+  valueAt: (discount: number) => number,
+): number {
+  const base = Math.round(candidate * 100);
+  const maxCents = Math.round(subtotal * 100);
+  let best = Math.min(Math.max(base, 0), maxCents);
+  let bestErr = Infinity;
+  for (let k = -25; k <= 25; k++) {
+    const cents = base + k;
+    if (cents < 0 || cents > maxCents) continue;
+    const d = cents / 100;
+    const err = Math.abs(round2(valueAt(d)) - target);
+    if (err < bestErr - 1e-9) { bestErr = err; best = cents; }
+  }
+  return best / 100;
+}
+
 /** Back-solve the discount so the refund handed back equals a desired amount. */
 export function discountForTargetRefund(opts: {
   subtotal: number;
@@ -249,17 +274,18 @@ export function discountForTargetRefund(opts: {
 }): number {
   const credits = (Number(opts.oldGoldCredit) || 0) + (Number(opts.advanceApplied) || 0);
   // The bill value (before the old metal credit) that produces the wanted refund.
-  const target = Math.max(0, credits - (Number(opts.targetRefund) || 0));
+  const target = round2(Math.max(0, credits - (Number(opts.targetRefund) || 0)));
   const subtotal = Math.max(0, opts.subtotal || 0);
   if (subtotal <= 0) return 0;
+  const grossAt = (discount: number) => computeInvoiceTaxes({ ...opts, discount }).grossTotal;
   let lo = 0, hi = subtotal, best = 0;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
-    const g = computeInvoiceTaxes({ ...opts, discount: mid }).grossTotal;
+    const g = grossAt(mid);
     if (g > target) lo = mid; else { hi = mid; best = mid; }
-    if (Math.abs(g - target) < 0.01) { best = mid; break; }
+    if (Math.abs(g - target) < 0.005) { best = mid; break; }
   }
-  return Math.round(best * 100) / 100;
+  return snapDiscount(best, subtotal, target, grossAt);
 }
 
 
@@ -277,18 +303,20 @@ export function discountForTargetTotal(opts: {
   sdTaxRate?: number;
 }): number {
   const subtotal = Math.max(0, opts.subtotal || 0);
-  const target = Math.max(0, opts.targetTotal || 0);
+  const target = round2(Math.max(0, opts.targetTotal || 0));
   if (subtotal <= 0) return 0;
+  const totalAt = (discount: number) => computeInvoiceTaxes({ ...opts, discount }).total;
   // binary search for discount in [0, subtotal]
   let lo = 0, hi = subtotal, best = 0;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
-    const t = computeInvoiceTaxes({ ...opts, discount: mid }).total;
+    const t = totalAt(mid);
     if (t > target) lo = mid; else { hi = mid; best = mid; }
-    if (Math.abs(t - target) < 0.01) { best = mid; break; }
+    if (Math.abs(t - target) < 0.005) { best = mid; break; }
   }
-  return Math.round(best * 100) / 100;
+  return snapDiscount(best, subtotal, target, totalAt);
 }
+
 
 /** 1 tola = 11.6638 grams (Nepali bullion standard). */
 export const TOLA_GRAMS = 11.6638;
