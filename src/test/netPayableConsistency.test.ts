@@ -442,3 +442,28 @@ describe("payment-mode and ledger rows for payouts", () => {
     expect(rec.totalReceived).toBe(ledgerNet(pays));
   });
 });
+
+describe("target total snapping", () => {
+  const cases = [
+    { subtotal: 187342.37, stonesTotal: 0, target: 150000 },
+    { subtotal: 187342.37, stonesTotal: 23111.11, target: 150000 },
+    { subtotal: 250000.55, stonesTotal: 10000, oldGoldCredit: 43211.77, target: 175000 },
+    { subtotal: 99999.99, stonesTotal: 1234.56, target: 88888 },
+  ];
+  for (const c of cases) {
+    it(`hits ${c.target} exactly for subtotal ${c.subtotal}`, () => {
+      const opts = { subtotal: c.subtotal, stonesTotal: c.stonesTotal, oldGoldCredit: c.oldGoldCredit ?? 0 };
+      const d = discountForTargetTotal({ ...opts, targetTotal: c.target });
+      const total = computeInvoiceTaxes({ ...opts, discount: d }).total;
+      expect(Math.abs(total - c.target)).toBeLessThanOrEqual(0.01);
+    });
+  }
+
+  it("hits a target refund exactly", () => {
+    const opts = { subtotal: 50000, stonesTotal: 5000, oldGoldCredit: 120000 };
+    const d = discountForTargetRefund({ ...opts, advanceApplied: 20000, targetRefund: 95000 });
+    const gross = computeInvoiceTaxes({ ...opts, discount: d }).grossTotal;
+    const refund = refundDueOfCredits(gross, 140000);
+    expect(Math.abs(refund - 95000)).toBeLessThanOrEqual(0.01);
+  });
+});
