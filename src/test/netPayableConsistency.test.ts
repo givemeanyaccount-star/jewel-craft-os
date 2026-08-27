@@ -5,6 +5,9 @@ import {
   computeInvoiceTaxes,
   discountForTargetTotal,
   discountForTargetRefund,
+  solveTargetTotal,
+  solveTargetRefund,
+  reconcile,
   advanceReceivedFromPayments,
   refundPaidFromPayments,
   netPayableOf,
@@ -465,5 +468,75 @@ describe("target total snapping", () => {
     const gross = computeInvoiceTaxes({ ...opts, discount: d }).grossTotal;
     const refund = refundDueOfCredits(gross, 140000);
     expect(Math.abs(refund - 95000)).toBeLessThanOrEqual(0.01);
+  });
+});
+
+
+describe("exact round-off solving", () => {
+  const cases = [
+    { subtotal: 187342.37, stonesTotal: 0, target: 150000 },
+    { subtotal: 187342.37, stonesTotal: 23111.11, target: 150000 },
+    { subtotal: 250000.55, stonesTotal: 10000, oldGoldCredit: 43211.77, target: 175000 },
+    { subtotal: 99999.99, stonesTotal: 1234.56, target: 88888 },
+    { subtotal: 123456.78, stonesTotal: 999.99, oldGoldCredit: 5555.55, target: 100000 },
+    { subtotal: 61111.11, stonesTotal: 0, target: 60000.5 },
+  ];
+  for (const c of cases) {
+    it(`lands exactly on ${c.target} for subtotal ${c.subtotal}`, () => {
+      const opts = { subtotal: c.subtotal, stonesTotal: c.stonesTotal, oldGoldCredit: c.oldGoldCredit ?? 0 };
+      const sol = solveTargetTotal({ ...opts, targetTotal: c.target });
+      expect(sol.reachable).toBe(true);
+      expect(Math.abs(sol.roundOff)).toBeLessThan(1);
+      // recomputing with the persisted discount + round-off reproduces the entered amount
+      const tax = computeInvoiceTaxes({ ...opts, discount: sol.discount, roundOff: sol.roundOff });
+      expect(tax.total).toBe(round2(c.target));
+      expect(sol.reached).toBe(round2(c.target));
+    });
+  }
+
+  it("keeps the plain solver's discount and only absorbs the sub-rupee remainder", () => {
+    const opts = { subtotal: 187342.37, stonesTotal: 23111.11, oldGoldCredit: 0 };
+    const sol = solveTargetTotal({ ...opts, targetTotal: 150000 });
+    expect(sol.discount).toBe(discountForTargetTotal({ ...opts, targetTotal: 150000 }));
+  });
+
+  it("reports an unreachable target instead of faking a round-off", () => {
+    const opts = { subtotal: 10000, stonesTotal: 0, oldGoldCredit: 0 };
+    const sol = solveTargetTotal({ ...opts, targetTotal: 50000 });
+    expect(sol.reachable).toBe(false);
+    expect(sol.roundOff).toBe(0);
+  });
+
+  it("lands a target refund exactly", () => {
+    const opts = { subtotal: 50000, stonesTotal: 5000, oldGoldCredit: 120000 };
+    const sol = solveTargetRefund({ ...opts, advanceApplied: 20000, targetRefund: 95000 });
+    expect(sol.reachable).toBe(true);
+    const gross = computeInvoiceTaxes({ ...opts, discount: sol.discount, roundOff: sol.roundOff }).grossTotal;
+    expect(refundDueOfCredits(gross, 140000)).toBe(95000);
+  });
+
+  it("shows the same rounded total on POS, the invoice screen and the printed bill", () => {
+    const opts = { subtotal: 187342.37, stonesTotal: 23111.11, oldGoldCredit: 0 };
+    const target = 150000;
+    const sol = solveTargetTotal({ ...opts, targetTotal: target });
+    // POS
+    const tax = computeInvoiceTaxes({ ...opts, discount: sol.discount, roundOff: sol.roundOff });
+    // persisted invoice row
+    const inv = { total: tax.total, old_gold_credit: tax.creditApplied, round_off: sol.roundOff,
+      vat_amount: tax.vat, sd_tax: tax.sdTax, discount: sol.discount };
+    // invoice screen / printed bill both read the same reconcile()
+    const rec = reconcile({
+      total: inv.total, oldGoldCredit: inv.old_gold_credit, vat: inv.vat_amount,
+      sdTax: inv.sd_tax, roundOff: inv.round_off, payments: [],
+    });
+    expect(rec.netPayable).toBe(target);
+    expect(rec.roundOff).toBe(sol.roundOff);
+    // and recomputing the bill from the saved figures reproduces the same total
+    expect(computeInvoiceTaxes({ ...opts, discount: inv.discount, roundOff: inv.round_off }).total).toBe(target);
+  });
+
+  it("a zero round-off leaves totals identical to the legacy behaviour", () => {
+    const opts = { subtotal: 100000, stonesTotal: 0, oldGoldCredit: 0, discount: 1000 };
+    expect(computeInvoiceTaxes({ ...opts, roundOff: 0 })).toEqual(computeInvoiceTaxes(opts));
   });
 });
