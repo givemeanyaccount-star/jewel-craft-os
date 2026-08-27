@@ -481,6 +481,7 @@ export type Database = {
           quotation_id: string | null
           rate_basis: string
           restocked: boolean
+          round_off: number
           sd_tax: number
           sd_tax_rate: number
           status: Database["public"]["Enums"]["invoice_status"]
@@ -512,6 +513,7 @@ export type Database = {
           quotation_id?: string | null
           rate_basis?: string
           restocked?: boolean
+          round_off?: number
           sd_tax?: number
           sd_tax_rate?: number
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -543,6 +545,7 @@ export type Database = {
           quotation_id?: string | null
           rate_basis?: string
           restocked?: boolean
+          round_off?: number
           sd_tax?: number
           sd_tax_rate?: number
           status?: Database["public"]["Enums"]["invoice_status"]

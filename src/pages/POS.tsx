@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil, ClipboardList } from "lucide-react";
 import {
   npr, computeLineTotal,
-  nextNumber, computeInvoiceTaxes, discountForTargetTotal, discountForTargetRefund,
+  nextNumber, computeInvoiceTaxes, solveTargetTotal, solveTargetRefund,
   round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE, REFUND_NOTE,
 } from "@/lib/format";
 
@@ -110,6 +110,8 @@ export default function POS() {
   const [items, setItems] = useState<any[]>([]);
   const [cart, setCart] = useState<CartRow[]>([]);
   const [discount, setDiscount] = useState(0);
+  // Signed sub-rupee adjustment that lands the bill exactly on an entered target amount.
+  const [roundOff, setRoundOff] = useState(0);
   const [oldGoldCredit, setOldGoldCredit] = useState(0);
   const [oldGoldPurchaseId, setOldGoldPurchaseId] = useState<string | null>(null);
   const [oldGoldMetal, setOldGoldMetal] = useState<string>("gold");
@@ -368,9 +370,13 @@ export default function POS() {
   );
 
   const tax = useMemo(() => computeInvoiceTaxes({
-    subtotal, stonesTotal, discount, oldGoldCredit: totalOldGoldCredit,
+    subtotal, stonesTotal, discount, oldGoldCredit: totalOldGoldCredit, roundOff,
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
-  }), [subtotal, stonesTotal, discount, totalOldGoldCredit, settings]);
+  }), [subtotal, stonesTotal, discount, totalOldGoldCredit, roundOff, settings]);
+
+  // A round-off only belongs to the amount it was solved for: drop it when the cart changes.
+  const cartSignature = cart.map((r) => `${r.description}:${r.line_total}`).join("|");
+  useEffect(() => { setRoundOff(0); setTargetTotal(""); }, [cartSignature]);
 
   const manualPaid = useMemo(
     () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)),
@@ -451,34 +457,36 @@ export default function POS() {
     };
     const refundMode = refundDue > 0;
     // In refund mode the target is the money handed back, otherwise it is the net payable.
-    const d = refundMode
-      ? discountForTargetRefund({ ...taxOpts, advanceApplied: advanceRequested, targetRefund: t })
-      : discountForTargetTotal({ ...taxOpts, targetTotal: round2(t + advanceRequested) });
-    setDiscount(d);
-    // Check the target is actually reachable (it is not when it needs a negative discount).
-    const reachedTax = computeInvoiceTaxes({ ...taxOpts, discount: d });
-    const reached = reachedTax.total;
+    // The solver snaps the discount to the paisa grid and absorbs the unreachable
+    // remainder (taxes scale the discount) into a signed round-off, so the bill matches exactly.
     if (refundMode) {
-      const reachedRefund = refundDueOfCredits(reachedTax.grossTotal, round2(totalOldGoldCredit + advanceRequested));
-      if (Math.abs(reachedRefund - t) > 0.05) {
-        toast.warning(`Cannot reach a refund of ${npr(t)} — the most refundable without a discount is ${npr(reachedRefund)}`);
+      const sol = solveTargetRefund({ ...taxOpts, advanceApplied: advanceRequested, targetRefund: t });
+      if (!sol.reachable) {
+        const best = refundDueOfCredits(
+          computeInvoiceTaxes({ ...taxOpts, discount: sol.discount }).grossTotal,
+          round2(totalOldGoldCredit + advanceRequested),
+        );
+        toast.warning(`Cannot reach a refund of ${npr(t)} — the most refundable without a discount is ${npr(best)}`);
         return;
       }
+      setDiscount(sol.discount);
+      setRoundOff(sol.roundOff);
       setRefundInput("");
-      const off = round2(reachedRefund - t);
-      toast.success(`Discount set to ${npr(d)} to refund ${npr(reachedRefund)}${off ? ` (${npr(Math.abs(off))} round-off)` : ""}`);
+      toast.success(`Discount set to ${npr(sol.discount)} to refund ${npr(sol.reached)}${sol.roundOff ? ` (incl. ${npr(Math.abs(sol.roundOff))} round-off)` : ""}`);
       return;
     }
-    const reachedNet = netPayableOf(reached, Math.min(advanceRequested, reached));
-    if (Math.abs(reachedNet - t) > 0.05) {
-      toast.warning(`Cannot reach ${npr(t)} — the lowest net payable without a discount is ${npr(reachedNet)}`);
+    const sol = solveTargetTotal({ ...taxOpts, targetTotal: round2(t + advanceRequested) });
+    if (!sol.reachable) {
+      const bestTotal = computeInvoiceTaxes({ ...taxOpts, discount: sol.discount }).total;
+      const bestNet = netPayableOf(bestTotal, Math.min(advanceRequested, bestTotal));
+      toast.warning(`Cannot reach ${npr(t)} — the lowest net payable without a discount is ${npr(bestNet)}`);
       return;
     }
-    const off = round2(reachedNet - t);
-    toast.success(`Discount set to ${npr(d)} for a net payable of ${npr(reachedNet)}${off ? ` (${npr(Math.abs(off))} round-off)` : ""}`);
+    setDiscount(sol.discount);
+    setRoundOff(sol.roundOff);
+    const reachedNet = netPayableOf(sol.reached, Math.min(advanceRequested, sol.reached));
+    toast.success(`Discount set to ${npr(sol.discount)} for a net payable of ${npr(reachedNet)}${sol.roundOff ? ` (incl. ${npr(Math.abs(sol.roundOff))} round-off)` : ""}`);
   }
-
-
 
 
   async function checkout() {
@@ -543,7 +551,7 @@ export default function POS() {
         vat_rate: settings.vat_enabled ? settings.vat_rate : 0, vat_amount: tax.vat,
         sd_tax_rate: settings.sd_tax_rate, sd_tax: tax.sdTax,
         luxury_tax_rate: 0, luxury_tax: 0,
-        discount, old_gold_credit: tax.creditApplied, total: tax.total,
+        discount, round_off: roundOff, old_gold_credit: tax.creditApplied, total: tax.total,
         amount_paid: paid, balance_due: balance,
         notes: notes || null, status, created_by: user?.id,
         order_date: orderDate || null,
@@ -902,7 +910,7 @@ export default function POS() {
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Discount</span>
               <NumberField className="h-8 w-28 text-right" value={discount}
-                onChange={(v) => { setDiscount(v); setTargetTotal(""); }} />
+                onChange={(v) => { setDiscount(v); setRoundOff(0); setTargetTotal(""); }} />
             </div>
             {settings.vat_enabled && <Row label={`VAT ${settings.vat_rate}% (stones only)`} value={npr(tax.vat)} />}
             <Row label={`SD tax ${settings.sd_tax_rate}% (gold+making − old metal)`} value={npr(tax.sdTax)} />
@@ -921,6 +929,10 @@ export default function POS() {
                 incl. old metal advance of {npr(appliedOldMetalAdv)} from the order
                 {oldMetalKept > 0 && <> · {npr(oldMetalKept)} saved for the remaining items</>}
               </div>
+            )}
+
+            {roundOff !== 0 && (
+              <Row label="Round-off" value={`${roundOff < 0 ? "− " : "+ "}${npr(Math.abs(roundOff))}`} />
             )}
 
             <div className="flex justify-between border-t pt-3 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>

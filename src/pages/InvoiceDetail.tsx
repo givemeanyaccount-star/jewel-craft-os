@@ -87,6 +87,7 @@ export default function InvoiceDetail() {
     vat: Number(inv?.vat_amount ?? 0),
     sdTax: Number(inv?.sd_tax ?? 0),
     balanceDue: inv?.balance_due,
+    roundOff: Number((inv as any)?.round_off ?? 0),
     keptOnOrder,
     payments,
   });
@@ -193,6 +194,9 @@ export default function InvoiceDetail() {
               <Row label="Old metal credit" value={`- ${npr(inv.old_gold_credit)}`} />
               {oldGoldEq && <div className="text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
 
+              {rec.roundOff !== 0 && (
+                <Row label="Round-off" value={`${rec.roundOff < 0 ? "− " : "+ "}${npr(Math.abs(rec.roundOff))}`} />
+              )}
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(inv.total)}</span></div>
               {advanceReceived > 0 && (
                 <>
