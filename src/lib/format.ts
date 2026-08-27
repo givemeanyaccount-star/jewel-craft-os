@@ -310,7 +310,7 @@ export function discountForTargetTotal(opts: {
   const subtotal = Math.max(0, opts.subtotal || 0);
   const target = round2(Math.max(0, opts.targetTotal || 0));
   if (subtotal <= 0) return 0;
-  const totalAt = (discount: number) => computeInvoiceTaxes({ ...opts, discount }).total;
+  const totalAt = (discount: number) => computeInvoiceTaxes({ ...opts, discount, roundOff: 0 }).total;
   // binary search for discount in [0, subtotal]
   let lo = 0, hi = subtotal, best = 0;
   for (let i = 0; i < 60; i++) {
@@ -321,6 +321,66 @@ export function discountForTargetTotal(opts: {
   }
   return snapDiscount(best, subtotal, target, totalAt);
 }
+
+/** A solved discount plus the sub-rupee round-off that lands the bill exactly on the target. */
+export interface TargetSolution {
+  discount: number;
+  /** Signed adjustment to feed back into computeInvoiceTaxes; 0 when the target is unreachable. */
+  roundOff: number;
+  /** The value actually reached (net total, or refund in refund mode) with discount + round-off. */
+  reached: number;
+  /** False when even a full discount cannot get within a rupee of the target. */
+  reachable: boolean;
+}
+
+/**
+ * Solve a target net total exactly: snap the discount to the paisa grid, then absorb the
+ * unreachable remainder (always under 1 rupee, caused by taxes scaling the discount)
+ * into a signed round-off so the bill equals the entered amount to the paisa.
+ */
+export function solveTargetTotal(opts: {
+  subtotal: number;
+  stonesTotal: number;
+  oldGoldCredit?: number;
+  targetTotal: number;
+  vatRate?: number;
+  vatEnabled?: boolean;
+  sdTaxRate?: number;
+}): TargetSolution {
+  const target = round2(Math.max(0, opts.targetTotal || 0));
+  const discount = discountForTargetTotal(opts);
+  const reachedRaw = computeInvoiceTaxes({ ...opts, discount, roundOff: 0 }).total;
+  const residual = round2(target - reachedRaw);
+  const reachable = Math.abs(residual) < 1;
+  const roundOff = reachable ? residual : 0;
+  const reached = computeInvoiceTaxes({ ...opts, discount, roundOff }).total;
+  return { discount, roundOff, reached, reachable };
+}
+
+/** Same exact-match treatment for a target refund handed back to the customer. */
+export function solveTargetRefund(opts: {
+  subtotal: number;
+  stonesTotal: number;
+  oldGoldCredit?: number;
+  advanceApplied: number;
+  targetRefund: number;
+  vatRate?: number;
+  vatEnabled?: boolean;
+  sdTaxRate?: number;
+}): TargetSolution {
+  const credits = round2((Number(opts.oldGoldCredit) || 0) + (Number(opts.advanceApplied) || 0));
+  const target = round2(Math.max(0, Number(opts.targetRefund) || 0));
+  const discount = discountForTargetRefund(opts);
+  const grossRaw = computeInvoiceTaxes({ ...opts, discount, roundOff: 0 }).grossTotal;
+  const reachedRaw = refundDueOfCredits(grossRaw, credits);
+  // A bigger refund needs a smaller gross, so the round-off carries the opposite sign.
+  const residual = round2(reachedRaw - target);
+  const reachable = Math.abs(residual) < 1;
+  const roundOff = reachable ? residual : 0;
+  const gross = computeInvoiceTaxes({ ...opts, discount, roundOff }).grossTotal;
+  return { discount, roundOff, reached: refundDueOfCredits(gross, credits), reachable };
+}
+
 
 
 /** 1 tola = 11.6638 grams (Nepali bullion standard). */
