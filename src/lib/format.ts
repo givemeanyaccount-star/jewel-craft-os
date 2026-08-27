@@ -170,6 +170,7 @@ export interface ReconcileInput {
   vat?: number;
   sdTax?: number;
   balanceDue?: number | null;    // persisted value wins when present
+  roundOff?: number;             // signed sub-rupee adjustment saved on the bill
   keptOnOrder?: number;          // advance left on the order for later batches
   payments?: PayRow[];
 }
@@ -186,6 +187,7 @@ export interface Reconciliation {
   changeReturned: number;
   keptOnOrder: number;
   taxes: number;
+  roundOff: number;
   totalReceived: number;
   netPayable: number;
   balanceDue: number;
@@ -228,6 +230,7 @@ export function reconcile(input: ReconcileInput): Reconciliation {
     oldGold, advanceApplied, modeRows, refundRows, changeRows, atSaleTotal, refundPaid, changeReturned,
     keptOnOrder: round2(Math.max(0, Number(input.keptOnOrder ?? 0) || 0)),
     taxes: round2((Number(input.vat ?? 0) || 0) + (Number(input.sdTax ?? 0) || 0)),
+    roundOff: round2(Number(input.roundOff ?? 0) || 0),
     totalReceived, netPayable, balanceDue,
   };
 }
