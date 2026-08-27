@@ -374,6 +374,10 @@ export default function POS() {
     vatRate: settings.vat_rate, vatEnabled: settings.vat_enabled, sdTaxRate: settings.sd_tax_rate,
   }), [subtotal, stonesTotal, discount, totalOldGoldCredit, roundOff, settings]);
 
+  // A round-off only belongs to the amount it was solved for: drop it when the cart changes.
+  const cartSignature = cart.map((r) => `${r.description}:${r.line_total}`).join("|");
+  useEffect(() => { setRoundOff(0); setTargetTotal(""); }, [cartSignature]);
+
   const manualPaid = useMemo(
     () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)),
     [payments],
