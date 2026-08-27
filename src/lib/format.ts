@@ -282,7 +282,7 @@ export function discountForTargetRefund(opts: {
   const target = round2(Math.max(0, credits - (Number(opts.targetRefund) || 0)));
   const subtotal = Math.max(0, opts.subtotal || 0);
   if (subtotal <= 0) return 0;
-  const grossAt = (discount: number) => computeInvoiceTaxes({ ...opts, discount }).grossTotal;
+  const grossAt = (discount: number) => computeInvoiceTaxes({ ...opts, discount, roundOff: 0 }).grossTotal;
   let lo = 0, hi = subtotal, best = 0;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
