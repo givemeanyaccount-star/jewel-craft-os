@@ -157,7 +157,7 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
   const netTotal = Number(doc.total ?? 0);
   // One shared reconciliation — identical figures on screen and on paper.
   const rec = reconcile({
-    total: netTotal, oldGoldCredit: oldGold, vat, sdTax,
+    total: netTotal, oldGoldCredit: oldGold, vat, sdTax, roundOff: Number(doc.round_off ?? 0),
     balanceDue: doc.balance_due, keptOnOrder, payments: payments as any,
   });
   const { advanceApplied: advanceReceived, refundPaid, netPayable, modeRows, totalReceived, balanceDue } = rec;
@@ -425,6 +425,7 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
             {vat > 0 && tot(`VAT ${doc.vat_rate}% (stones)`, n2(vat))}
             {tot("SD Taxable Amt", n2(sdTaxable))}
             {tot(`SD Tax (${sdRate}%)`, n2(sdTax))}
+            {rec.roundOff !== 0 && tot("Round Off", `${rec.roundOff < 0 ? "-" : "+"} ${n2(Math.abs(rec.roundOff))}`)}
             {tot("Net Total", n2(netTotal), { fontWeight: "bold", fontSize: "13px", borderTop: bd, borderBottom: bd })}
             {advanceReceived > 0 && tot("Less: Advance Paid", n2(advanceReceived))}
             {tot("Net Payable", n2(netPayable), { fontWeight: "bold", fontSize: "13px", borderBottom: bd })}
