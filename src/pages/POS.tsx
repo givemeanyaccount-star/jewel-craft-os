@@ -1,5 +1,11 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { loadPosDraft, savePosDraft, clearPosDraft, draftHasContent } from "@/hooks/usePosDraft";
+import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -101,42 +107,62 @@ export default function POS() {
   const quotationNumber: string | null = (location.state as any)?.quoteNumber ?? null;
   const orderIdFromState: string | null = (location.state as any)?.orderId ?? null;
   const canBackdate = hasPermission("invoice_cancel_refund") || hasPermission("settings_manage");
+
+  // ---- Unsaved bill recovery -------------------------------------------------
+  // The bill is mirrored into a local draft on every change, so going back,
+  // reloading or hopping to inventory and returning keeps everything typed.
+  const initialDraft = useRef(loadPosDraft()).current;
+  const restorable = draftHasContent(initialDraft);
+  const incomingSource = orderIdFromState
+    ? { kind: "order" as const, id: orderIdFromState }
+    : quotationId ? { kind: "quotation" as const, id: quotationId } : { kind: "none" as const, id: null };
+  const sourceConflict = restorable && incomingSource.kind !== "none" &&
+    !(initialDraft!.source?.kind === incomingSource.kind && initialDraft!.source?.id === incomingSource.id);
+  // "draft" = show the recovered bill, "fresh" = load from the order/quotation, "ask" = let staff choose.
+  const [billMode, setBillMode] = useState<"draft" | "fresh" | "ask">(
+    sourceConflict ? "ask" : restorable ? "draft" : "fresh",
+  );
+  const [restoredBanner, setRestoredBanner] = useState(restorable && !sourceConflict);
+  const d: any = restorable ? initialDraft!.state : {};
+
   const [customers, setCustomers] = useState<any[]>([]);
-  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [customerId, setCustomerId] = useState<string | null>(d.customerId ?? null);
   const [categories, setCategories] = useState<any[]>([]);
   const [categoryId, setCategoryId] = useState<string>("all");
   const [todayRates, setTodayRates] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<any[]>([]);
-  const [cart, setCart] = useState<CartRow[]>([]);
-  const [discount, setDiscount] = useState(0);
+  const [cart, setCart] = useState<CartRow[]>(d.cart ?? []);
+  const [discount, setDiscount] = useState(d.discount ?? 0);
   // Signed sub-rupee adjustment that lands the bill exactly on an entered target amount.
-  const [roundOff, setRoundOff] = useState(0);
-  const [oldGoldCredit, setOldGoldCredit] = useState(0);
-  const [oldGoldPurchaseId, setOldGoldPurchaseId] = useState<string | null>(null);
-  const [oldGoldMetal, setOldGoldMetal] = useState<string>("gold");
+  const [roundOff, setRoundOff] = useState(d.roundOff ?? 0);
+  const [oldGoldCredit, setOldGoldCredit] = useState(d.oldGoldCredit ?? 0);
+  const [oldGoldPurchaseId, setOldGoldPurchaseId] = useState<string | null>(d.oldGoldPurchaseId ?? null);
+  const [oldGoldMetal, setOldGoldMetal] = useState<string>(d.oldGoldMetal ?? "gold");
   const [fineRates, setFineRates] = useState<FineRates>({});
   useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
-  const [targetTotal, setTargetTotal] = useState<string>("");
-  const [payments, setPayments] = useState<PayLine[]>([{ method: "cash", amount: 0 }]);
-  const [notes, setNotes] = useState("");
+  const [targetTotal, setTargetTotal] = useState<string>(d.targetTotal ?? "");
+  const [payments, setPayments] = useState<PayLine[]>(d.payments ?? [{ method: "cash", amount: 0 }]);
+  const [notes, setNotes] = useState(d.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [editItem, setEditItem] = useState<{ row: number; item: any } | null>(null);
 
   // Custom order billing
-  const [order, setOrder] = useState<any>(null);
-  const [orderLineByItem, setOrderLineByItem] = useState<Record<string, { receiptId: string; orderItemId: string }>>({});
-  const [orderDate, setOrderDate] = useState<string>("");
-  const [rateBasis, setRateBasis] = useState<"order" | "current">("current");
-  const [advance, setAdvance] = useState(0);            // cash-type advances held on the order
-  const [advanceOldMetal, setAdvanceOldMetal] = useState(0); // old-metal trade-in advances on the order
-  const [applyCashAdv, setApplyCashAdv] = useState(0);       // how much of the cash advance this bill uses
-  const [applyOldMetalAdv, setApplyOldMetalAdv] = useState(0); // how much of the old metal advance this bill uses
-  const [refundInput, setRefundInput] = useState<string>("");  // blank = refund the whole excess
-  const [refundMethod, setRefundMethod] = useState<string>("cash");
+  const [order, setOrder] = useState<any>(d.order ?? null);
+  const [orderLineByItem, setOrderLineByItem] = useState<Record<string, { receiptId: string; orderItemId: string }>>(d.orderLineByItem ?? {});
+  const [orderDate, setOrderDate] = useState<string>(d.orderDate ?? "");
+  const [rateBasis, setRateBasis] = useState<"order" | "current">(d.rateBasis ?? "current");
+  const [advance, setAdvance] = useState(d.advance ?? 0);            // cash-type advances held on the order
+  const [advanceOldMetal, setAdvanceOldMetal] = useState(d.advanceOldMetal ?? 0); // old-metal trade-in advances on the order
+  const [applyCashAdv, setApplyCashAdv] = useState(d.applyCashAdv ?? 0);       // how much of the cash advance this bill uses
+  const [applyOldMetalAdv, setApplyOldMetalAdv] = useState(d.applyOldMetalAdv ?? 0); // how much of the old metal advance this bill uses
+  const [refundInput, setRefundInput] = useState<string>(d.refundInput ?? "");  // blank = refund the whole excess
+  const [refundMethod, setRefundMethod] = useState<string>(d.refundMethod ?? "cash");
   const [advDialogOpen, setAdvDialogOpen] = useState(false);
-  const [issueDate, setIssueDate] = useState<string>(todayISO());
+  const [issueDate, setIssueDate] = useState<string>(d.issueDate ?? todayISO());
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+
 
   const [newCustOpen, setNewCustOpen] = useState(false);
   const [ogOpen, setOgOpen] = useState(false);
@@ -158,7 +184,8 @@ export default function POS() {
 
   // Prefill from an accepted quotation
   useEffect(() => {
-    if (!quotationId) return;
+    if (!quotationId || billMode !== "fresh") return;
+
     (async () => {
       const [{ data: q }, { data: lines }] = await Promise.all([
         supabase.from("quotations").select("*").eq("id", quotationId).maybeSingle(),
@@ -189,11 +216,14 @@ export default function POS() {
       })));
       toast.success(`Loaded quotation ${q.quote_number}`);
     })();
-  }, [quotationId]);
+  }, [quotationId, billMode]);
 
 
 
-  useEffect(() => { if (orderIdFromState) void loadOrder(orderIdFromState); }, [orderIdFromState]);
+  useEffect(() => {
+    if (orderIdFromState && billMode === "fresh") void loadOrder(orderIdFromState);
+  }, [orderIdFromState, billMode]);
+
 
   async function loadOrder(id: string) {
     const [{ data: o }, { data: lines }, { data: pays }] = await Promise.all([
@@ -377,6 +407,15 @@ export default function POS() {
   // A round-off only belongs to the amount it was solved for: drop it when the cart changes.
   const cartSignature = cart.map((r) => `${r.description}:${r.line_total}`).join("|");
   useEffect(() => { setRoundOff(0); setTargetTotal(""); }, [cartSignature]);
+  // The mount-time signature effect above wipes the round-off; put the recovered
+  // one back so a restored bill still lands on the amount it was solved for.
+  useEffect(() => {
+    if (billMode === "fresh" || !restorable) return;
+    if (d.roundOff) setRoundOff(d.roundOff);
+    if (d.targetTotal) setTargetTotal(d.targetTotal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const manualPaid = useMemo(
     () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)),
@@ -694,7 +733,11 @@ export default function POS() {
 
 
       toast.success(`Invoice ${invNumber} created`);
-      nav(`/invoices/${inv.id}`);
+      // The bill is posted — the local draft has served its purpose.
+      clearPosDraft();
+      draftDirty.current = false;
+      leaveWith(() => nav(`/invoices/${inv.id}`));
+
     } catch (e: any) {
       // Only release claimed items if the invoice itself never got created. If the
       // invoice exists, the items are legitimately sold even if a later step failed.
@@ -713,9 +756,100 @@ export default function POS() {
     } finally { setSaving(false); }
   }
 
+  // ---- Draft autosave + exit guard ------------------------------------------
+  const dirty = !!customerId || cart.length > 0;
+  const draftDirty = useRef(dirty);
+  draftDirty.current = dirty;
+
+  useEffect(() => {
+    if (billMode === "ask") return;
+    if (!dirty) { clearPosDraft(); return; }
+    const t = setTimeout(() => savePosDraft({
+      userId: user?.id ?? null,
+      source: order ? { kind: "order", id: order.id }
+        : quotationId ? { kind: "quotation", id: quotationId }
+        : { kind: "none", id: null },
+      state: {
+        customerId, cart, discount, roundOff, targetTotal, oldGoldCredit, oldGoldPurchaseId, oldGoldMetal,
+        payments, notes, issueDate, orderDate, rateBasis, order, orderLineByItem,
+        advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput, refundMethod,
+      },
+    }), 300);
+    return () => clearTimeout(t);
+  }, [dirty, billMode, user?.id, customerId, cart, discount, roundOff, targetTotal, oldGoldCredit,
+      oldGoldPurchaseId, oldGoldMetal, payments, notes, issueDate, orderDate, rateBasis, order,
+      orderLineByItem, advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput,
+      refundMethod, quotationId]);
+
+  const { leaveViaBack, leaveWith } = useUnsavedGuard(dirty && !saving, () => setLeaveOpen(true));
+
+  /** Wipe the bill back to an empty counter. */
+  const resetBill = useCallback(() => {
+    clearPosDraft();
+    setCustomerId(null); setCart([]); setDiscount(0); setRoundOff(0); setTargetTotal("");
+    setOldGoldCredit(0); setOldGoldPurchaseId(null); setOldGoldMetal("gold");
+    setPayments([{ method: "cash", amount: 0 }]); setNotes(""); setIssueDate(todayISO());
+    setOrder(null); setOrderLineByItem({}); setOrderDate(""); setRateBasis("current");
+    setAdvance(0); setAdvanceOldMetal(0); setApplyCashAdv(0); setApplyOldMetalAdv(0);
+    setRefundInput(""); setRefundMethod("cash"); setRestoredBanner(false);
+  }, []);
+
+
   return (
     <AppLayout title="New Sale (POS)">
+      {restoredBanner && dirty && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span>Restored an unsaved bill from this counter — continue where you left off.</span>
+          <Button variant="ghost" size="sm" onClick={resetBill}>Discard</Button>
+        </div>
+      )}
+
+      {/* An order/quotation was opened while a different unfinished bill is saved. */}
+      <AlertDialog open={billMode === "ask"}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>You have an unfinished bill</AlertDialogTitle>
+            <AlertDialogDescription>
+              A saved bill from this counter is still open. Keep working on it, or start a new bill
+              for the {incomingSource.kind === "order" ? "order" : "quotation"} you just opened
+              (the saved bill will be discarded).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setBillMode("draft"); setRestoredBanner(true); }}>
+              Keep saved bill
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => { resetBill(); setBillMode("fresh"); }}>
+              Start new bill
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Leaving with an unfinished bill */}
+      <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave this sale?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This bill has not been posted yet. Keep it and it will be waiting here when you come
+              back, or cancel it to clear the counter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setLeaveOpen(false)}>Stay here</AlertDialogCancel>
+            <Button variant="outline" onClick={() => { setLeaveOpen(false); leaveViaBack(); }}>
+              Keep bill &amp; leave
+            </Button>
+            <AlertDialogAction onClick={() => { resetBill(); setLeaveOpen(false); leaveViaBack(); }}>
+              Cancel bill
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialog>
+      </AlertDialog>
+
       <div className="grid gap-4 lg:grid-cols-3">
+
         <div className="space-y-4 lg:col-span-2">
           <Card>
             <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
