@@ -756,6 +756,45 @@ export default function POS() {
     } finally { setSaving(false); }
   }
 
+  // ---- Draft autosave + exit guard ------------------------------------------
+  const dirty = !!customerId || cart.length > 0;
+  const draftDirty = useRef(dirty);
+  draftDirty.current = dirty;
+
+  useEffect(() => {
+    if (billMode === "ask") return;
+    if (!dirty) { clearPosDraft(); return; }
+    const t = setTimeout(() => savePosDraft({
+      userId: user?.id ?? null,
+      source: order ? { kind: "order", id: order.id }
+        : quotationId ? { kind: "quotation", id: quotationId }
+        : { kind: "none", id: null },
+      state: {
+        customerId, cart, discount, roundOff, targetTotal, oldGoldCredit, oldGoldPurchaseId, oldGoldMetal,
+        payments, notes, issueDate, orderDate, rateBasis, order, orderLineByItem,
+        advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput, refundMethod,
+      },
+    }), 300);
+    return () => clearTimeout(t);
+  }, [dirty, billMode, user?.id, customerId, cart, discount, roundOff, targetTotal, oldGoldCredit,
+      oldGoldPurchaseId, oldGoldMetal, payments, notes, issueDate, orderDate, rateBasis, order,
+      orderLineByItem, advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput,
+      refundMethod, quotationId]);
+
+  const { leaveViaBack, leaveWith } = useUnsavedGuard(dirty && !saving, () => setLeaveOpen(true));
+
+  /** Wipe the bill back to an empty counter. */
+  const resetBill = useCallback(() => {
+    clearPosDraft();
+    setCustomerId(null); setCart([]); setDiscount(0); setRoundOff(0); setTargetTotal("");
+    setOldGoldCredit(0); setOldGoldPurchaseId(null); setOldGoldMetal("gold");
+    setPayments([{ method: "cash", amount: 0 }]); setNotes(""); setIssueDate(todayISO());
+    setOrder(null); setOrderLineByItem({}); setOrderDate(""); setRateBasis("current");
+    setAdvance(0); setAdvanceOldMetal(0); setApplyCashAdv(0); setApplyOldMetalAdv(0);
+    setRefundInput(""); setRefundMethod("cash"); setRestoredBanner(false);
+  }, []);
+
+
   return (
     <AppLayout title="New Sale (POS)">
       <div className="grid gap-4 lg:grid-cols-3">
