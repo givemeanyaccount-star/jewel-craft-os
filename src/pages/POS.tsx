@@ -407,6 +407,15 @@ export default function POS() {
   // A round-off only belongs to the amount it was solved for: drop it when the cart changes.
   const cartSignature = cart.map((r) => `${r.description}:${r.line_total}`).join("|");
   useEffect(() => { setRoundOff(0); setTargetTotal(""); }, [cartSignature]);
+  // The mount-time signature effect above wipes the round-off; put the recovered
+  // one back so a restored bill still lands on the amount it was solved for.
+  useEffect(() => {
+    if (billMode === "fresh" || !restorable) return;
+    if (d.roundOff) setRoundOff(d.roundOff);
+    if (d.targetTotal) setTargetTotal(d.targetTotal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const manualPaid = useMemo(
     () => round2(payments.reduce((a, p) => a + (Number(p.amount) || 0), 0)),
