@@ -184,7 +184,8 @@ export default function POS() {
 
   // Prefill from an accepted quotation
   useEffect(() => {
-    if (!quotationId) return;
+    if (!quotationId || billMode !== "fresh") return;
+
     (async () => {
       const [{ data: q }, { data: lines }] = await Promise.all([
         supabase.from("quotations").select("*").eq("id", quotationId).maybeSingle(),
