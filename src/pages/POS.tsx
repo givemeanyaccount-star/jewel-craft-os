@@ -220,7 +220,10 @@ export default function POS() {
 
 
 
-  useEffect(() => { if (orderIdFromState) void loadOrder(orderIdFromState); }, [orderIdFromState]);
+  useEffect(() => {
+    if (orderIdFromState && billMode === "fresh") void loadOrder(orderIdFromState);
+  }, [orderIdFromState, billMode]);
+
 
   async function loadOrder(id: string) {
     const [{ data: o }, { data: lines }, { data: pays }] = await Promise.all([
