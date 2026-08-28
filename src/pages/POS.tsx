@@ -733,7 +733,11 @@ export default function POS() {
 
 
       toast.success(`Invoice ${invNumber} created`);
-      nav(`/invoices/${inv.id}`);
+      // The bill is posted — the local draft has served its purpose.
+      clearPosDraft();
+      draftDirty.current = false;
+      leaveWith(() => nav(`/invoices/${inv.id}`));
+
     } catch (e: any) {
       // Only release claimed items if the invoice itself never got created. If the
       // invoice exists, the items are legitimately sold even if a later step failed.
