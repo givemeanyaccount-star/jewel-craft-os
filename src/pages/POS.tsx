@@ -107,42 +107,62 @@ export default function POS() {
   const quotationNumber: string | null = (location.state as any)?.quoteNumber ?? null;
   const orderIdFromState: string | null = (location.state as any)?.orderId ?? null;
   const canBackdate = hasPermission("invoice_cancel_refund") || hasPermission("settings_manage");
+
+  // ---- Unsaved bill recovery -------------------------------------------------
+  // The bill is mirrored into a local draft on every change, so going back,
+  // reloading or hopping to inventory and returning keeps everything typed.
+  const initialDraft = useRef(loadPosDraft()).current;
+  const restorable = draftHasContent(initialDraft);
+  const incomingSource = orderIdFromState
+    ? { kind: "order" as const, id: orderIdFromState }
+    : quotationId ? { kind: "quotation" as const, id: quotationId } : { kind: "none" as const, id: null };
+  const sourceConflict = restorable && incomingSource.kind !== "none" &&
+    !(initialDraft!.source?.kind === incomingSource.kind && initialDraft!.source?.id === incomingSource.id);
+  // "draft" = show the recovered bill, "fresh" = load from the order/quotation, "ask" = let staff choose.
+  const [billMode, setBillMode] = useState<"draft" | "fresh" | "ask">(
+    sourceConflict ? "ask" : restorable ? "draft" : "fresh",
+  );
+  const [restoredBanner, setRestoredBanner] = useState(restorable && !sourceConflict);
+  const d: any = restorable ? initialDraft!.state : {};
+
   const [customers, setCustomers] = useState<any[]>([]);
-  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [customerId, setCustomerId] = useState<string | null>(d.customerId ?? null);
   const [categories, setCategories] = useState<any[]>([]);
   const [categoryId, setCategoryId] = useState<string>("all");
   const [todayRates, setTodayRates] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<any[]>([]);
-  const [cart, setCart] = useState<CartRow[]>([]);
-  const [discount, setDiscount] = useState(0);
+  const [cart, setCart] = useState<CartRow[]>(d.cart ?? []);
+  const [discount, setDiscount] = useState(d.discount ?? 0);
   // Signed sub-rupee adjustment that lands the bill exactly on an entered target amount.
-  const [roundOff, setRoundOff] = useState(0);
-  const [oldGoldCredit, setOldGoldCredit] = useState(0);
-  const [oldGoldPurchaseId, setOldGoldPurchaseId] = useState<string | null>(null);
-  const [oldGoldMetal, setOldGoldMetal] = useState<string>("gold");
+  const [roundOff, setRoundOff] = useState(d.roundOff ?? 0);
+  const [oldGoldCredit, setOldGoldCredit] = useState(d.oldGoldCredit ?? 0);
+  const [oldGoldPurchaseId, setOldGoldPurchaseId] = useState<string | null>(d.oldGoldPurchaseId ?? null);
+  const [oldGoldMetal, setOldGoldMetal] = useState<string>(d.oldGoldMetal ?? "gold");
   const [fineRates, setFineRates] = useState<FineRates>({});
   useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
-  const [targetTotal, setTargetTotal] = useState<string>("");
-  const [payments, setPayments] = useState<PayLine[]>([{ method: "cash", amount: 0 }]);
-  const [notes, setNotes] = useState("");
+  const [targetTotal, setTargetTotal] = useState<string>(d.targetTotal ?? "");
+  const [payments, setPayments] = useState<PayLine[]>(d.payments ?? [{ method: "cash", amount: 0 }]);
+  const [notes, setNotes] = useState(d.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [editItem, setEditItem] = useState<{ row: number; item: any } | null>(null);
 
   // Custom order billing
-  const [order, setOrder] = useState<any>(null);
-  const [orderLineByItem, setOrderLineByItem] = useState<Record<string, { receiptId: string; orderItemId: string }>>({});
-  const [orderDate, setOrderDate] = useState<string>("");
-  const [rateBasis, setRateBasis] = useState<"order" | "current">("current");
-  const [advance, setAdvance] = useState(0);            // cash-type advances held on the order
-  const [advanceOldMetal, setAdvanceOldMetal] = useState(0); // old-metal trade-in advances on the order
-  const [applyCashAdv, setApplyCashAdv] = useState(0);       // how much of the cash advance this bill uses
-  const [applyOldMetalAdv, setApplyOldMetalAdv] = useState(0); // how much of the old metal advance this bill uses
-  const [refundInput, setRefundInput] = useState<string>("");  // blank = refund the whole excess
-  const [refundMethod, setRefundMethod] = useState<string>("cash");
+  const [order, setOrder] = useState<any>(d.order ?? null);
+  const [orderLineByItem, setOrderLineByItem] = useState<Record<string, { receiptId: string; orderItemId: string }>>(d.orderLineByItem ?? {});
+  const [orderDate, setOrderDate] = useState<string>(d.orderDate ?? "");
+  const [rateBasis, setRateBasis] = useState<"order" | "current">(d.rateBasis ?? "current");
+  const [advance, setAdvance] = useState(d.advance ?? 0);            // cash-type advances held on the order
+  const [advanceOldMetal, setAdvanceOldMetal] = useState(d.advanceOldMetal ?? 0); // old-metal trade-in advances on the order
+  const [applyCashAdv, setApplyCashAdv] = useState(d.applyCashAdv ?? 0);       // how much of the cash advance this bill uses
+  const [applyOldMetalAdv, setApplyOldMetalAdv] = useState(d.applyOldMetalAdv ?? 0); // how much of the old metal advance this bill uses
+  const [refundInput, setRefundInput] = useState<string>(d.refundInput ?? "");  // blank = refund the whole excess
+  const [refundMethod, setRefundMethod] = useState<string>(d.refundMethod ?? "cash");
   const [advDialogOpen, setAdvDialogOpen] = useState(false);
-  const [issueDate, setIssueDate] = useState<string>(todayISO());
+  const [issueDate, setIssueDate] = useState<string>(d.issueDate ?? todayISO());
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+
 
   const [newCustOpen, setNewCustOpen] = useState(false);
   const [ogOpen, setOgOpen] = useState(false);
