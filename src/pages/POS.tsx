@@ -797,7 +797,59 @@ export default function POS() {
 
   return (
     <AppLayout title="New Sale (POS)">
+      {restoredBanner && dirty && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span>Restored an unsaved bill from this counter — continue where you left off.</span>
+          <Button variant="ghost" size="sm" onClick={resetBill}>Discard</Button>
+        </div>
+      )}
+
+      {/* An order/quotation was opened while a different unfinished bill is saved. */}
+      <AlertDialog open={billMode === "ask"}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>You have an unfinished bill</AlertDialogTitle>
+            <AlertDialogDescription>
+              A saved bill from this counter is still open. Keep working on it, or start a new bill
+              for the {incomingSource.kind === "order" ? "order" : "quotation"} you just opened
+              (the saved bill will be discarded).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setBillMode("draft"); setRestoredBanner(true); }}>
+              Keep saved bill
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => { resetBill(); setBillMode("fresh"); }}>
+              Start new bill
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Leaving with an unfinished bill */}
+      <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave this sale?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This bill has not been posted yet. Keep it and it will be waiting here when you come
+              back, or cancel it to clear the counter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setLeaveOpen(false)}>Stay here</AlertDialogCancel>
+            <Button variant="outline" onClick={() => { setLeaveOpen(false); leaveViaBack(); }}>
+              Keep bill &amp; leave
+            </Button>
+            <AlertDialogAction onClick={() => { resetBill(); setLeaveOpen(false); leaveViaBack(); }}>
+              Cancel bill
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialog>
+      </AlertDialog>
+
       <div className="grid gap-4 lg:grid-cols-3">
+
         <div className="space-y-4 lg:col-span-2">
           <Card>
             <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
