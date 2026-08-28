@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /**
  * Guard against losing an in-progress form.
@@ -7,16 +7,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *  - closing/reloading the tab shows the browser's native "leave site?" prompt
  *  - Escape (the app-wide go-back shortcut) and the browser Back button are
  *    intercepted and hand control to `onAttemptLeave` instead of navigating
+ *
+ * A single dummy history entry is kept in front of the page so Back lands on it
+ * instead of leaving; `leaveViaBack` unwinds both entries when the user really
+ * wants out.
  */
 export function useUnsavedGuard(active: boolean, onAttemptLeave: () => void) {
   const cb = useRef(onAttemptLeave);
   cb.current = onAttemptLeave;
-  const [sentinel, setSentinel] = useState(false);
+  const bypass = useRef(false);
 
   useEffect(() => {
     if (!active) return;
+    bypass.current = false;
 
     function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (bypass.current) return;
       e.preventDefault();
       e.returnValue = "";
     }
@@ -33,13 +39,13 @@ export function useUnsavedGuard(active: boolean, onAttemptLeave: () => void) {
       cb.current();
     }
     function onPopState() {
-      // Re-arm the sentinel so we stay on the page, then ask the user.
+      if (bypass.current) return;
+      // Re-arm the dummy entry so we stay put, then ask the user.
       window.history.pushState({ jmGuard: true }, "");
       cb.current();
     }
 
     window.history.pushState({ jmGuard: true }, "");
-    setSentinel(true);
     window.addEventListener("beforeunload", onBeforeUnload);
     window.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("popstate", onPopState);
@@ -47,14 +53,20 @@ export function useUnsavedGuard(active: boolean, onAttemptLeave: () => void) {
       window.removeEventListener("beforeunload", onBeforeUnload);
       window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("popstate", onPopState);
-      setSentinel(false);
     };
   }, [active]);
 
-  /** Drop the guard's history sentinel right before navigating away for real. */
-  const releaseGuard = useCallback(() => {
-    if (sentinel && window.history.state?.jmGuard) window.history.back();
-  }, [sentinel]);
+  /** Leave for real, going back past the guard's dummy entry. */
+  const leaveViaBack = useCallback(() => {
+    bypass.current = true;
+    if (active) window.history.go(-2); else window.history.back();
+  }, [active]);
 
-  return { releaseGuard };
+  /** Leave for real via an explicit navigation (router push). */
+  const leaveWith = useCallback((go: () => void) => {
+    bypass.current = true;
+    go();
+  }, []);
+
+  return { leaveViaBack, leaveWith };
 }
