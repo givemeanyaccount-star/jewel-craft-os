@@ -216,7 +216,7 @@ export default function POS() {
       })));
       toast.success(`Loaded quotation ${q.quote_number}`);
     })();
-  }, [quotationId]);
+  }, [quotationId, billMode]);
 
 
 
