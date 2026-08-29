@@ -169,6 +169,8 @@ function PosScreen({ reload }: { reload: () => void }) {
   const [issueDate, setIssueDate] = useState<string>(d.issueDate ?? todayISO());
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [held, setHeld] = useState<HeldBill[]>(() => listHeldBills());
+  const [heldOpen, setHeldOpen] = useState(false);
 
 
   const [newCustOpen, setNewCustOpen] = useState(false);
