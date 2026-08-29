@@ -99,7 +99,11 @@ export function lineDisplay(r: {
   return { netWt, rate, wastageWt, totalWt, goldAmt, stoneAmt, making, qty, rowTotal, grossWt, stoneWt };
 }
 
-export default function POS() {
+/**
+ * The counter screen. Remounted (via `reload`) when a parked bill is pulled
+ * back in, so every field re-initialises from the restored draft.
+ */
+function PosScreen({ reload }: { reload: () => void }) {
   const { user } = useAuth();
   const { hasPermission } = usePermission();
   const canManageInventory = hasPermission("inventory_manage");
