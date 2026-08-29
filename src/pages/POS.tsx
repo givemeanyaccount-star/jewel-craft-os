@@ -845,8 +845,9 @@ export default function POS() {
               Cancel bill
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialog>
+        </AlertDialogContent>
       </AlertDialog>
+
 
       <div className="grid gap-4 lg:grid-cols-3">
 
