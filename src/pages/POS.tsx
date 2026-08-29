@@ -4,7 +4,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { loadPosDraft, savePosDraft, clearPosDraft, draftHasContent } from "@/hooks/usePosDraft";
+import {
+  loadPosDraft, savePosDraft, clearPosDraft, draftHasContent,
+  listHeldBills, holdBill, removeHeldBill, resumeHeldBill, type HeldBill,
+} from "@/hooks/usePosDraft";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil, ClipboardList } from "lucide-react";
+import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil, ClipboardList, PauseCircle, Layers } from "lucide-react";
 import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, solveTargetTotal, solveTargetRefund,
@@ -96,7 +99,11 @@ export function lineDisplay(r: {
   return { netWt, rate, wastageWt, totalWt, goldAmt, stoneAmt, making, qty, rowTotal, grossWt, stoneWt };
 }
 
-export default function POS() {
+/**
+ * The counter screen. Remounted (via `reload`) when a parked bill is pulled
+ * back in, so every field re-initialises from the restored draft.
+ */
+function PosScreen({ reload }: { reload: () => void }) {
   const { user } = useAuth();
   const { hasPermission } = usePermission();
   const canManageInventory = hasPermission("inventory_manage");
@@ -162,6 +169,8 @@ export default function POS() {
   const [issueDate, setIssueDate] = useState<string>(d.issueDate ?? todayISO());
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [held, setHeld] = useState<HeldBill[]>(() => listHeldBills());
+  const [heldOpen, setHeldOpen] = useState(false);
 
 
   const [newCustOpen, setNewCustOpen] = useState(false);
@@ -794,15 +803,107 @@ export default function POS() {
     setRefundInput(""); setRefundMethod("cash"); setRestoredBanner(false);
   }, []);
 
+  // ---- Park & queue ----------------------------------------------------------
+  // Nothing here touches the database, so no invoice number is reserved while a
+  // bill waits: the next number goes to whichever bill is posted first and the
+  // sequence stays unbroken.
+  const snapshot = useCallback(() => ({
+    userId: user?.id ?? null,
+    source: (order ? { kind: "order" as const, id: order.id }
+      : quotationId ? { kind: "quotation" as const, id: quotationId }
+      : { kind: "none" as const, id: null }),
+    state: {
+      customerId, cart, discount, roundOff, targetTotal, oldGoldCredit, oldGoldPurchaseId, oldGoldMetal,
+      payments, notes, issueDate, orderDate, rateBasis, order, orderLineByItem,
+      advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput, refundMethod,
+    },
+  }), [user?.id, order, quotationId, customerId, cart, discount, roundOff, targetTotal, oldGoldCredit,
+       oldGoldPurchaseId, oldGoldMetal, payments, notes, issueDate, orderDate, rateBasis,
+       orderLineByItem, advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput, refundMethod]);
+
+  const billLabel = useCallback(() => {
+    const name = customers.find((c) => c.id === customerId)?.full_name;
+    return name || order?.order_no || "Walk-in bill";
+  }, [customers, customerId, order]);
+
+  /** Park the current bill and clear the counter for the next customer. */
+  const parkBill = useCallback(() => {
+    if (!dirty) { toast.error("Nothing to hold yet"); return; }
+    setHeld(holdBill({ label: billLabel(), ...snapshot() }));
+    resetBill();
+    toast.success("Bill held — it will keep its place in the queue until posted");
+  }, [dirty, billLabel, snapshot, resetBill]);
+
+  /** Bring a parked bill back, parking whatever is on the counter first. */
+  const pullHeldBill = useCallback((id: string) => {
+    if (dirty) holdBill({ label: billLabel(), ...snapshot() });
+    if (!resumeHeldBill(id)) { toast.error("That bill is no longer available"); return; }
+    setHeldOpen(false);
+    reload();
+  }, [dirty, billLabel, snapshot, reload]);
+
+
+
 
   return (
-    <AppLayout title="New Sale (POS)">
+    <AppLayout title="New Sale (POS)" actions={
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={parkBill} disabled={!dirty || saving}>
+          <PauseCircle className="mr-1 h-4 w-4" /> Hold bill
+        </Button>
+        <Button variant={held.length ? "secondary" : "outline"} size="sm" onClick={() => setHeldOpen(true)}>
+          <Layers className="mr-1 h-4 w-4" /> Held bills{held.length ? ` (${held.length})` : ""}
+        </Button>
+      </div>
+    }>
       {restoredBanner && dirty && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <span>Restored an unsaved bill from this counter — continue where you left off.</span>
           <Button variant="ghost" size="sm" onClick={resetBill}>Discard</Button>
         </div>
       )}
+
+      {/* Parked bills waiting to be finished */}
+      <Dialog open={heldOpen} onOpenChange={setHeldOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Held bills</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Held bills are saved on this counter only. No invoice number is reserved — the next
+            number goes to whichever bill is posted first, so the numbering never skips.
+          </p>
+          {held.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No bills on hold.</p>
+          ) : (
+            <div className="max-h-[50vh] divide-y overflow-y-auto rounded-md border">
+              {held.map((b) => {
+                const lines = Array.isArray(b.state?.cart) ? b.state.cart.length : 0;
+                const value = (b.state?.cart ?? []).reduce((a: number, r: any) => a + Number(r.line_total ?? 0), 0);
+                return (
+                  <div key={b.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                    <div>
+                      <div className="font-medium">{b.label}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {lines} item{lines === 1 ? "" : "s"} · {npr(value)} · held {new Date(b.savedAt).toLocaleTimeString()}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" onClick={() => pullHeldBill(b.id)}>Resume</Button>
+                      <Button size="sm" variant="ghost"
+                        onClick={() => setHeld(removeHeldBill(b.id))}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHeldOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* An order/quotation was opened while a different unfinished bill is saved. */}
       <AlertDialog open={billMode === "ask"}>
@@ -1414,4 +1515,10 @@ function OrderPickerDialog({ open, onOpenChange, customerId, onPick }: {
       </DialogContent>
     </Dialog>
   );
+}
+
+export default function POS() {
+  // Bumped when a parked bill is resumed: a fresh mount re-reads the draft.
+  const [mountKey, setMountKey] = useState(0);
+  return <PosScreen key={mountKey} reload={() => setMountKey((k) => k + 1)} />;
 }
