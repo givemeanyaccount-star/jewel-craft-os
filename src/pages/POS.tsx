@@ -803,6 +803,47 @@ function PosScreen({ reload }: { reload: () => void }) {
     setRefundInput(""); setRefundMethod("cash"); setRestoredBanner(false);
   }, []);
 
+  // ---- Park & queue ----------------------------------------------------------
+  // Nothing here touches the database, so no invoice number is reserved while a
+  // bill waits: the next number goes to whichever bill is posted first and the
+  // sequence stays unbroken.
+  const snapshot = useCallback(() => ({
+    userId: user?.id ?? null,
+    source: (order ? { kind: "order" as const, id: order.id }
+      : quotationId ? { kind: "quotation" as const, id: quotationId }
+      : { kind: "none" as const, id: null }),
+    state: {
+      customerId, cart, discount, roundOff, targetTotal, oldGoldCredit, oldGoldPurchaseId, oldGoldMetal,
+      payments, notes, issueDate, orderDate, rateBasis, order, orderLineByItem,
+      advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput, refundMethod,
+    },
+  }), [user?.id, order, quotationId, customerId, cart, discount, roundOff, targetTotal, oldGoldCredit,
+       oldGoldPurchaseId, oldGoldMetal, payments, notes, issueDate, orderDate, rateBasis,
+       orderLineByItem, advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput, refundMethod]);
+
+  const billLabel = useCallback(() => {
+    const name = customers.find((c) => c.id === customerId)?.full_name;
+    return name || order?.order_no || "Walk-in bill";
+  }, [customers, customerId, order]);
+
+  /** Park the current bill and clear the counter for the next customer. */
+  const parkBill = useCallback(() => {
+    if (!dirty) { toast.error("Nothing to hold yet"); return; }
+    setHeld(holdBill({ label: billLabel(), ...snapshot() }));
+    resetBill();
+    toast.success("Bill held — it will keep its place in the queue until posted");
+  }, [dirty, billLabel, snapshot, resetBill]);
+
+  /** Bring a parked bill back, parking whatever is on the counter first. */
+  const pullHeldBill = useCallback((id: string) => {
+    if (dirty) holdBill({ label: billLabel(), ...snapshot() });
+    if (!resumeHeldBill(id)) { toast.error("That bill is no longer available"); return; }
+    setHeldOpen(false);
+    reload();
+  }, [dirty, billLabel, snapshot, reload]);
+
+
+
 
   return (
     <AppLayout title="New Sale (POS)">
