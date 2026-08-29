@@ -1422,3 +1422,9 @@ function OrderPickerDialog({ open, onOpenChange, customerId, onPick }: {
     </Dialog>
   );
 }
+
+export default function POS() {
+  // Bumped when a parked bill is resumed: a fresh mount re-reads the draft.
+  const [mountKey, setMountKey] = useState(0);
+  return <PosScreen key={mountKey} reload={() => setMountKey((k) => k + 1)} />;
+}
