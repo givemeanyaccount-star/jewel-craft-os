@@ -846,13 +846,64 @@ function PosScreen({ reload }: { reload: () => void }) {
 
 
   return (
-    <AppLayout title="New Sale (POS)">
+    <AppLayout title="New Sale (POS)" actions={
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={parkBill} disabled={!dirty || saving}>
+          <PauseCircle className="mr-1 h-4 w-4" /> Hold bill
+        </Button>
+        <Button variant={held.length ? "secondary" : "outline"} size="sm" onClick={() => setHeldOpen(true)}>
+          <Layers className="mr-1 h-4 w-4" /> Held bills{held.length ? ` (${held.length})` : ""}
+        </Button>
+      </div>
+    }>
       {restoredBanner && dirty && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <span>Restored an unsaved bill from this counter — continue where you left off.</span>
           <Button variant="ghost" size="sm" onClick={resetBill}>Discard</Button>
         </div>
       )}
+
+      {/* Parked bills waiting to be finished */}
+      <Dialog open={heldOpen} onOpenChange={setHeldOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Held bills</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Held bills are saved on this counter only. No invoice number is reserved — the next
+            number goes to whichever bill is posted first, so the numbering never skips.
+          </p>
+          {held.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No bills on hold.</p>
+          ) : (
+            <div className="max-h-[50vh] divide-y overflow-y-auto rounded-md border">
+              {held.map((b) => {
+                const lines = Array.isArray(b.state?.cart) ? b.state.cart.length : 0;
+                const value = (b.state?.cart ?? []).reduce((a: number, r: any) => a + Number(r.line_total ?? 0), 0);
+                return (
+                  <div key={b.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                    <div>
+                      <div className="font-medium">{b.label}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {lines} item{lines === 1 ? "" : "s"} · {npr(value)} · held {new Date(b.savedAt).toLocaleTimeString()}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" onClick={() => pullHeldBill(b.id)}>Resume</Button>
+                      <Button size="sm" variant="ghost"
+                        onClick={() => setHeld(removeHeldBill(b.id))}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHeldOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* An order/quotation was opened while a different unfinished bill is saved. */}
       <AlertDialog open={billMode === "ask"}>
