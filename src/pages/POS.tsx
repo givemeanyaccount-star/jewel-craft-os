@@ -4,7 +4,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { loadPosDraft, savePosDraft, clearPosDraft, draftHasContent } from "@/hooks/usePosDraft";
+import {
+  loadPosDraft, savePosDraft, clearPosDraft, draftHasContent,
+  listHeldBills, holdBill, removeHeldBill, resumeHeldBill, type HeldBill,
+} from "@/hooks/usePosDraft";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
