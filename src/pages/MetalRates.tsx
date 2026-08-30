@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
+import { UnitNumberField } from "@/components/ui/unit-number-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -129,8 +130,8 @@ export default function MetalRates() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
                 </Select></div>
-              <div><Label>{metal === "silver" ? "Fine silver (999) rate / g" : "Fine gold (24K) rate / g"} (रू)</Label>
-                <NumberField value={fine} onChange={(v) => setFineRate(v ? String(v) : "")} /></div>
+              <div><Label>{metal === "silver" ? "Fine silver (999) rate" : "Fine gold (24K) rate"} (रू)</Label>
+                <UnitNumberField mode="rate" value={Number(fine) || 0} onChange={(v) => setFineRate(v ? String(v) : "")} /></div>
               <div className="flex items-end">
                 <Button className="w-full" onClick={add} disabled={saving}>
                   <Plus className="mr-1 h-4 w-4" /> {saving ? "Saving..." : "Save today's rates"}
@@ -141,7 +142,7 @@ export default function MetalRates() {
               {list.filter((p) => p !== finePurity).map((p) => (
                 <div key={p}>
                   <Label>{purityLabel(p)}</Label>
-                  <NumberField value={derived[p] ?? ""} onChange={(v) => setDerived({ ...derived, [p]: v ? String(v) : "" })} />
+                  <UnitNumberField mode="rate" value={Number(derived[p] ?? 0) || 0} onChange={(v) => setDerived({ ...derived, [p]: v ? String(v) : "" })} />
                 </div>
               ))}
             </div>
