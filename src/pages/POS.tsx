@@ -1120,9 +1120,9 @@ function PosScreen({ reload }: { reload: () => void }) {
                             <Detail label="Purity" value={r.purity ?? "-"} />
                             <Detail label="Gross wt" value={`${d.grossWt.toFixed(3)} g`} />
                             <Detail label="Stone wt" value={`${d.stoneWt.toFixed(3)} g`} />
-                            <Detail label="Net wt" value={`${d.netWt.toFixed(3)} g`} />
+                            <Detail label="Net wt" value={`${d.netWt.toFixed(3)} g (${gramsToTola(d.netWt).toFixed(4)} tola)`} />
                             <Detail label="Wastage wt" value={`${d.wastageWt.toFixed(3)} g`} />
-                            <Detail label="Total wt" value={`${d.totalWt.toFixed(3)} g`} />
+                            <Detail label="Total wt" value={`${d.totalWt.toFixed(3)} g (${gramsToTola(d.totalWt).toFixed(4)} tola)`} />
                             <Detail label="Gold amt" value={npr(d.goldAmt)} />
                             <Detail label="Stone amt" value={npr(d.stoneAmt)} />
                             <Detail label="Making" value={npr(d.making)} />
