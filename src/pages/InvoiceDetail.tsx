@@ -171,7 +171,7 @@ export default function InvoiceDetail() {
                         {r.wastage_type && <div className="text-[10px] text-muted-foreground">({formatBasis(r.wastage_type, r.wastage_input)})</div>}
                       </TableCell>
                       <TableCell className="text-right">{m.totalWt.toFixed(3)} g<div className="text-[10px] text-muted-foreground">{gramsToTola(m.totalWt).toFixed(4)} tola</div></TableCell>
-                      <TableCell className="text-right">{npr(m.rate)}</TableCell>
+                      <TableCell className="text-right">{npr(m.rate)}<div className="text-[10px] text-muted-foreground">{npr(ratePerTola(m.rate))}/tola</div></TableCell>
                       <TableCell className="text-right">{npr(m.goldAmt)}</TableCell>
                       <TableCell className="text-right">{npr(m.stoneAmt)}</TableCell>
                       <TableCell className="text-right">
