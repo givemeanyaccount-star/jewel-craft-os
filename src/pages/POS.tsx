@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
+import { UnitNumberField } from "@/components/ui/unit-number-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1090,11 +1091,12 @@ function PosScreen({ reload }: { reload: () => void }) {
                           <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <NumberField decimals={3} className="h-8 w-20 text-right" value={r.weight}
+                          <UnitNumberField className="w-24" inputClassName="h-8 text-right" hideToggle value={r.weight}
                             onChange={(v) => updateRow(i, { weight: v })} />
                         </TableCell>
                         <TableCell className="text-right">
-                          <NumberField className={`h-8 w-28 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
+                          <UnitNumberField mode="rate" className="w-28" hideToggle
+                            inputClassName={`h-8 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
                             value={r.rate} onChange={(v) => updateRow(i, { rate: v })} />
                         </TableCell>
                         <TableCell className="text-right">
