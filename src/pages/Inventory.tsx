@@ -268,21 +268,24 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
             </Select>
           </div>
           <div>
-            <Label>Gross weight (g)</Label>
-            <NumberField decimals={3} value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} />
+            <Label>Gross weight</Label>
+            <UnitNumberField value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} />
           </div>
           <div>
-            <Label>Stone weight (g)</Label>
-            <NumberField decimals={3} value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} />
+            <Label>Stone weight</Label>
+            <UnitNumberField value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} />
           </div>
           <div>
             <Label>Net (auto)</Label>
             <Input readOnly value={netWeight.toFixed(3)} className="bg-muted" />
+            <p className="text-[10px] text-muted-foreground mt-1">{gramsToTola(netWeight).toFixed(4)} tola</p>
           </div>
           <div>
             <Label>Fine (auto)</Label>
             <Input readOnly value={fineWeight.toFixed(3)} className="bg-muted" />
+            <p className="text-[10px] text-muted-foreground mt-1">{gramsToTola(fineWeight).toFixed(4)} tola</p>
           </div>
+
           <div>
             <Label>Stone value (रू)</Label>
             <NumberField value={form.stone_value ?? 0} onChange={(v) => setForm({ ...form, stone_value: v })} />
