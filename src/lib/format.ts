@@ -397,6 +397,37 @@ export function perTenGrams(ratePerGram: number | null | undefined) {
   return Number(ratePerGram ?? 0) * 10;
 }
 
+/** Grams -> tola (4 decimals keeps a 3-decimal gram value round-trip safe). */
+export function gramsToTola(grams: number | null | undefined) {
+  return roundTo(Number(grams ?? 0) / TOLA_GRAMS, 4);
+}
+
+/** Tola -> grams, rounded to the 3-decimal gram grid used everywhere. */
+export function tolaToGrams(tola: number | null | undefined) {
+  return round3(Number(tola ?? 0) * TOLA_GRAMS);
+}
+
+/** Rate per gram -> rate per tola (2 decimals, money grid). */
+export function ratePerTola(ratePerGram: number | null | undefined) {
+  return round2(Number(ratePerGram ?? 0) * TOLA_GRAMS);
+}
+
+/** Rate per tola -> rate per gram (2 decimals, money grid). */
+export function ratePerGramFromTola(rateTola: number | null | undefined) {
+  return round2(Number(rateTola ?? 0) / TOLA_GRAMS);
+}
+
+/** `12.500 g` */
+export function tolas(n: number | null | undefined, decimals = 4) {
+  return `${gramsToTola(n).toFixed(decimals)} tola`;
+}
+
+/** Grams as the primary figure with the tola equivalent alongside: `12.500 g (1.0717 tola)` */
+export function gmsWithTola(n: number | null | undefined, decimals = 3, tolaDecimals = 4) {
+  return `${Number(n ?? 0).toFixed(decimals)} g (${gramsToTola(n).toFixed(tolaDecimals)} tola)`;
+}
+
+
 /** Compact NPR for tight card layouts: रू 1.24L / रू 2.4Cr */
 export function nprShort(n: number | null | undefined) {
   const v = Number(n ?? 0);
