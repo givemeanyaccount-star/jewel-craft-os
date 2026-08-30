@@ -3,13 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
+import { UnitNumberField } from "@/components/ui/unit-number-field";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Coins } from "lucide-react";
-import { npr, computeNetWeight, computeFineWeight, nextNumber, round2 } from "@/lib/format";
+import { npr, computeNetWeight, computeFineWeight, nextNumber, round2, gramsToTola } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadImage } from "@/lib/storage";
 import { toast } from "sonner";
@@ -155,11 +156,11 @@ export function OldGoldForm({
             metal={form.metal} allowPercent />
         </div>
 
-        <div><Label>Gross wt (g)</Label><NumberField decimals={3} value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} /></div>
-        <div><Label>Stone wt (g)</Label><NumberField decimals={3} value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} /></div>
+        <div><Label>Gross wt</Label><UnitNumberField value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} /></div>
+        <div><Label>Stone wt</Label><UnitNumberField value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} /></div>
         <div><Label>Net (auto)</Label><Input readOnly value={net.toFixed(3)} className="bg-muted" /></div>
         <div><Label>Fine (auto)</Label><Input readOnly value={fine.toFixed(3)} className="bg-muted" /></div>
-        <div><Label>Rate per gram (fine)</Label><NumberField value={form.rate_per_gram ?? 0} onChange={(v) => setForm({ ...form, rate_per_gram: v })} /></div>
+        <div><Label>Fine rate</Label><UnitNumberField mode="rate" value={form.rate_per_gram ?? 0} onChange={(v) => setForm({ ...form, rate_per_gram: v })} /></div>
         <div><Label>Deduction</Label><NumberField value={form.deduction ?? 0} onChange={(v) => setForm({ ...form, deduction: v })} /></div>
         <div className="md:col-span-2 rounded bg-secondary p-3 text-center">
           <div className="text-xs text-muted-foreground">Total payable to customer (cash out)</div>

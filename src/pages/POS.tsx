@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
+import { UnitNumberField, useWeightUnit } from "@/components/ui/unit-number-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,7 +26,7 @@ import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil,
 import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, solveTargetTotal, solveTargetRefund,
-  round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE, REFUND_NOTE,
+  round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE, REFUND_NOTE, gramsToTola,
 } from "@/lib/format";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
@@ -139,6 +140,8 @@ function PosScreen({ reload }: { reload: () => void }) {
   const [todayRates, setTodayRates] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<any[]>([]);
+  const [weightUnit, setWeightUnit] = useWeightUnit();
+
   const [cart, setCart] = useState<CartRow[]>(d.cart ?? []);
   const [discount, setDiscount] = useState(d.discount ?? 0);
   // Signed sub-rupee adjustment that lands the bill exactly on an entered target amount.
@@ -1061,7 +1064,7 @@ function PosScreen({ reload }: { reload: () => void }) {
                       className="flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-muted">
                       <div>
                         <div className="font-medium">{i.name}</div>
-                        <div className="text-xs text-muted-foreground">{i.sku} · {i.metal} {i.purity} · {i.net_weight}g</div>
+                        <div className="text-xs text-muted-foreground">{i.sku} · {i.metal} {i.purity} · {Number(i.net_weight).toFixed(3)}g ({gramsToTola(i.net_weight).toFixed(4)} tola)</div>
                       </div>
                       <Plus className="h-4 w-4" />
                     </button>
@@ -1072,8 +1075,18 @@ function PosScreen({ reload }: { reload: () => void }) {
               <Table className="mt-3">
                 <TableHeader><TableRow>
                   <TableHead>Item</TableHead>
-                  <TableHead className="text-right">Net Wt (g)</TableHead>
-                  <TableHead className="text-right">Rate/g</TableHead>
+                  <TableHead className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Net Wt ({weightUnit})</span>
+                      <div className="flex rounded-md border border-border overflow-hidden">
+                        {(["g", "tola"] as const).map((u) => (
+                          <Button key={u} type="button" size="sm" variant={weightUnit === u ? "secondary" : "ghost"}
+                            className="h-6 rounded-none px-1.5 text-[10px]" onClick={() => setWeightUnit(u)}>{u}</Button>
+                        ))}
+                      </div>
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right">Rate/{weightUnit === "tola" ? "tola" : "g"}</TableHead>
                   <TableHead className="text-right">Stone</TableHead>
                   <TableHead className="text-right">Line</TableHead>
                   <TableHead />
@@ -1090,11 +1103,12 @@ function PosScreen({ reload }: { reload: () => void }) {
                           <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <NumberField decimals={3} className="h-8 w-20 text-right" value={r.weight}
+                          <UnitNumberField className="w-24" inputClassName="h-8 text-right" hideToggle value={r.weight}
                             onChange={(v) => updateRow(i, { weight: v })} />
                         </TableCell>
                         <TableCell className="text-right">
-                          <NumberField className={`h-8 w-28 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
+                          <UnitNumberField mode="rate" className="w-28" hideToggle
+                            inputClassName={`h-8 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
                             value={r.rate} onChange={(v) => updateRow(i, { rate: v })} />
                         </TableCell>
                         <TableCell className="text-right">
@@ -1118,9 +1132,9 @@ function PosScreen({ reload }: { reload: () => void }) {
                             <Detail label="Purity" value={r.purity ?? "-"} />
                             <Detail label="Gross wt" value={`${d.grossWt.toFixed(3)} g`} />
                             <Detail label="Stone wt" value={`${d.stoneWt.toFixed(3)} g`} />
-                            <Detail label="Net wt" value={`${d.netWt.toFixed(3)} g`} />
+                            <Detail label="Net wt" value={`${d.netWt.toFixed(3)} g (${gramsToTola(d.netWt).toFixed(4)} tola)`} />
                             <Detail label="Wastage wt" value={`${d.wastageWt.toFixed(3)} g`} />
-                            <Detail label="Total wt" value={`${d.totalWt.toFixed(3)} g`} />
+                            <Detail label="Total wt" value={`${d.totalWt.toFixed(3)} g (${gramsToTola(d.totalWt).toFixed(4)} tola)`} />
                             <Detail label="Gold amt" value={npr(d.goldAmt)} />
                             <Detail label="Stone amt" value={npr(d.stoneAmt)} />
                             <Detail label="Making" value={npr(d.making)} />

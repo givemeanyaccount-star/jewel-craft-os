@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { NumberField } from "@/components/ui/number-field";
+import { UnitNumberField } from "@/components/ui/unit-number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X } from "lucide-react";
 import { npr, computeNetWeight } from "@/lib/format";
@@ -182,16 +183,16 @@ export function OrderLineFields({ line, patch, cats, karigars, onKarigarCreated,
       </div>
       <div>
         <Label>Expected gross wt (g)</Label>
-        <NumberField decimals={3} value={line.expected_gross_weight} onChange={(v) => patch({ expected_gross_weight: v })} />
+        <UnitNumberField value={line.expected_gross_weight} onChange={(v) => patch({ expected_gross_weight: v })} />
       </div>
       <div>
         <Label>Stone wt (g)</Label>
-        <NumberField decimals={3} value={line.expected_stone_weight} onChange={(v) => patch({ expected_stone_weight: v })} />
+        <UnitNumberField value={line.expected_stone_weight} onChange={(v) => patch({ expected_stone_weight: v })} />
       </div>
       <div>
         <Label>Rate/g</Label>
         <div className="flex gap-1">
-          <NumberField value={line.rate} onChange={(v) => patch({ rate: v })} className="text-right" />
+          <UnitNumberField mode="rate" value={line.rate} onChange={(v) => patch({ rate: v })} inputClassName="text-right" />
           {onFetchRate && <Button type="button" size="sm" variant="outline" onClick={onFetchRate}>Fetch</Button>}
         </div>
       </div>

@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
 import { PrintDocument, printDocument } from "@/components/PrintDocument";
-import { npr, reconcile } from "@/lib/format";
+import { npr, reconcile, gramsToTola, ratePerTola } from "@/lib/format";
 import { paymentLedgerRows, paymentModeSummary } from "@/lib/paymentLedger";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
@@ -165,13 +165,13 @@ export default function InvoiceDetail() {
                         <div className="text-xs text-muted-foreground">{r.metal}{m.qty > 1 ? ` · ×${m.qty}` : ""}</div>
                       </TableCell>
                       <TableCell className="text-right">{r.purity ?? "-"}</TableCell>
-                      <TableCell className="text-right">{m.netWt.toFixed(3)} g</TableCell>
+                      <TableCell className="text-right">{m.netWt.toFixed(3)} g<div className="text-[10px] text-muted-foreground">{gramsToTola(m.netWt).toFixed(4)} tola</div></TableCell>
                       <TableCell className="text-right">
                         <div>{m.wastageWt.toFixed(3)} g</div>
                         {r.wastage_type && <div className="text-[10px] text-muted-foreground">({formatBasis(r.wastage_type, r.wastage_input)})</div>}
                       </TableCell>
-                      <TableCell className="text-right">{m.totalWt.toFixed(3)} g</TableCell>
-                      <TableCell className="text-right">{npr(m.rate)}</TableCell>
+                      <TableCell className="text-right">{m.totalWt.toFixed(3)} g<div className="text-[10px] text-muted-foreground">{gramsToTola(m.totalWt).toFixed(4)} tola</div></TableCell>
+                      <TableCell className="text-right">{npr(m.rate)}<div className="text-[10px] text-muted-foreground">{npr(ratePerTola(m.rate))}/tola</div></TableCell>
                       <TableCell className="text-right">{npr(m.goldAmt)}</TableCell>
                       <TableCell className="text-right">{npr(m.stoneAmt)}</TableCell>
                       <TableCell className="text-right">

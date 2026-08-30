@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
+import { UnitNumberField } from "@/components/ui/unit-number-field";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -296,8 +297,8 @@ function WorkflowDialog({ item, onOpenChange, onSaved }: any) {
             <KarigarSelect karigars={karigars} value={karigarId} valueName={karigarName} onChange={(id, name) => { setKarigarId(id); setKarigarName(name); }} onKarigarCreated={refreshKarigars} />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div><Label className="text-xs">Gross weight out (g)</Label><NumberField decimals={3} value={grossOut} onChange={(v) => setGrossOut(v)} /></div>
-            <div><Label className="text-xs">Stone weight out (g)</Label><NumberField decimals={3} value={stoneOut} onChange={(v) => setStoneOut(v)} /></div>
+            <div><Label className="text-xs">Gross weight out</Label><UnitNumberField value={grossOut} onChange={(v) => setGrossOut(v)} /></div>
+            <div><Label className="text-xs">Stone weight out</Label><UnitNumberField value={stoneOut} onChange={(v) => setStoneOut(v)} /></div>
           </div>
           {movingToDeliverable && <div><Label className="text-xs">Final cost (NPR)</Label><NumberField value={finalCost} onChange={(v) => setFinalCost(v)} /></div>}
           <div><Label>Note for this update</Label><Textarea rows={2} placeholder="What was done at this stage..." value={note} onChange={(e) => setNote(e.target.value)} /></div>

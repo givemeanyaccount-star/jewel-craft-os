@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
+import { UnitNumberField } from "@/components/ui/unit-number-field";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -105,14 +106,14 @@ export function DailyRateDialog({ open, onOpenChange, onSaved }: {
 
         <div className="space-y-3">
           <div>
-            <Label>Gold 24K (fine) rate per gram *</Label>
-            <NumberField value={gold["24K"] ?? ""} onChange={(v) => setBase(v ? String(v) : "")} />
+            <Label>Gold 24K (fine) rate *</Label>
+            <UnitNumberField mode="rate" value={Number(gold["24K"] ?? 0) || 0} onChange={(v) => setBase(v ? String(v) : "")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             {GOLD_PURITIES.slice(1).map((p) => (
               <div key={p}>
                 <Label>Gold {p}</Label>
-                <NumberField value={gold[p] ?? ""}
+                <UnitNumberField mode="rate" value={Number(gold[p] ?? 0) || 0}
                   onChange={(v) => setGold({ ...gold, [p]: v ? String(v) : "" })} />
               </div>
             ))}
@@ -120,11 +121,11 @@ export function DailyRateDialog({ open, onOpenChange, onSaved }: {
           <div className="grid grid-cols-2 gap-3 border-t pt-3">
             <div>
               <Label>Fine silver (999)</Label>
-              <NumberField value={silverFine} onChange={(v) => setFineSilver(v ? String(v) : "")} />
+              <UnitNumberField mode="rate" value={Number(silverFine) || 0} onChange={(v) => setFineSilver(v ? String(v) : "")} />
             </div>
             <div>
               <Label>Silver 925</Label>
-              <NumberField value={silver925} onChange={(v) => setSilver925(v ? String(v) : "")} />
+              <UnitNumberField mode="rate" value={Number(silver925) || 0} onChange={(v) => setSilver925(v ? String(v) : "")} />
             </div>
           </div>
         </div>

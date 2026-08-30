@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
+import { UnitNumberField } from "@/components/ui/unit-number-field";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Search, Package, QrCode } from "lucide-react";
 import { usePermission } from "@/hooks/usePermission";
-import { computeNetWeight, computeFineWeight, npr, gms } from "@/lib/format";
+import { computeNetWeight, computeFineWeight, npr, gms, gramsToTola } from "@/lib/format";
 import { uploadImage } from "@/lib/storage";
 import { QRScanButton } from "@/components/QRScanButton";
 import { ImageCaptureButton } from "@/components/ImageCapture";
@@ -113,7 +114,7 @@ export default function Inventory() {
                 <div className="mt-3 grid grid-cols-2 gap-1 text-xs">
                   <div className="text-muted-foreground">Metal</div><div className="capitalize text-right">{it.metal} {it.purity}</div>
                   <div className="text-muted-foreground">Gross</div><div className="text-right">{gms(it.gross_weight)}</div>
-                  <div className="text-muted-foreground">Net</div><div className="text-right">{gms(it.net_weight)}</div>
+                  <div className="text-muted-foreground">Net</div><div className="text-right">{gms(it.net_weight)}<div className="text-[10px] text-muted-foreground">{gramsToTola(it.net_weight).toFixed(4)} tola</div></div>
                   <div className="text-muted-foreground">Fine</div><div className="text-right">{gms(it.fine_weight)}</div>
                   <div className="text-muted-foreground">Making</div><div className="text-right">{npr(it.making_charge, { withSymbol: false })}</div>
                 </div>
@@ -268,21 +269,24 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
             </Select>
           </div>
           <div>
-            <Label>Gross weight (g)</Label>
-            <NumberField decimals={3} value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} />
+            <Label>Gross weight</Label>
+            <UnitNumberField value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} />
           </div>
           <div>
-            <Label>Stone weight (g)</Label>
-            <NumberField decimals={3} value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} />
+            <Label>Stone weight</Label>
+            <UnitNumberField value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} />
           </div>
           <div>
             <Label>Net (auto)</Label>
             <Input readOnly value={netWeight.toFixed(3)} className="bg-muted" />
+            <p className="text-[10px] text-muted-foreground mt-1">{gramsToTola(netWeight).toFixed(4)} tola</p>
           </div>
           <div>
             <Label>Fine (auto)</Label>
             <Input readOnly value={fineWeight.toFixed(3)} className="bg-muted" />
+            <p className="text-[10px] text-muted-foreground mt-1">{gramsToTola(fineWeight).toFixed(4)} tola</p>
           </div>
+
           <div>
             <Label>Stone value (रू)</Label>
             <NumberField value={form.stone_value ?? 0} onChange={(v) => setForm({ ...form, stone_value: v })} />
