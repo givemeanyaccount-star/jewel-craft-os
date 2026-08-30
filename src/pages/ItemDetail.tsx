@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { npr, gms } from "@/lib/format";
+import { npr, gms, gmsWithTola } from "@/lib/format";
 import { getSignedUrls } from "@/lib/storage";
 import { Printer, ArrowLeft } from "lucide-react";
 import { openPrintPreview } from "@/components/PrintPreview";
@@ -94,10 +94,10 @@ export default function ItemDetail() {
               <Field label="Category" value={item.categories?.name ?? "—"} />
               <Field label="Location" value={item.locations?.name ?? "—"} />
               <Field label="Metal" value={`${item.metal} ${item.purity}`} className="capitalize" />
-              <Field label="Gross" value={gms(item.gross_weight)} />
-              <Field label="Stone wt" value={gms(item.stone_weight)} />
-              <Field label="Net" value={gms(item.net_weight)} />
-              <Field label="Fine" value={gms(item.fine_weight)} />
+              <Field label="Gross" value={gmsWithTola(item.gross_weight)} />
+              <Field label="Stone wt" value={gmsWithTola(item.stone_weight)} />
+              <Field label="Net" value={gmsWithTola(item.net_weight)} />
+              <Field label="Fine" value={gmsWithTola(item.fine_weight)} />
               <Field label="Making" value={`${item.making_charge} (${item.making_charge_type})`} />
               <Field label="Wastage" value={`${item.wastage_value} ${item.wastage_type}`} />
               <Field label="Stone value" value={npr(item.stone_value)} />

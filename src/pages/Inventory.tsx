@@ -114,7 +114,7 @@ export default function Inventory() {
                 <div className="mt-3 grid grid-cols-2 gap-1 text-xs">
                   <div className="text-muted-foreground">Metal</div><div className="capitalize text-right">{it.metal} {it.purity}</div>
                   <div className="text-muted-foreground">Gross</div><div className="text-right">{gms(it.gross_weight)}</div>
-                  <div className="text-muted-foreground">Net</div><div className="text-right">{gms(it.net_weight)}</div>
+                  <div className="text-muted-foreground">Net</div><div className="text-right">{gms(it.net_weight)}<div className="text-[10px] text-muted-foreground">{gramsToTola(it.net_weight).toFixed(4)} tola</div></div>
                   <div className="text-muted-foreground">Fine</div><div className="text-right">{gms(it.fine_weight)}</div>
                   <div className="text-muted-foreground">Making</div><div className="text-right">{npr(it.making_charge, { withSymbol: false })}</div>
                 </div>
