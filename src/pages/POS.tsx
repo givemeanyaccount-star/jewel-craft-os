@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
-import { UnitNumberField } from "@/components/ui/unit-number-field";
+import { UnitNumberField, useWeightUnit } from "@/components/ui/unit-number-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,7 +26,7 @@ import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil,
 import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, solveTargetTotal, solveTargetRefund,
-  round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE, REFUND_NOTE,
+  round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE, REFUND_NOTE, gramsToTola,
 } from "@/lib/format";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
@@ -1062,7 +1062,7 @@ function PosScreen({ reload }: { reload: () => void }) {
                       className="flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-muted">
                       <div>
                         <div className="font-medium">{i.name}</div>
-                        <div className="text-xs text-muted-foreground">{i.sku} · {i.metal} {i.purity} · {i.net_weight}g</div>
+                        <div className="text-xs text-muted-foreground">{i.sku} · {i.metal} {i.purity} · {Number(i.net_weight).toFixed(3)}g ({gramsToTola(i.net_weight).toFixed(4)} tola)</div>
                       </div>
                       <Plus className="h-4 w-4" />
                     </button>
@@ -1073,8 +1073,18 @@ function PosScreen({ reload }: { reload: () => void }) {
               <Table className="mt-3">
                 <TableHeader><TableRow>
                   <TableHead>Item</TableHead>
-                  <TableHead className="text-right">Net Wt (g)</TableHead>
-                  <TableHead className="text-right">Rate/g</TableHead>
+                  <TableHead className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Net Wt ({weightUnit})</span>
+                      <div className="flex rounded-md border border-border overflow-hidden">
+                        {(["g", "tola"] as const).map((u) => (
+                          <Button key={u} type="button" size="sm" variant={weightUnit === u ? "secondary" : "ghost"}
+                            className="h-6 rounded-none px-1.5 text-[10px]" onClick={() => setWeightUnit(u)}>{u}</Button>
+                        ))}
+                      </div>
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right">Rate/{weightUnit === "tola" ? "tola" : "g"}</TableHead>
                   <TableHead className="text-right">Stone</TableHead>
                   <TableHead className="text-right">Line</TableHead>
                   <TableHead />
