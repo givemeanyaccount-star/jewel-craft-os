@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
+import { UnitNumberField } from "@/components/ui/unit-number-field";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -243,8 +244,8 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
                       <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div><Label className="text-xs">Gross wt in (g)</Label><NumberField decimals={3} value={it.gross_weight_in} onChange={(v) => updateItem(it.key, { gross_weight_in: v })} /></div>
-                  <div><Label className="text-xs">Stone wt in (g)</Label><NumberField decimals={3} value={it.stone_weight_in} onChange={(v) => updateItem(it.key, { stone_weight_in: v })} /></div>
+                  <div><Label className="text-xs">Gross wt in</Label><UnitNumberField value={it.gross_weight_in} onChange={(v) => updateItem(it.key, { gross_weight_in: v })} /></div>
+                  <div><Label className="text-xs">Stone wt in</Label><UnitNumberField value={it.stone_weight_in} onChange={(v) => updateItem(it.key, { stone_weight_in: v })} /></div>
                   <div className="md:col-span-2"><Label className="text-xs">Net weight in (auto)</Label><Input readOnly value={gms(netIn)} className="bg-muted" /></div>
                   <div className="md:col-span-2">
                     <Label className="text-xs">Assign karigar</Label>

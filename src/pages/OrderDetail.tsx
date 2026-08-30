@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { NumberField } from "@/components/ui/number-field";
+import { UnitNumberField } from "@/components/ui/unit-number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -399,8 +400,8 @@ function IssueDialog({ item, onOpenChange, onDone, userId }: {
               onChange={(id, name) => { setKarigarId(id); setKarigarName(name); }} onKarigarCreated={refresh} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Gross wt issued (g)</Label><NumberField decimals={3} value={gross} onChange={setGross} /></div>
-            <div><Label>Stone wt (g)</Label><NumberField decimals={3} value={stone} onChange={setStone} /></div>
+            <div><Label>Gross wt issued</Label><UnitNumberField value={gross} onChange={setGross} /></div>
+            <div><Label>Stone wt</Label><UnitNumberField value={stone} onChange={setStone} /></div>
           </div>
           <p className="text-xs text-muted-foreground">
             Net issued: <strong>{net.toFixed(3)} g</strong> · fine {computeFineWeight(net, item?.purity ?? "").toFixed(3)} g
@@ -495,8 +496,8 @@ function ReceiveDialog({ item, onOpenChange, onDone, userId }: {
           )}
           <div className="grid grid-cols-3 gap-3">
             <div><Label>Qty in this batch</Label><NumberField decimals={0} value={qty} onChange={setQty} /></div>
-            <div><Label>Gross wt (g)</Label><NumberField decimals={3} value={gross} onChange={setGross} /></div>
-            <div><Label>Stone wt (g)</Label><NumberField decimals={3} value={stone} onChange={setStone} /></div>
+            <div><Label>Gross wt</Label><UnitNumberField value={gross} onChange={setGross} /></div>
+            <div><Label>Stone wt</Label><UnitNumberField value={stone} onChange={setStone} /></div>
           </div>
           <p className="text-xs text-muted-foreground">Net received in this batch: <strong>{net.toFixed(3)} g</strong></p>
           <div><Label>Note</Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>
