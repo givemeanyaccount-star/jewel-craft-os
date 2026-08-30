@@ -276,15 +276,25 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
                   </td>
                   <td style={rr}>{n3(m.grossWt)}</td>
                   <td style={rr}>{n2(m.stoneWt)}</td>
-                  <td style={rr}>{n3(m.netWt)}</td>
+                  <td style={rr}>
+                    {n3(m.netWt)}
+                    <div style={{ fontSize: "7.5px", color: "#666" }}>{gramsToTola(m.netWt).toFixed(4)} tl</div>
+                  </td>
                   <td style={rr}>
                     {n3(m.wastageWt)}
                     {r.wastage_type === "percentage" && Number(r.wastage_input) > 0 && (
                       <div style={{ fontSize: "7.5px", color: "#666" }}>({r.wastage_input}%)</div>
                     )}
                   </td>
-                  <td style={rr}>{n3(m.totalWt)}</td>
-                  <td style={rr}>{n3(m.rate)}</td>
+                  <td style={rr}>
+                    {n3(m.totalWt)}
+                    <div style={{ fontSize: "7.5px", color: "#666" }}>{gramsToTola(m.totalWt).toFixed(4)} tl</div>
+                  </td>
+                  <td style={rr}>
+                    {n3(m.rate)}
+                    <div style={{ fontSize: "7.5px", color: "#666" }}>{n2(ratePerTola(m.rate))}/tl</div>
+                  </td>
+
                   <td style={rr}>{n2(m.goldAmt)}</td>
                   <td style={rr}>{m.stoneAmt ? n2(m.stoneAmt) : ""}</td>
                   <td style={rr}>
