@@ -140,6 +140,8 @@ function PosScreen({ reload }: { reload: () => void }) {
   const [todayRates, setTodayRates] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<any[]>([]);
+  const [weightUnit, setWeightUnit] = useWeightUnit();
+
   const [cart, setCart] = useState<CartRow[]>(d.cart ?? []);
   const [discount, setDiscount] = useState(d.discount ?? 0);
   // Signed sub-rupee adjustment that lands the bill exactly on an entered target amount.
