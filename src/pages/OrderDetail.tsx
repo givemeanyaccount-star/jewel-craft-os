@@ -179,7 +179,10 @@ export default function OrderDetail() {
                         )}
                       </TableCell>
                       <TableCell className="text-sm">{it.karigar_name ?? "-"}</TableCell>
-                      <TableCell className="text-right">{gms(it.expected_net_weight)}</TableCell>
+                      <TableCell className="text-right">
+                        {gms(it.expected_net_weight)}
+                        <div className="text-[10px] text-muted-foreground">{gramsToTola(it.expected_net_weight).toFixed(4)} tola</div>
+                      </TableCell>
                       <TableCell className="text-right text-xs">
                         {it.issued_net_weight != null ? `${gms(it.issued_net_weight)} out` : "—"}
                         <br />
