@@ -383,8 +383,18 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Item</TableHead>
-                <TableHead className="text-right">Net Wt</TableHead>
-                <TableHead className="text-right">Rate/g</TableHead>
+                <TableHead className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Net Wt ({weightUnit})</span>
+                    <div className="flex overflow-hidden rounded-md border border-border">
+                      {(["g", "tola"] as const).map((u) => (
+                        <Button key={u} type="button" size="sm" variant={weightUnit === u ? "secondary" : "ghost"}
+                          className="h-6 rounded-none px-1.5 text-[10px]" onClick={() => setWeightUnit(u)}>{u}</Button>
+                      ))}
+                    </div>
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">Rate/{weightUnit === "tola" ? "tola" : "g"}</TableHead>
                 <TableHead className="text-right">Stone</TableHead>
                 <TableHead className="text-right">Line</TableHead>
                 <TableHead />
@@ -401,11 +411,12 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
                             <div className="text-xs text-muted-foreground">{r.metal} {r.purity}</div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <NumberField decimals={3} className="h-8 w-20 text-right" value={r.weight}
+                            <UnitNumberField className="w-24" inputClassName="h-8 text-right" hideToggle value={r.weight}
                               onChange={(v) => updateRow(i, { weight: v })} />
                           </TableCell>
                           <TableCell className="text-right">
-                            <NumberField className={`h-8 w-28 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
+                            <UnitNumberField mode="rate" className="w-28" hideToggle
+                              inputClassName={`h-8 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
                               value={r.rate} onChange={(v) => updateRow(i, { rate: v })} />
                           </TableCell>
                           <TableCell className="text-right">
@@ -424,16 +435,20 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
                         </TableRow>
                         <TableRow className="border-b bg-muted/30 hover:bg-muted/30">
                           <TableCell colSpan={6} className="py-2">
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] sm:grid-cols-4 lg:grid-cols-6">
+                            <div className="grid grid-cols-2 items-end gap-x-4 gap-y-2 text-[11px] sm:grid-cols-4 lg:grid-cols-6">
                               <Detail label="Purity" value={r.purity ?? "-"} />
                               <Detail label="Gross wt" value={`${d.grossWt.toFixed(3)} g`} />
                               <Detail label="Stone wt" value={`${d.stoneWt.toFixed(3)} g`} />
-                              <Detail label="Net wt" value={`${d.netWt.toFixed(3)} g`} />
+                              <Detail label="Net wt" value={gmsWithTola(d.netWt)} />
+                              <LineChargeFields
+                                wastageInput={Number(r.wastage_input ?? 0)} wastageType={r.wastage_type ?? "percentage"}
+                                makingInput={Number(r.making_input ?? 0)} makingType={r.making_type ?? "per_gram"}
+                                onChange={(patch) => updateRow(i, patch as Partial<CartRow>)} />
                               <Detail label="Wastage wt" value={`${d.wastageWt.toFixed(3)} g`} />
-                              <Detail label="Total wt" value={`${d.totalWt.toFixed(3)} g`} />
+                              <Detail label="Total wt" value={gmsWithTola(d.totalWt)} />
                               <Detail label="Gold amt" value={npr(d.goldAmt)} />
                               <Detail label="Stone amt" value={npr(d.stoneAmt)} />
-                              <Detail label="Making" value={npr(d.making)} />
+                              <Detail label="Making amt" value={npr(d.making)} />
                               <Detail label="Qty" value={String(d.qty)} />
                             </div>
                           </TableCell>
