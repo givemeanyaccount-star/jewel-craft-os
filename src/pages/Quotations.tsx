@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Search, FileText, Eye, Pencil, CalendarIcon, ShoppingCart } from "lucide-react";
 import {
   npr, nextNumber, computeInvoiceTaxes, discountForTargetTotal,
-  round2,
+  round2, gmsWithTola,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
