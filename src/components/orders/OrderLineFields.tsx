@@ -252,7 +252,7 @@ export function OrderLineFields({ line, patch, cats, karigars, onKarigarCreated,
       </div>
 
       <div className="sm:col-span-4 flex items-end justify-end text-sm">
-        <span className="text-muted-foreground">Net {net.toFixed(3)} g · Estimate&nbsp;</span>
+        <span className="text-muted-foreground">Net {gmsWithTola(net)} · Estimate&nbsp;</span>
         <span className="font-semibold">{npr(est)}</span>
       </div>
     </div>
