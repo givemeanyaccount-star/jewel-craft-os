@@ -259,7 +259,7 @@ export default function OrderDetail() {
               <Row label="Order date" value={order.order_date} />
               <Row label="Promised" value={order.promised_date ?? "-"} highlight={!!overdue} />
               <Row label="Estimated total" value={npr(estimate)} />
-              <Row label="Advance paid" value={npr(advanceTotal)} />
+              <Row label="Advance received (kept on order)" value={npr(advanceTotal)} />
               <Row label="Balance (est.)" value={npr(Math.max(0, estimate - advanceTotal))} />
               {order.notes && <p className="pt-2 text-xs text-muted-foreground">{order.notes}</p>}
               {order.cancel_reason && <p className="pt-2 text-xs text-destructive">Cancelled: {order.cancel_reason}</p>}
