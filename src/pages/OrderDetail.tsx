@@ -407,7 +407,7 @@ function IssueDialog({ item, onOpenChange, onDone, userId }: {
             <div><Label>Stone wt</Label><UnitNumberField value={stone} onChange={setStone} /></div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Net issued: <strong>{net.toFixed(3)} g</strong> · fine {computeFineWeight(net, item?.purity ?? "").toFixed(3)} g
+            Net issued: <strong>{gmsWithTola(net)}</strong> · fine {computeFineWeight(net, item?.purity ?? "").toFixed(3)} g
           </p>
           <div><Label>Note</Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
