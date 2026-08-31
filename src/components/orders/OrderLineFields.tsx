@@ -7,7 +7,7 @@ import { NumberField } from "@/components/ui/number-field";
 import { UnitNumberField } from "@/components/ui/unit-number-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X } from "lucide-react";
-import { npr, computeNetWeight } from "@/lib/format";
+import { npr, computeNetWeight, gmsWithTola } from "@/lib/format";
 import { estimateOrderLine } from "@/lib/orders";
 import { KarigarSelect } from "@/components/KarigarSelect";
 import { PuritySelect } from "@/components/PuritySelect";
