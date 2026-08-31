@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Hammer, PackageCheck, Printer, Receipt, Plus, X, Coins, Pencil, Trash2, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { npr, gms, computeNetWeight, round2, computeFineWeight } from "@/lib/format";
+import { npr, gms, gmsWithTola, gramsToTola, computeNetWeight, round2, computeFineWeight } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import { KarigarSelect, useKarigars } from "@/components/KarigarSelect";
@@ -179,7 +179,10 @@ export default function OrderDetail() {
                         )}
                       </TableCell>
                       <TableCell className="text-sm">{it.karigar_name ?? "-"}</TableCell>
-                      <TableCell className="text-right">{gms(it.expected_net_weight)}</TableCell>
+                      <TableCell className="text-right">
+                        {gms(it.expected_net_weight)}
+                        <div className="text-[10px] text-muted-foreground">{gramsToTola(it.expected_net_weight).toFixed(4)} tola</div>
+                      </TableCell>
                       <TableCell className="text-right text-xs">
                         {it.issued_net_weight != null ? `${gms(it.issued_net_weight)} out` : "—"}
                         <br />
@@ -256,7 +259,7 @@ export default function OrderDetail() {
               <Row label="Order date" value={order.order_date} />
               <Row label="Promised" value={order.promised_date ?? "-"} highlight={!!overdue} />
               <Row label="Estimated total" value={npr(estimate)} />
-              <Row label="Advance paid" value={npr(advanceTotal)} />
+              <Row label="Advance received (kept on order)" value={npr(advanceTotal)} />
               <Row label="Balance (est.)" value={npr(Math.max(0, estimate - advanceTotal))} />
               {order.notes && <p className="pt-2 text-xs text-muted-foreground">{order.notes}</p>}
               {order.cancel_reason && <p className="pt-2 text-xs text-destructive">Cancelled: {order.cancel_reason}</p>}
@@ -404,7 +407,7 @@ function IssueDialog({ item, onOpenChange, onDone, userId }: {
             <div><Label>Stone wt</Label><UnitNumberField value={stone} onChange={setStone} /></div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Net issued: <strong>{net.toFixed(3)} g</strong> · fine {computeFineWeight(net, item?.purity ?? "").toFixed(3)} g
+            Net issued: <strong>{gmsWithTola(net)}</strong> · fine {computeFineWeight(net, item?.purity ?? "").toFixed(3)} g
           </p>
           <div><Label>Note</Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
@@ -499,7 +502,7 @@ function ReceiveDialog({ item, onOpenChange, onDone, userId }: {
             <div><Label>Gross wt</Label><UnitNumberField value={gross} onChange={setGross} /></div>
             <div><Label>Stone wt</Label><UnitNumberField value={stone} onChange={setStone} /></div>
           </div>
-          <p className="text-xs text-muted-foreground">Net received in this batch: <strong>{net.toFixed(3)} g</strong></p>
+          <p className="text-xs text-muted-foreground">Net received in this batch: <strong>{gmsWithTola(net)}</strong></p>
           <div><Label>Note</Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
         <DialogFooter>

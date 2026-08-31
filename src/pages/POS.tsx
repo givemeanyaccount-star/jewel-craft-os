@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
 import { UnitNumberField, useWeightUnit } from "@/components/ui/unit-number-field";
+import { LineChargeFields } from "@/components/LineChargeFields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1128,16 +1129,20 @@ function PosScreen({ reload }: { reload: () => void }) {
                       </TableRow>
                       <TableRow key={`${i}-d`} className="border-b bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={6} className="py-2">
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] sm:grid-cols-4 lg:grid-cols-6">
+                          <div className="grid grid-cols-2 items-end gap-x-4 gap-y-2 text-[11px] sm:grid-cols-4 lg:grid-cols-6">
                             <Detail label="Purity" value={r.purity ?? "-"} />
                             <Detail label="Gross wt" value={`${d.grossWt.toFixed(3)} g`} />
                             <Detail label="Stone wt" value={`${d.stoneWt.toFixed(3)} g`} />
                             <Detail label="Net wt" value={`${d.netWt.toFixed(3)} g (${gramsToTola(d.netWt).toFixed(4)} tola)`} />
+                            <LineChargeFields
+                              wastageInput={Number(r.wastage_input ?? 0)} wastageType={r.wastage_type ?? "percentage"}
+                              makingInput={Number(r.making_input ?? 0)} makingType={r.making_type ?? "per_gram"}
+                              onChange={(patch) => updateRow(i, patch as Partial<CartRow>)} />
                             <Detail label="Wastage wt" value={`${d.wastageWt.toFixed(3)} g`} />
                             <Detail label="Total wt" value={`${d.totalWt.toFixed(3)} g (${gramsToTola(d.totalWt).toFixed(4)} tola)`} />
                             <Detail label="Gold amt" value={npr(d.goldAmt)} />
                             <Detail label="Stone amt" value={npr(d.stoneAmt)} />
-                            <Detail label="Making" value={npr(d.making)} />
+                            <Detail label="Making amt" value={npr(d.making)} />
                             <Detail label="Qty" value={String(d.qty)} />
                           </div>
                         </TableCell>
