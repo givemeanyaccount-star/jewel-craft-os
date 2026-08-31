@@ -502,7 +502,7 @@ function ReceiveDialog({ item, onOpenChange, onDone, userId }: {
             <div><Label>Gross wt</Label><UnitNumberField value={gross} onChange={setGross} /></div>
             <div><Label>Stone wt</Label><UnitNumberField value={stone} onChange={setStone} /></div>
           </div>
-          <p className="text-xs text-muted-foreground">Net received in this batch: <strong>{net.toFixed(3)} g</strong></p>
+          <p className="text-xs text-muted-foreground">Net received in this batch: <strong>{gmsWithTola(net)}</strong></p>
           <div><Label>Note</Label><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </div>
         <DialogFooter>
