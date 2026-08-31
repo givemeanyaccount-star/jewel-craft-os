@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Hammer, PackageCheck, Printer, Receipt, Plus, X, Coins, Pencil, Trash2, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { npr, gms, computeNetWeight, round2, computeFineWeight } from "@/lib/format";
+import { npr, gms, gmsWithTola, gramsToTola, computeNetWeight, round2, computeFineWeight } from "@/lib/format";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import { KarigarSelect, useKarigars } from "@/components/KarigarSelect";
