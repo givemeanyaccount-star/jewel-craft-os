@@ -133,6 +133,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<any[]>([]);
   const [cart, setCart] = useState<CartRow[]>([]);
+  const [weightUnit, setWeightUnit] = useWeightUnit();
   const [discount, setDiscount] = useState(0);
   const [oldGoldCredit, setOldGoldCredit] = useState(0);
   const [targetTotal, setTargetTotal] = useState("");
