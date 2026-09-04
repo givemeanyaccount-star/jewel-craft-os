@@ -1175,9 +1175,30 @@ function PosScreen({ reload }: { reload: () => void }) {
                 <Button size="sm" variant="outline" onClick={() => setOgOpen(true)} title="New old metal purchase">
                   <Coins className="h-3.5 w-3.5" />
                 </Button>
-                <NumberField className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(v) => setOldGoldCredit(v)} />
+                {/* Once a purchase receipt exists the credit belongs to that document;
+                    it can only be typed over after an explicit override. */}
+                {oldGoldPurchaseId && !manualOldGold ? (
+                  <Input readOnly className="h-8 w-28 bg-muted text-right" value={npr(oldGoldCredit)} />
+                ) : (
+                  <NumberField className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(v) => setOldGoldCredit(v)} />
+                )}
               </div>
             </div>
+            {oldGoldPurchaseId && (
+              <div className="-mt-1 text-right text-[11px] text-muted-foreground">
+                {manualOldGold ? (
+                  <>Typed by hand — this no longer matches the purchase receipt.{" "}
+                    <button type="button" className="underline"
+                      onClick={() => setManualOldGold(false)}>Lock to receipt</button>
+                  </>
+                ) : (
+                  <>From the recorded purchase.{" "}
+                    <button type="button" className="underline"
+                      onClick={() => setManualOldGold(true)}>Enter manually</button>
+                  </>
+                )}
+              </div>
+            )}
             {oldGoldEq && <div className="-mt-1 text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
             {appliedOldMetalAdv > 0 && (
               <div className="-mt-1 text-right text-xs text-muted-foreground">
