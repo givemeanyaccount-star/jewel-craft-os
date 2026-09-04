@@ -1076,17 +1076,7 @@ function PosScreen({ reload }: { reload: () => void }) {
               <Table className="mt-3">
                 <TableHeader><TableRow>
                   <TableHead>Item</TableHead>
-                  <TableHead className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <span>Net Wt ({weightUnit})</span>
-                      <div className="flex rounded-md border border-border overflow-hidden">
-                        {(["g", "tola"] as const).map((u) => (
-                          <Button key={u} type="button" size="sm" variant={weightUnit === u ? "secondary" : "ghost"}
-                            className="h-6 rounded-none px-1.5 text-[10px]" onClick={() => setWeightUnit(u)}>{u}</Button>
-                        ))}
-                      </div>
-                    </div>
-                  </TableHead>
+                  <TableHead className="text-right">Net Wt ({weightUnit})</TableHead>
                   <TableHead className="text-right">Rate/{weightUnit === "tola" ? "tola" : "g"}</TableHead>
                   <TableHead className="text-right">Stone</TableHead>
                   <TableHead className="text-right">Line</TableHead>
