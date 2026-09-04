@@ -960,41 +960,39 @@ function PosScreen({ reload }: { reload: () => void }) {
           <Card>
             <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
             <CardContent>
-              <div className="flex gap-2">
-                <Select value={customerId ?? ""} onValueChange={(v) => setCustomerId(v)}>
-                  <SelectTrigger className={`flex-1 ${!customerId ? "border-destructive" : ""}`}>
-                    <SelectValue placeholder="Select customer (required)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} {c.phone && `· ${c.phone}`}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="sm" onClick={() => setNewCustOpen(true)}>
-                  <UserPlus className="mr-1 h-4 w-4" /> New
-                </Button>
-              </div>
-              {!customerId && <p className="mt-1.5 text-xs text-muted-foreground">Every sale must be linked to a customer.</p>}
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <div>
-                  <Label className="text-xs">Order date</Label>
-                  <Input type="date" className="h-9" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+              {/* Same searchable picker as the rest of the app — a flat list of every
+                  customer is unusable once the book grows. */}
+              <CustomerSelector label="" value={pickedCustomer}
+                onChange={(c) => { setPickedCustomer(c); setCustomerId(c?.id ?? null); if (c) void loadCustomers(); }} />
+              {!customerId && <p className="mt-1.5 text-xs text-destructive">Every sale must be linked to a customer.</p>}
+              {/* Order date and rate basis only mean something once an order is attached. */}
+              {(order || orderDate) && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <Label className="text-xs">Order date</Label>
+                    <Input type="date" className="h-9" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Rate basis</Label>
+                    <Select value={rateBasis} onValueChange={(v) => applyRateBasis(v as any)} disabled={!orderDate}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="order">Rate of order date</SelectItem>
+                        <SelectItem value="current">Today's rate</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-xs">Rate basis</Label>
-                  <Select value={rateBasis} onValueChange={(v) => applyRateBasis(v as any)} disabled={!orderDate}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="order">Rate of order date</SelectItem>
-                      <SelectItem value="current">Today's rate</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
+              )}
+              {canBackdate ? (
+                <div className="mt-3 sm:w-1/2">
                   <Label className="text-xs">Invoice date</Label>
-                  <Input type="date" className="h-9" value={issueDate} disabled={!canBackdate}
+                  <Input type="date" className="h-9" value={issueDate}
                     onChange={(e) => setIssueDate(e.target.value)} />
                 </div>
-              </div>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">Invoice date {issueDate} · priced at today's rate.</p>
+              )}
               {order && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Billing custom order <strong>{order.order_no}</strong>
@@ -1018,13 +1016,25 @@ function PosScreen({ reload }: { reload: () => void }) {
 
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <CardTitle>Add items</CardTitle>
-              {cart.length > 0 && (
-                <Button size="sm" variant="outline" onClick={refreshAllRates}>
-                  <RefreshCw className="mr-1 h-4 w-4" /> Refresh rates
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Weights and rates are entered in this unit everywhere in the app. */}
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>Enter weights in</span>
+                  <div className="flex overflow-hidden rounded-md border border-border">
+                    {(["g", "tola"] as const).map((u) => (
+                      <Button key={u} type="button" size="sm" variant={weightUnit === u ? "secondary" : "ghost"}
+                        className="h-6 rounded-none px-2 text-[11px]" onClick={() => setWeightUnit(u)}>{u}</Button>
+                    ))}
+                  </div>
+                </div>
+                {cart.length > 0 && (
+                  <Button size="sm" variant="outline" onClick={refreshAllRates}>
+                    <RefreshCw className="mr-1 h-4 w-4" /> Refresh rates
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {todayRates.length > 0 && (
@@ -1076,17 +1086,7 @@ function PosScreen({ reload }: { reload: () => void }) {
               <Table className="mt-3">
                 <TableHeader><TableRow>
                   <TableHead>Item</TableHead>
-                  <TableHead className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <span>Net Wt ({weightUnit})</span>
-                      <div className="flex rounded-md border border-border overflow-hidden">
-                        {(["g", "tola"] as const).map((u) => (
-                          <Button key={u} type="button" size="sm" variant={weightUnit === u ? "secondary" : "ghost"}
-                            className="h-6 rounded-none px-1.5 text-[10px]" onClick={() => setWeightUnit(u)}>{u}</Button>
-                        ))}
-                      </div>
-                    </div>
-                  </TableHead>
+                  <TableHead className="text-right">Net Wt ({weightUnit})</TableHead>
                   <TableHead className="text-right">Rate/{weightUnit === "tola" ? "tola" : "g"}</TableHead>
                   <TableHead className="text-right">Stone</TableHead>
                   <TableHead className="text-right">Line</TableHead>
@@ -1129,21 +1129,43 @@ function PosScreen({ reload }: { reload: () => void }) {
                       </TableRow>
                       <TableRow key={`${i}-d`} className="border-b bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={6} className="py-2">
-                          <div className="grid grid-cols-2 items-end gap-x-4 gap-y-2 text-[11px] sm:grid-cols-4 lg:grid-cols-6">
-                            <Detail label="Purity" value={r.purity ?? "-"} />
-                            <Detail label="Gross wt" value={`${d.grossWt.toFixed(3)} g`} />
-                            <Detail label="Stone wt" value={`${d.stoneWt.toFixed(3)} g`} />
-                            <Detail label="Net wt" value={`${d.netWt.toFixed(3)} g (${gramsToTola(d.netWt).toFixed(4)} tola)`} />
-                            <LineChargeFields
-                              wastageInput={Number(r.wastage_input ?? 0)} wastageType={r.wastage_type ?? "percentage"}
-                              makingInput={Number(r.making_input ?? 0)} makingType={r.making_type ?? "per_gram"}
-                              onChange={(patch) => updateRow(i, patch as Partial<CartRow>)} />
-                            <Detail label="Wastage wt" value={`${d.wastageWt.toFixed(3)} g`} />
-                            <Detail label="Total wt" value={`${d.totalWt.toFixed(3)} g (${gramsToTola(d.totalWt).toFixed(4)} tola)`} />
-                            <Detail label="Gold amt" value={npr(d.goldAmt)} />
-                            <Detail label="Stone amt" value={npr(d.stoneAmt)} />
-                            <Detail label="Making amt" value={npr(d.making)} />
-                            <Detail label="Qty" value={String(d.qty)} />
+                          {/* Everything you can change sits together, everything the
+                              bill works out sits below it. */}
+                          <div className="space-y-2 text-[11px]">
+                            <div className="grid grid-cols-2 items-end gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-5">
+                              <div className="space-y-0.5">
+                                <div className="text-muted-foreground">Gross wt</div>
+                                <UnitNumberField className="w-24" inputClassName="h-8 text-right" hideToggle
+                                  value={d.grossWt} onChange={(v) => updateRow(i, {
+                                    gross_weight: v, weight: computeNetWeight(v, Number(r.stone_weight || 0)),
+                                  })} />
+                              </div>
+                              <div className="space-y-0.5">
+                                <div className="text-muted-foreground">Stone wt</div>
+                                <UnitNumberField className="w-24" inputClassName="h-8 text-right" hideToggle
+                                  value={d.stoneWt} onChange={(v) => updateRow(i, {
+                                    stone_weight: v, weight: computeNetWeight(Number(r.gross_weight || 0), v),
+                                  })} />
+                              </div>
+                              <LineChargeFields
+                                wastageInput={Number(r.wastage_input ?? 0)} wastageType={r.wastage_type ?? "percentage"}
+                                makingInput={Number(r.making_input ?? 0)} makingType={r.making_type ?? "per_gram"}
+                                onChange={(patch) => updateRow(i, patch as Partial<CartRow>)} />
+                              <div className="space-y-0.5">
+                                <div className="text-muted-foreground">Qty</div>
+                                <NumberField decimals={0} className="h-8 w-20 text-right" value={d.qty}
+                                  onChange={(v) => updateRow(i, { quantity: Math.max(1, Number(v) || 1) })} />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2 sm:grid-cols-4 lg:grid-cols-6">
+                              <Detail label="Purity" value={r.purity ?? "-"} />
+                              <Detail label="Net wt" value={gmsWithTola(d.netWt)} />
+                              <Detail label="Wastage wt" value={gmsWithTola(d.wastageWt)} />
+                              <Detail label="Total wt" value={gmsWithTola(d.totalWt)} />
+                              <Detail label="Gold amt" value={npr(d.goldAmt)} />
+                              <Detail label="Stone amt" value={npr(d.stoneAmt)} />
+                              <Detail label="Making amt" value={npr(d.making)} />
+                            </div>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1175,9 +1197,30 @@ function PosScreen({ reload }: { reload: () => void }) {
                 <Button size="sm" variant="outline" onClick={() => setOgOpen(true)} title="New old metal purchase">
                   <Coins className="h-3.5 w-3.5" />
                 </Button>
-                <NumberField className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(v) => setOldGoldCredit(v)} />
+                {/* Once a purchase receipt exists the credit belongs to that document;
+                    it can only be typed over after an explicit override. */}
+                {oldGoldPurchaseId && !manualOldGold ? (
+                  <Input readOnly className="h-8 w-28 bg-muted text-right" value={npr(oldGoldCredit)} />
+                ) : (
+                  <NumberField className="h-8 w-28 text-right" value={oldGoldCredit} onChange={(v) => setOldGoldCredit(v)} />
+                )}
               </div>
             </div>
+            {oldGoldPurchaseId && (
+              <div className="-mt-1 text-right text-[11px] text-muted-foreground">
+                {manualOldGold ? (
+                  <>Typed by hand — this no longer matches the purchase receipt.{" "}
+                    <button type="button" className="underline"
+                      onClick={() => setManualOldGold(false)}>Lock to receipt</button>
+                  </>
+                ) : (
+                  <>From the recorded purchase.{" "}
+                    <button type="button" className="underline"
+                      onClick={() => setManualOldGold(true)}>Enter manually</button>
+                  </>
+                )}
+              </div>
+            )}
             {oldGoldEq && <div className="-mt-1 text-right text-xs text-muted-foreground">{oldGoldEq}</div>}
             {appliedOldMetalAdv > 0 && (
               <div className="-mt-1 text-right text-xs text-muted-foreground">
@@ -1256,6 +1299,8 @@ function PosScreen({ reload }: { reload: () => void }) {
                     </SelectContent>
                   </Select>
                 </div>
+                {/* Only the figures that explain where the refund comes from — the bill
+                    totals themselves are already shown once, above. */}
                 <div className="mt-1 space-y-0.5 border-t pt-1 text-[11px] text-muted-foreground">
                   <div className="flex justify-between"><span>Max refundable</span><span>{npr(refundDue)}</span></div>
                   {oldMetalSurplus > 0 && (
@@ -1264,45 +1309,49 @@ function PosScreen({ reload }: { reload: () => void }) {
                   {advanceExcess > 0 && (
                     <div className="flex justify-between"><span>From excess advance</span><span>{npr(advanceExcess)}</span></div>
                   )}
-                  <div className="flex justify-between"><span>Advance applied to bill</span><span>{npr(appliedAdvance)}</span></div>
-                  <div className="flex justify-between"><span>Kept on order</span><span>{npr(round2(advanceKept + oldMetalKept))}</span></div>
-                  <div className="flex justify-between"><span>Net payable</span><span>{npr(netPayable)}</span></div>
-                  <div className="flex justify-between"><span>Balance after payments</span><span>{npr(balance)}</span></div>
+                  {refund < refundDue && advance > 0 && (
+                    <div className="flex justify-between">
+                      <span>Stays on the order</span><span>{npr(round2(refundDue - refund))}</span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Credits exceed the bill by {npr(refundDue)}.
-                  {refund < refundDue && advance > 0 && <> {npr(round2(refundDue - refund))} stays on the order for the remaining items.</>}
-                </p>
-
               </div>
             )}
 
 
             <div className="rounded-md border bg-muted/40 p-2">
               <Label className="text-xs">
-                {refundDue > 0 ? "Set refund amount (auto-discount)" : "Set net payable amount (auto-discount)"}
+                {refundDue > 0 ? "Refund should come to" : "Bill should come to"}
               </Label>
               <div className="mt-1 flex gap-2">
                 <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                 <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
               </div>
-              {refundDue > 0 ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Money handed back after the {npr(advanceRequested)} advance covers this bill.
-                </p>
-              ) : appliedAdvance > 0 ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Amount the customer pays now, after the {npr(appliedAdvance)} cash advance.
-                </p>
-              ) : null}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {refundDue > 0
+                  ? `Sets the discount so the money handed back equals this amount, after the ${npr(advanceRequested)} advance covers the bill.`
+                  : appliedAdvance > 0
+                    ? `Sets the discount so the customer pays this amount now, after the ${npr(appliedAdvance)} cash advance.`
+                    : "Sets the discount so the customer pays exactly this amount."}
+              </p>
+              {(discount > 0 || roundOff !== 0) && (
+                <Button size="sm" variant="ghost" className="mt-1 h-7 px-2 text-[11px]"
+                  onClick={() => { setDiscount(0); setRoundOff(0); setTargetTotal(""); }}>
+                  Undo — clear discount &amp; round-off
+                </Button>
+              )}
             </div>
 
+            <div>
+              <Label>Notes</Label>
+              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
 
             <div>
               <div className="flex items-center justify-between">
                 <Label>Payments</Label>
                 <Button size="sm" variant="ghost"
-                  onClick={() => setPayments((p) => [...p, { method: "cash", amount: Math.max(0, tax.total - paid) }])}>
+                  onClick={() => setPayments((p) => [...p, { method: "cash", amount: round2(Math.max(0, netPayable - manualPaid)) }])}>
                   <Plus className="mr-1 h-3 w-3" /> Add
                 </Button>
               </div>
@@ -1334,10 +1383,6 @@ function PosScreen({ reload }: { reload: () => void }) {
                 </div>
               )}
 
-            </div>
-            <div>
-              <Label>Notes</Label>
-              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
             <Button className="w-full" onClick={checkout} disabled={saving || cart.length === 0 || !customerId}>
               {saving ? "Processing..." : "Complete Sale"}
