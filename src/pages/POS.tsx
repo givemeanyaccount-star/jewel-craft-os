@@ -960,41 +960,39 @@ function PosScreen({ reload }: { reload: () => void }) {
           <Card>
             <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
             <CardContent>
-              <div className="flex gap-2">
-                <Select value={customerId ?? ""} onValueChange={(v) => setCustomerId(v)}>
-                  <SelectTrigger className={`flex-1 ${!customerId ? "border-destructive" : ""}`}>
-                    <SelectValue placeholder="Select customer (required)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} {c.phone && `· ${c.phone}`}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="sm" onClick={() => setNewCustOpen(true)}>
-                  <UserPlus className="mr-1 h-4 w-4" /> New
-                </Button>
-              </div>
-              {!customerId && <p className="mt-1.5 text-xs text-muted-foreground">Every sale must be linked to a customer.</p>}
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <div>
-                  <Label className="text-xs">Order date</Label>
-                  <Input type="date" className="h-9" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+              {/* Same searchable picker as the rest of the app — a flat list of every
+                  customer is unusable once the book grows. */}
+              <CustomerSelector label="" value={pickedCustomer}
+                onChange={(c) => { setPickedCustomer(c); setCustomerId(c?.id ?? null); if (c) void loadCustomers(); }} />
+              {!customerId && <p className="mt-1.5 text-xs text-destructive">Every sale must be linked to a customer.</p>}
+              {/* Order date and rate basis only mean something once an order is attached. */}
+              {(order || orderDate) && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <Label className="text-xs">Order date</Label>
+                    <Input type="date" className="h-9" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Rate basis</Label>
+                    <Select value={rateBasis} onValueChange={(v) => applyRateBasis(v as any)} disabled={!orderDate}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="order">Rate of order date</SelectItem>
+                        <SelectItem value="current">Today's rate</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-xs">Rate basis</Label>
-                  <Select value={rateBasis} onValueChange={(v) => applyRateBasis(v as any)} disabled={!orderDate}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="order">Rate of order date</SelectItem>
-                      <SelectItem value="current">Today's rate</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
+              )}
+              {canBackdate ? (
+                <div className="mt-3 sm:w-1/2">
                   <Label className="text-xs">Invoice date</Label>
-                  <Input type="date" className="h-9" value={issueDate} disabled={!canBackdate}
+                  <Input type="date" className="h-9" value={issueDate}
                     onChange={(e) => setIssueDate(e.target.value)} />
                 </div>
-              </div>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">Invoice date {issueDate} · priced at today's rate.</p>
+              )}
               {order && (
                 <p className="mt-1.5 text-xs text-muted-foreground">
                   Billing custom order <strong>{order.order_no}</strong>
