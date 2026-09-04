@@ -1018,13 +1018,25 @@ function PosScreen({ reload }: { reload: () => void }) {
 
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <CardTitle>Add items</CardTitle>
-              {cart.length > 0 && (
-                <Button size="sm" variant="outline" onClick={refreshAllRates}>
-                  <RefreshCw className="mr-1 h-4 w-4" /> Refresh rates
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Weights and rates are entered in this unit everywhere in the app. */}
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>Enter weights in</span>
+                  <div className="flex overflow-hidden rounded-md border border-border">
+                    {(["g", "tola"] as const).map((u) => (
+                      <Button key={u} type="button" size="sm" variant={weightUnit === u ? "secondary" : "ghost"}
+                        className="h-6 rounded-none px-2 text-[11px]" onClick={() => setWeightUnit(u)}>{u}</Button>
+                    ))}
+                  </div>
+                </div>
+                {cart.length > 0 && (
+                  <Button size="sm" variant="outline" onClick={refreshAllRates}>
+                    <RefreshCw className="mr-1 h-4 w-4" /> Refresh rates
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {todayRates.length > 0 && (
