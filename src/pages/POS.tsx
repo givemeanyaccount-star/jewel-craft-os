@@ -1129,21 +1129,43 @@ function PosScreen({ reload }: { reload: () => void }) {
                       </TableRow>
                       <TableRow key={`${i}-d`} className="border-b bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={6} className="py-2">
-                          <div className="grid grid-cols-2 items-end gap-x-4 gap-y-2 text-[11px] sm:grid-cols-4 lg:grid-cols-6">
-                            <Detail label="Purity" value={r.purity ?? "-"} />
-                            <Detail label="Gross wt" value={`${d.grossWt.toFixed(3)} g`} />
-                            <Detail label="Stone wt" value={`${d.stoneWt.toFixed(3)} g`} />
-                            <Detail label="Net wt" value={`${d.netWt.toFixed(3)} g (${gramsToTola(d.netWt).toFixed(4)} tola)`} />
-                            <LineChargeFields
-                              wastageInput={Number(r.wastage_input ?? 0)} wastageType={r.wastage_type ?? "percentage"}
-                              makingInput={Number(r.making_input ?? 0)} makingType={r.making_type ?? "per_gram"}
-                              onChange={(patch) => updateRow(i, patch as Partial<CartRow>)} />
-                            <Detail label="Wastage wt" value={`${d.wastageWt.toFixed(3)} g`} />
-                            <Detail label="Total wt" value={`${d.totalWt.toFixed(3)} g (${gramsToTola(d.totalWt).toFixed(4)} tola)`} />
-                            <Detail label="Gold amt" value={npr(d.goldAmt)} />
-                            <Detail label="Stone amt" value={npr(d.stoneAmt)} />
-                            <Detail label="Making amt" value={npr(d.making)} />
-                            <Detail label="Qty" value={String(d.qty)} />
+                          {/* Everything you can change sits together, everything the
+                              bill works out sits below it. */}
+                          <div className="space-y-2 text-[11px]">
+                            <div className="grid grid-cols-2 items-end gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-5">
+                              <div className="space-y-0.5">
+                                <div className="text-muted-foreground">Gross wt</div>
+                                <UnitNumberField className="w-24" inputClassName="h-8 text-right" hideToggle
+                                  value={d.grossWt} onChange={(v) => updateRow(i, {
+                                    gross_weight: v, weight: computeNetWeight(v, Number(r.stone_weight || 0)),
+                                  })} />
+                              </div>
+                              <div className="space-y-0.5">
+                                <div className="text-muted-foreground">Stone wt</div>
+                                <UnitNumberField className="w-24" inputClassName="h-8 text-right" hideToggle
+                                  value={d.stoneWt} onChange={(v) => updateRow(i, {
+                                    stone_weight: v, weight: computeNetWeight(Number(r.gross_weight || 0), v),
+                                  })} />
+                              </div>
+                              <LineChargeFields
+                                wastageInput={Number(r.wastage_input ?? 0)} wastageType={r.wastage_type ?? "percentage"}
+                                makingInput={Number(r.making_input ?? 0)} makingType={r.making_type ?? "per_gram"}
+                                onChange={(patch) => updateRow(i, patch as Partial<CartRow>)} />
+                              <div className="space-y-0.5">
+                                <div className="text-muted-foreground">Qty</div>
+                                <NumberField decimals={0} className="h-8 w-20 text-right" value={d.qty}
+                                  onChange={(v) => updateRow(i, { quantity: Math.max(1, Number(v) || 1) })} />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2 sm:grid-cols-4 lg:grid-cols-6">
+                              <Detail label="Purity" value={r.purity ?? "-"} />
+                              <Detail label="Net wt" value={gmsWithTola(d.netWt)} />
+                              <Detail label="Wastage wt" value={gmsWithTola(d.wastageWt)} />
+                              <Detail label="Total wt" value={gmsWithTola(d.totalWt)} />
+                              <Detail label="Gold amt" value={npr(d.goldAmt)} />
+                              <Detail label="Stone amt" value={npr(d.stoneAmt)} />
+                              <Detail label="Making amt" value={npr(d.making)} />
+                            </div>
                           </div>
                         </TableCell>
                       </TableRow>
