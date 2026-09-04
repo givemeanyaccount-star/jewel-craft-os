@@ -1256,6 +1256,8 @@ function PosScreen({ reload }: { reload: () => void }) {
                     </SelectContent>
                   </Select>
                 </div>
+                {/* Only the figures that explain where the refund comes from — the bill
+                    totals themselves are already shown once, above. */}
                 <div className="mt-1 space-y-0.5 border-t pt-1 text-[11px] text-muted-foreground">
                   <div className="flex justify-between"><span>Max refundable</span><span>{npr(refundDue)}</span></div>
                   {oldMetalSurplus > 0 && (
@@ -1264,45 +1266,49 @@ function PosScreen({ reload }: { reload: () => void }) {
                   {advanceExcess > 0 && (
                     <div className="flex justify-between"><span>From excess advance</span><span>{npr(advanceExcess)}</span></div>
                   )}
-                  <div className="flex justify-between"><span>Advance applied to bill</span><span>{npr(appliedAdvance)}</span></div>
-                  <div className="flex justify-between"><span>Kept on order</span><span>{npr(round2(advanceKept + oldMetalKept))}</span></div>
-                  <div className="flex justify-between"><span>Net payable</span><span>{npr(netPayable)}</span></div>
-                  <div className="flex justify-between"><span>Balance after payments</span><span>{npr(balance)}</span></div>
+                  {refund < refundDue && advance > 0 && (
+                    <div className="flex justify-between">
+                      <span>Stays on the order</span><span>{npr(round2(refundDue - refund))}</span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Credits exceed the bill by {npr(refundDue)}.
-                  {refund < refundDue && advance > 0 && <> {npr(round2(refundDue - refund))} stays on the order for the remaining items.</>}
-                </p>
-
               </div>
             )}
 
 
             <div className="rounded-md border bg-muted/40 p-2">
               <Label className="text-xs">
-                {refundDue > 0 ? "Set refund amount (auto-discount)" : "Set net payable amount (auto-discount)"}
+                {refundDue > 0 ? "Refund should come to" : "Bill should come to"}
               </Label>
               <div className="mt-1 flex gap-2">
                 <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                 <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
               </div>
-              {refundDue > 0 ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Money handed back after the {npr(advanceRequested)} advance covers this bill.
-                </p>
-              ) : appliedAdvance > 0 ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Amount the customer pays now, after the {npr(appliedAdvance)} cash advance.
-                </p>
-              ) : null}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {refundDue > 0
+                  ? `Sets the discount so the money handed back equals this amount, after the ${npr(advanceRequested)} advance covers the bill.`
+                  : appliedAdvance > 0
+                    ? `Sets the discount so the customer pays this amount now, after the ${npr(appliedAdvance)} cash advance.`
+                    : "Sets the discount so the customer pays exactly this amount."}
+              </p>
+              {(discount > 0 || roundOff !== 0) && (
+                <Button size="sm" variant="ghost" className="mt-1 h-7 px-2 text-[11px]"
+                  onClick={() => { setDiscount(0); setRoundOff(0); setTargetTotal(""); }}>
+                  Undo — clear discount &amp; round-off
+                </Button>
+              )}
             </div>
 
+            <div>
+              <Label>Notes</Label>
+              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
 
             <div>
               <div className="flex items-center justify-between">
                 <Label>Payments</Label>
                 <Button size="sm" variant="ghost"
-                  onClick={() => setPayments((p) => [...p, { method: "cash", amount: Math.max(0, tax.total - paid) }])}>
+                  onClick={() => setPayments((p) => [...p, { method: "cash", amount: round2(Math.max(0, netPayable - manualPaid)) }])}>
                   <Plus className="mr-1 h-3 w-3" /> Add
                 </Button>
               </div>
@@ -1334,10 +1340,6 @@ function PosScreen({ reload }: { reload: () => void }) {
                 </div>
               )}
 
-            </div>
-            <div>
-              <Label>Notes</Label>
-              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
             <Button className="w-full" onClick={checkout} disabled={saving || cart.length === 0 || !customerId}>
               {saving ? "Processing..." : "Complete Sale"}
