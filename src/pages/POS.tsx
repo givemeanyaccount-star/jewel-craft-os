@@ -137,6 +137,7 @@ function PosScreen({ reload }: { reload: () => void }) {
 
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(d.customerId ?? null);
+  const [pickedCustomer, setPickedCustomer] = useState<PickedCustomer | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [categoryId, setCategoryId] = useState<string>("all");
   const [todayRates, setTodayRates] = useState<any[]>([]);
