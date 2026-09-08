@@ -151,6 +151,8 @@ function PosScreen({ reload }: { reload: () => void }) {
   const [roundOff, setRoundOff] = useState(d.roundOff ?? 0);
   const [oldGoldCredit, setOldGoldCredit] = useState(d.oldGoldCredit ?? 0);
   const [oldGoldPurchaseId, setOldGoldPurchaseId] = useState<string | null>(d.oldGoldPurchaseId ?? null);
+  // Set only when staff deliberately override a credit that came from a purchase receipt.
+  const [manualOldGold, setManualOldGold] = useState(false);
   const [oldGoldMetal, setOldGoldMetal] = useState<string>(d.oldGoldMetal ?? "gold");
   const [fineRates, setFineRates] = useState<FineRates>({});
   useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
