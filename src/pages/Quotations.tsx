@@ -477,17 +477,19 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
               {settings.vat_enabled && <div className="flex justify-between"><span className="text-muted-foreground">VAT {settings.vat_rate}% (stones)</span><span>{npr(tax.vat)}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">SD tax {settings.sd_tax_rate}%</span><span>{npr(tax.sdTax)}</span></div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Old metal credit</span>
+                {/* A quotation cannot record a purchase, so this is an estimate only. */}
+                <span className="text-muted-foreground">Estimated trade-in</span>
                 <NumberField className="h-8 w-28 text-right" value={oldGoldCredit}
                   onChange={(v) => setOldGoldCredit(v)} />
               </div>
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>
               <div className="rounded-md border bg-muted/40 p-2">
-                <Label className="text-xs">Set net amount (auto-discount)</Label>
+                <Label className="text-xs">Quote should come to</Label>
                 <div className="mt-1 flex gap-2">
                   <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                   <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
                 </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">Sets the discount so the quote totals this amount.</p>
               </div>
               <div>
                 <Label>Valid for (days)</Label>
