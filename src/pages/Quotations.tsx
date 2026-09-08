@@ -156,6 +156,14 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
     supabase.from("locations").select("id, name").order("name").then(({ data }) => setLocations(data ?? []));
   }, [open]);
 
+  // The picker needs the customer's name; a quote being edited only carries the id.
+  useEffect(() => {
+    if (!customerId) return;
+    if (pickedCustomer?.id === customerId) return;
+    const c = customers.find((x) => x.id === customerId);
+    if (c) setPickedCustomer({ id: c.id, full_name: c.full_name, phone: c.phone ?? null });
+  }, [customerId, customers]);
+
   // Load an existing quotation for editing, or reset for a new one
   useEffect(() => {
     if (!open) return;

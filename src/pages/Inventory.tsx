@@ -292,7 +292,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
             <NumberField value={form.stone_value ?? 0} onChange={(v) => setForm({ ...form, stone_value: v })} />
           </div>
           {/* Value first, then how it is charged — the same order as the sale and quote lines. */}
-          <div className="sm:col-span-2">
+          <div className="md:col-span-2">
             <Label>Making charge</Label>
             <div className="flex gap-1">
               <NumberField className="text-right" value={form.making_charge ?? 0} onChange={(v) => setForm({ ...form, making_charge: v })} />
@@ -306,7 +306,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
               </Select>
             </div>
           </div>
-          <div className="sm:col-span-2">
+          <div className="md:col-span-2">
             <Label>Wastage</Label>
             <div className="flex gap-1">
               <NumberField decimals={3} className="text-right" value={form.wastage_value ?? 0} onChange={(v) => setForm({ ...form, wastage_value: v })} />
