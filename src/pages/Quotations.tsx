@@ -376,7 +376,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
                     className="flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-muted">
                     <div>
                       <div className="font-medium">{i.name}</div>
-                      <div className="text-xs text-muted-foreground">{i.sku} · {i.metal} {i.purity} · {i.net_weight}g</div>
+                      <div className="text-xs text-muted-foreground">{i.sku} · {i.metal} {i.purity} · {gmsWithTola(Number(i.net_weight))}</div>
                     </div>
                     <Plus className="h-4 w-4" />
                   </button>
