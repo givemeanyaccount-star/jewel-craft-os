@@ -291,35 +291,34 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
             <Label>Stone value (रू)</Label>
             <NumberField value={form.stone_value ?? 0} onChange={(v) => setForm({ ...form, stone_value: v })} />
           </div>
-          <div>
-            <Label>Making charge type</Label>
-            <Select value={form.making_charge_type} onValueChange={(v) => setForm({ ...form, making_charge_type: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="per_gram">Per gram</SelectItem>
-                <SelectItem value="percentage">Percentage</SelectItem>
-                <SelectItem value="fixed">Fixed</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Value first, then how it is charged — the same order as the sale and quote lines. */}
+          <div className="md:col-span-2">
+            <Label>Making charge</Label>
+            <div className="flex gap-1">
+              <NumberField className="text-right" value={form.making_charge ?? 0} onChange={(v) => setForm({ ...form, making_charge: v })} />
+              <Select value={form.making_charge_type} onValueChange={(v) => setForm({ ...form, making_charge_type: v })}>
+                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="per_gram">Per gram</SelectItem>
+                  <SelectItem value="percentage">Percentage</SelectItem>
+                  <SelectItem value="fixed">Fixed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div>
-            <Label>Making charge value</Label>
-            <NumberField value={form.making_charge ?? 0} onChange={(v) => setForm({ ...form, making_charge: v })} />
-          </div>
-          <div>
-            <Label>Wastage type</Label>
-            <Select value={form.wastage_type} onValueChange={(v) => setForm({ ...form, wastage_type: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="percentage">Percentage (%)</SelectItem>
-                <SelectItem value="weight">Weight (g)</SelectItem>
-                <SelectItem value="fixed">Fixed (रू)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Wastage value</Label>
-            <NumberField decimals={3} value={form.wastage_value ?? 0} onChange={(v) => setForm({ ...form, wastage_value: v })} />
+          <div className="md:col-span-2">
+            <Label>Wastage</Label>
+            <div className="flex gap-1">
+              <NumberField decimals={3} className="text-right" value={form.wastage_value ?? 0} onChange={(v) => setForm({ ...form, wastage_value: v })} />
+              <Select value={form.wastage_type} onValueChange={(v) => setForm({ ...form, wastage_type: v })}>
+                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percentage">Percentage (%)</SelectItem>
+                  <SelectItem value="weight">Weight (g)</SelectItem>
+                  <SelectItem value="fixed">Fixed (रू)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div>
             <Label>Status</Label>

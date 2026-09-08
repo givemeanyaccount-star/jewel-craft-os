@@ -29,6 +29,7 @@ import { QRScanButton } from "@/components/QRScanButton";
 import { toast } from "sonner";
 import { CartRow, recompute, lineDisplay, Detail } from "@/pages/POS";
 import { ItemDialog } from "@/pages/Inventory";
+import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
 import { deleteQuotation, releaseQuotationItems, reserveQuotationItems, sweepExpiredQuotations } from "@/lib/quotations";
 
 const isoDate = (d: Date) => format(d, "yyyy-MM-dd");
@@ -129,6 +130,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
   const { settings } = useAppSettings();
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [pickedCustomer, setPickedCustomer] = useState<PickedCustomer | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [categoryId, setCategoryId] = useState<string>("all");
@@ -154,11 +156,19 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
     supabase.from("locations").select("id, name").order("name").then(({ data }) => setLocations(data ?? []));
   }, [open]);
 
+  // The picker needs the customer's name; a quote being edited only carries the id.
+  useEffect(() => {
+    if (!customerId) return;
+    if (pickedCustomer?.id === customerId) return;
+    const c = customers.find((x) => x.id === customerId);
+    if (c) setPickedCustomer({ id: c.id, full_name: c.full_name, phone: c.phone ?? null });
+  }, [customerId, customers]);
+
   // Load an existing quotation for editing, or reset for a new one
   useEffect(() => {
     if (!open) return;
     if (!editing) {
-      setCustomerId(null); setCart([]); setDiscount(0); setOldGoldCredit(0); setNotes("");
+      setCustomerId(null); setPickedCustomer(null); setCart([]); setDiscount(0); setOldGoldCredit(0); setNotes("");
       setTargetTotal(""); setValidDays(7); setValidUntil(isoDate(new Date(Date.now() + 7 * 86400000)));
       setOriginalItemIds([]);
       return;
@@ -166,6 +176,10 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
     (async () => {
       const { data: lines } = await supabase.from("quotation_items").select("*").eq("quotation_id", editing.id);
       setCustomerId(editing.customer_id);
+      {
+        const c = customers.find((x) => x.id === editing.customer_id);
+        setPickedCustomer(c ? { id: c.id, full_name: c.full_name, phone: c.phone ?? null } : null);
+      }
       setDiscount(Number(editing.discount ?? 0));
       setOldGoldCredit(Number(editing.old_gold_credit ?? 0));
       setNotes(editing.notes ?? "");
@@ -342,15 +356,19 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-3 lg:col-span-2">
             <div>
-              <Label>Customer *</Label>
-              <Select value={customerId ?? ""} onValueChange={(v) => setCustomerId(v)}>
-                <SelectTrigger className={!customerId ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Select customer (required)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} {c.phone && `· ${c.phone}`}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {/* Same searchable picker as the sales counter. */}
+              <CustomerSelector label="Customer *" value={pickedCustomer}
+                onChange={(c) => { setPickedCustomer(c); setCustomerId(c?.id ?? null); }} />
+              {!customerId && <p className="mt-1.5 text-xs text-destructive">A quotation must be linked to a customer.</p>}
+              <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                <span>Enter weights in</span>
+                <div className="flex overflow-hidden rounded-md border border-border">
+                  {(["g", "tola"] as const).map((u) => (
+                    <Button key={u} type="button" size="sm" variant={weightUnit === u ? "secondary" : "ghost"}
+                      className="h-6 rounded-none px-2 text-[11px]" onClick={() => setWeightUnit(u)}>{u}</Button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Select value={categoryId} onValueChange={setCategoryId}>
@@ -376,7 +394,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
                     className="flex w-full items-center justify-between border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-muted">
                     <div>
                       <div className="font-medium">{i.name}</div>
-                      <div className="text-xs text-muted-foreground">{i.sku} · {i.metal} {i.purity} · {i.net_weight}g</div>
+                      <div className="text-xs text-muted-foreground">{i.sku} · {i.metal} {i.purity} · {gmsWithTola(Number(i.net_weight))}</div>
                     </div>
                     <Plus className="h-4 w-4" />
                   </button>
@@ -386,17 +404,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Item</TableHead>
-                <TableHead className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Net Wt ({weightUnit})</span>
-                    <div className="flex overflow-hidden rounded-md border border-border">
-                      {(["g", "tola"] as const).map((u) => (
-                        <Button key={u} type="button" size="sm" variant={weightUnit === u ? "secondary" : "ghost"}
-                          className="h-6 rounded-none px-1.5 text-[10px]" onClick={() => setWeightUnit(u)}>{u}</Button>
-                      ))}
-                    </div>
-                  </div>
-                </TableHead>
+                <TableHead className="text-right">Net Wt ({weightUnit})</TableHead>
                 <TableHead className="text-right">Rate/{weightUnit === "tola" ? "tola" : "g"}</TableHead>
                 <TableHead className="text-right">Stone</TableHead>
                 <TableHead className="text-right">Line</TableHead>
@@ -477,17 +485,19 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
               {settings.vat_enabled && <div className="flex justify-between"><span className="text-muted-foreground">VAT {settings.vat_rate}% (stones)</span><span>{npr(tax.vat)}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">SD tax {settings.sd_tax_rate}%</span><span>{npr(tax.sdTax)}</span></div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Old metal credit</span>
+                {/* A quotation cannot record a purchase, so this is an estimate only. */}
+                <span className="text-muted-foreground">Estimated trade-in</span>
                 <NumberField className="h-8 w-28 text-right" value={oldGoldCredit}
                   onChange={(v) => setOldGoldCredit(v)} />
               </div>
               <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total</span><span>{npr(tax.total)}</span></div>
               <div className="rounded-md border bg-muted/40 p-2">
-                <Label className="text-xs">Set net amount (auto-discount)</Label>
+                <Label className="text-xs">Quote should come to</Label>
                 <div className="mt-1 flex gap-2">
                   <NumberField placeholder="e.g. 150000" value={targetTotal} onChange={(v) => setTargetTotal(v ? String(v) : "")} />
                   <Button size="sm" variant="secondary" onClick={applyTargetTotal}>Apply</Button>
                 </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">Sets the discount so the quote totals this amount.</p>
               </div>
               <div>
                 <Label>Valid for (days)</Label>

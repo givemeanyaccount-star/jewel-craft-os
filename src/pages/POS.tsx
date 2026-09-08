@@ -28,6 +28,7 @@ import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, solveTargetTotal, solveTargetRefund,
   round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE, REFUND_NOTE, gramsToTola,
+  gmsWithTola, computeNetWeight,
 } from "@/lib/format";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
@@ -38,7 +39,7 @@ import { PuritySelect } from "@/components/PuritySelect";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { ItemDialog } from "@/pages/Inventory";
 import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
-import { PickedCustomer } from "@/components/CustomerSelector";
+import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
 import { fetchRateOn, fetchLatestRate, todayISO, logOrderItemStatus, syncOrderStatus, recalcOrderItem, lineProgress } from "@/lib/orders";
 
 
@@ -136,6 +137,7 @@ function PosScreen({ reload }: { reload: () => void }) {
 
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(d.customerId ?? null);
+  const [pickedCustomer, setPickedCustomer] = useState<PickedCustomer | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [categoryId, setCategoryId] = useState<string>("all");
   const [todayRates, setTodayRates] = useState<any[]>([]);
@@ -149,6 +151,8 @@ function PosScreen({ reload }: { reload: () => void }) {
   const [roundOff, setRoundOff] = useState(d.roundOff ?? 0);
   const [oldGoldCredit, setOldGoldCredit] = useState(d.oldGoldCredit ?? 0);
   const [oldGoldPurchaseId, setOldGoldPurchaseId] = useState<string | null>(d.oldGoldPurchaseId ?? null);
+  // Set only when staff deliberately override a credit that came from a purchase receipt.
+  const [manualOldGold, setManualOldGold] = useState(false);
   const [oldGoldMetal, setOldGoldMetal] = useState<string>(d.oldGoldMetal ?? "gold");
   const [fineRates, setFineRates] = useState<FineRates>({});
   useEffect(() => { fetchLatestFineRates().then(setFineRates); }, []);
@@ -187,6 +191,14 @@ function PosScreen({ reload }: { reload: () => void }) {
     const { data } = await supabase.from("customers").select("id, full_name, phone").order("full_name");
     setCustomers(data ?? []);
   }
+  // A restored draft, an order or a quotation only carries the customer id —
+  // show the name in the picker as soon as the list is available.
+  useEffect(() => {
+    if (!customerId) { setPickedCustomer(null); return; }
+    if (pickedCustomer?.id === customerId) return;
+    const c = customers.find((x) => x.id === customerId);
+    if (c) setPickedCustomer({ id: c.id, full_name: c.full_name, phone: c.phone ?? null });
+  }, [customerId, customers]);
   useEffect(() => {
     supabase.from("categories").select("id, name").order("name").then(({ data }) => setCategories(data ?? []));
     supabase.from("locations").select("id, name").order("name").then(({ data }) => setLocations(data ?? []));
