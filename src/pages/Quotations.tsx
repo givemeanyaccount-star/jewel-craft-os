@@ -342,15 +342,19 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-3 lg:col-span-2">
             <div>
-              <Label>Customer *</Label>
-              <Select value={customerId ?? ""} onValueChange={(v) => setCustomerId(v)}>
-                <SelectTrigger className={!customerId ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Select customer (required)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.full_name} {c.phone && `· ${c.phone}`}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {/* Same searchable picker as the sales counter. */}
+              <CustomerSelector label="Customer *" value={pickedCustomer}
+                onChange={(c) => { setPickedCustomer(c); setCustomerId(c?.id ?? null); }} />
+              {!customerId && <p className="mt-1.5 text-xs text-destructive">A quotation must be linked to a customer.</p>}
+              <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                <span>Enter weights in</span>
+                <div className="flex overflow-hidden rounded-md border border-border">
+                  {(["g", "tola"] as const).map((u) => (
+                    <Button key={u} type="button" size="sm" variant={weightUnit === u ? "secondary" : "ghost"}
+                      className="h-6 rounded-none px-2 text-[11px]" onClick={() => setWeightUnit(u)}>{u}</Button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Select value={categoryId} onValueChange={setCategoryId}>
