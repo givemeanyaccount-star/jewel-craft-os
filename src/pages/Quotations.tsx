@@ -29,6 +29,7 @@ import { QRScanButton } from "@/components/QRScanButton";
 import { toast } from "sonner";
 import { CartRow, recompute, lineDisplay, Detail } from "@/pages/POS";
 import { ItemDialog } from "@/pages/Inventory";
+import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
 import { deleteQuotation, releaseQuotationItems, reserveQuotationItems, sweepExpiredQuotations } from "@/lib/quotations";
 
 const isoDate = (d: Date) => format(d, "yyyy-MM-dd");
@@ -129,6 +130,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
   const { settings } = useAppSettings();
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [pickedCustomer, setPickedCustomer] = useState<PickedCustomer | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [categoryId, setCategoryId] = useState<string>("all");
