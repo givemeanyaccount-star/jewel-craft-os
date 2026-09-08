@@ -160,7 +160,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
   useEffect(() => {
     if (!open) return;
     if (!editing) {
-      setCustomerId(null); setCart([]); setDiscount(0); setOldGoldCredit(0); setNotes("");
+      setCustomerId(null); setPickedCustomer(null); setCart([]); setDiscount(0); setOldGoldCredit(0); setNotes("");
       setTargetTotal(""); setValidDays(7); setValidUntil(isoDate(new Date(Date.now() + 7 * 86400000)));
       setOriginalItemIds([]);
       return;
@@ -168,6 +168,10 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
     (async () => {
       const { data: lines } = await supabase.from("quotation_items").select("*").eq("quotation_id", editing.id);
       setCustomerId(editing.customer_id);
+      {
+        const c = customers.find((x) => x.id === editing.customer_id);
+        setPickedCustomer(c ? { id: c.id, full_name: c.full_name, phone: c.phone ?? null } : null);
+      }
       setDiscount(Number(editing.discount ?? 0));
       setOldGoldCredit(Number(editing.old_gold_credit ?? 0));
       setNotes(editing.notes ?? "");
