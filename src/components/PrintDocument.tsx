@@ -400,7 +400,7 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
                   )}
                   {rec.taxes > 0 && (
                     <tr>
-                      <td style={{ border: bd, padding: "3px 6px" }}>Taxes (VAT + SD)</td>
+                      <td style={{ border: bd, padding: "3px 6px" }}>{vat > 0 ? "Taxes (VAT + SD)" : "Taxes (SD)"}</td>
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(rec.taxes)}</td>
                     </tr>
                   )}

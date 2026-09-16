@@ -24,6 +24,7 @@ import { uploadImage } from "@/lib/storage";
 import { printDocument } from "@/components/PrintDocument";
 import { OrderPrintDocument } from "@/components/orders/OrderPrintDocument";
 import { AdvanceDialog } from "@/components/AdvanceDialog";
+import { fetchOrderBills, removeOrderBill, type JobBill } from "@/lib/jobBills";
 import {
   OrderLineFields, OrderLine, lineFromRow, lineNet, lineEstimate,
 } from "@/components/orders/OrderLineFields";
@@ -40,9 +41,10 @@ export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
   const { user } = useAuth();
-  const { hasPermission } = usePermission();
+  const { hasPermission, roles } = usePermission();
   const canManage = hasPermission("order_manage");
   const canBill = hasPermission("order_bill");
+  const canRemoveBill = roles.includes("admin");
 
   const [order, setOrder] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
@@ -58,6 +60,9 @@ export default function OrderDetail() {
   const [removeTarget, setRemoveTarget] = useState<{ item: any; batches: any[] } | null>(null);
   const [editOrderOpen, setEditOrderOpen] = useState(false);
   const [confirmPrint, setConfirmPrint] = useState<"order" | "advance" | null>(null);
+  const [bills, setBills] = useState<JobBill[]>([]);
+  const [billsOpen, setBillsOpen] = useState(false);
+  const [removingBill, setRemovingBill] = useState<string | null>(null);
   const loc = useLocation();
 
   const load = useCallback(async () => {
@@ -68,6 +73,7 @@ export default function OrderDetail() {
       supabase.from("payments").select("*").eq("order_id", id).order("paid_at", { ascending: false }),
     ]);
     setOrder(o); setItems(its ?? []); setAdvances(pays ?? []);
+    setBills(await fetchOrderBills(id));
     const ids = (its ?? []).map((i: any) => i.id);
     if (ids.length) {
       const [{ data: lg }, { data: rc }] = await Promise.all([
@@ -134,6 +140,11 @@ export default function OrderDetail() {
           </Button>
         )}
 
+        {canRemoveBill && bills.length > 0 && order.status === "completed" && (
+          <Button size="sm" variant="outline" onClick={() => setBillsOpen(true)}>
+            <Trash2 className="mr-1 h-4 w-4" /> Remove bill
+          </Button>
+        )}
         {canManage && !["completed", "cancelled"].includes(order.status) && (
           <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}><X className="mr-1 h-4 w-4" /> Cancel</Button>
         )}
@@ -322,6 +333,43 @@ export default function OrderDetail() {
 
       <OrderPrintDocument mode="order" order={order} items={items} advances={advances} cashierName={user?.email ?? ""} domId={orderDocId} />
       <OrderPrintDocument mode="advance" order={order} items={items} advances={advances} cashierName={user?.email ?? ""} domId={advanceDocId} />
+
+      <Dialog open={billsOpen} onOpenChange={setBillsOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Remove a bill for this order</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            The bill document is deleted and the pieces go back to reserved stock for this order, so
+            it can be billed again. The order, its items and its history are kept.
+          </p>
+          <div className="divide-y rounded-md border">
+            {bills.map((b) => (
+              <div key={b.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                <div>
+                  <div className="font-medium">{b.invoice_number}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(b.issued_at).toLocaleDateString()} · {npr(Number(b.total))}
+                  </div>
+                </div>
+                <Button size="sm" variant="destructive" disabled={removingBill === b.id}
+                  onClick={async () => {
+                    setRemovingBill(b.id);
+                    try {
+                      await removeOrderBill(order.id, b.id);
+                      toast.success("Bill removed — this order can be billed again");
+                      setBillsOpen(false);
+                      await load();
+                    } catch (e: any) {
+                      toast.error(e.message ?? "Could not remove that bill");
+                    } finally { setRemovingBill(null); }
+                  }}>
+                  Remove
+                </Button>
+              </div>
+            ))}
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setBillsOpen(false)}>Close</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!confirmPrint} onOpenChange={(v) => !v && setConfirmPrint(null)}>
         <DialogContent>

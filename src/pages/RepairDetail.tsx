@@ -12,7 +12,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Printer, Eye, ReceiptText, History, PencilLine } from "lucide-react";
+import { ArrowLeft, Printer, Eye, ReceiptText, History, PencilLine, Trash2 } from "lucide-react";
+import { usePermission } from "@/hooks/usePermission";
+import { removeRepairBill } from "@/lib/jobBills";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { npr, gms, computeNetWeight } from "@/lib/format";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +41,9 @@ export default function RepairDetail() {
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [docType, setDocType] = useState<"estimate" | "final" | null>(null);
   const [workflowItem, setWorkflowItem] = useState<any>(null);
+  const [removeBillOpen, setRemoveBillOpen] = useState(false);
+  const { roles } = usePermission();
+  const canRemoveBill = roles.includes("admin") || roles.includes("manager");
 
   useEffect(() => { load(); }, [id]);
 
@@ -66,6 +75,11 @@ export default function RepairDetail() {
         <Button size="sm" variant={allDelivered ? "default" : "outline"} disabled={!allDelivered} onClick={() => setDocType("final")}>
           <ReceiptText className="mr-1 h-4 w-4" /> Final Receipt {!allDelivered && "(after delivery)"}
         </Button>
+        {canRemoveBill && allDelivered && items.some((i) => i.final_cost != null) && (
+          <Button size="sm" variant="outline" onClick={() => setRemoveBillOpen(true)}>
+            <Trash2 className="mr-1 h-4 w-4" /> Remove bill
+          </Button>
+        )}
       </>
     }>
       <div className="grid gap-4 lg:grid-cols-3">
@@ -109,6 +123,29 @@ export default function RepairDetail() {
       </div>
 
       <ReceiptDialog docType={docType} onOpenChange={(v: boolean) => !v && setDocType(null)} repair={repair} items={items} />
+      <AlertDialog open={removeBillOpen} onOpenChange={setRemoveBillOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove the bill for this repair?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The final charges on this repair are cleared so the receipt can be worked out and
+              printed again. The repair, its items and its work history stay exactly as they are.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              try {
+                await removeRepairBill(repair.id);
+                toast.success("Bill removed — this repair can be billed again");
+                setRemoveBillOpen(false);
+                await load();
+              } catch (e: any) { toast.error(e.message ?? "Could not remove the bill"); }
+            }}>Remove bill</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <WorkflowDialog item={workflowItem} onOpenChange={(v: boolean) => !v && setWorkflowItem(null)} onSaved={load} />
     </AppLayout>
   );

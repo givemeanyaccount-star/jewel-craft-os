@@ -186,7 +186,7 @@ export default function InvoiceDetail() {
             </Table>
             <div className="mt-4 ml-auto max-w-sm space-y-1.5 text-sm">
               <Row label="Subtotal" value={npr(inv.subtotal)} />
-              {Number(inv.stones_total) > 0 && <Row label="  Stones (VAT-able)" value={npr(inv.stones_total)} />}
+              {Number(inv.stones_total) > 0 && <Row label={`  Stones${Number(inv.vat_amount) > 0 ? " (VAT-able)" : ""}`} value={npr(inv.stones_total)} />}
               <Row label="Discount" value={`- ${npr(inv.discount)}`} />
               {Number(inv.vat_amount) > 0 && <Row label={`VAT ${inv.vat_rate}% (stones only)`} value={npr(inv.vat_amount)} />}
               {Number(inv.sd_tax) > 0 && <Row label={`SD tax ${inv.sd_tax_rate}% (gold + making − old metal)`} value={npr(inv.sd_tax)} />}

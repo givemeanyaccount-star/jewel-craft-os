@@ -6,7 +6,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   loadPosDraft, savePosDraft, clearPosDraft, draftHasContent,
-  listHeldBills, holdBill, removeHeldBill, resumeHeldBill, type HeldBill,
+  fetchSharedHeldBills, parkBillShared, claimSharedHeldBill, discardSharedHeldBill,
+  type SharedHeldBill,
 } from "@/hooks/usePosDraft";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { AppLayout } from "@/components/AppLayout";
@@ -177,7 +178,7 @@ function PosScreen({ reload }: { reload: () => void }) {
   const [issueDate, setIssueDate] = useState<string>(d.issueDate ?? todayISO());
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
-  const [held, setHeld] = useState<HeldBill[]>(() => listHeldBills());
+  const [held, setHeld] = useState<SharedHeldBill[]>([]);
   const [heldOpen, setHeldOpen] = useState(false);
 
 
@@ -842,21 +843,46 @@ function PosScreen({ reload }: { reload: () => void }) {
     return name || order?.order_no || "Walk-in bill";
   }, [customers, customerId, order]);
 
+  const counterName =
+    (user?.user_metadata as any)?.full_name || user?.email || "Counter";
+
+  const refreshHeld = useCallback(async () => { setHeld(await fetchSharedHeldBills()); }, []);
+  useEffect(() => { refreshHeld(); }, [refreshHeld]);
+
   /** Park the current bill and clear the counter for the next customer. */
-  const parkBill = useCallback(() => {
+  const parkBill = useCallback(async () => {
     if (!dirty) { toast.error("Nothing to hold yet"); return; }
-    setHeld(holdBill({ label: billLabel(), ...snapshot() }));
+    const snap = snapshot();
+    const online = await parkBillShared({
+      label: billLabel(),
+      ownerName: counterName,
+      customerName: customers.find((c) => c.id === customerId)?.full_name ?? null,
+      ...snap,
+    });
     resetBill();
-    toast.success("Bill held — it will keep its place in the queue until posted");
-  }, [dirty, billLabel, snapshot, resetBill]);
+    await refreshHeld();
+    toast.success(online
+      ? "Bill held — any counter can pick it up until it is posted"
+      : "Bill held on this counter (offline) — it will stay here until posted");
+  }, [dirty, billLabel, snapshot, resetBill, counterName, customers, customerId, refreshHeld]);
 
   /** Bring a parked bill back, parking whatever is on the counter first. */
-  const pullHeldBill = useCallback((id: string) => {
-    if (dirty) holdBill({ label: billLabel(), ...snapshot() });
-    if (!resumeHeldBill(id)) { toast.error("That bill is no longer available"); return; }
+  const pullHeldBill = useCallback(async (bill: SharedHeldBill) => {
+    if (dirty) {
+      await parkBillShared({
+        label: billLabel(), ownerName: counterName,
+        customerName: customers.find((c) => c.id === customerId)?.full_name ?? null,
+        ...snapshot(),
+      });
+    }
+    if (!(await claimSharedHeldBill(bill))) {
+      toast.error("That bill was already picked up at another counter");
+      await refreshHeld();
+      return;
+    }
     setHeldOpen(false);
     reload();
-  }, [dirty, billLabel, snapshot, reload]);
+  }, [dirty, billLabel, snapshot, reload, counterName, customers, customerId, refreshHeld]);
 
 
 
@@ -884,7 +910,7 @@ function PosScreen({ reload }: { reload: () => void }) {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Held bills</DialogTitle></DialogHeader>
           <p className="text-xs text-muted-foreground">
-            Held bills are saved on this counter only. No invoice number is reserved — the next
+            Held bills are shared with every counter. No bill number is reserved — the next
             number goes to whichever bill is posted first, so the numbering never skips.
           </p>
           {held.length === 0 ? (
@@ -892,20 +918,20 @@ function PosScreen({ reload }: { reload: () => void }) {
           ) : (
             <div className="max-h-[50vh] divide-y overflow-y-auto rounded-md border">
               {held.map((b) => {
-                const lines = Array.isArray(b.state?.cart) ? b.state.cart.length : 0;
-                const value = (b.state?.cart ?? []).reduce((a: number, r: any) => a + Number(r.line_total ?? 0), 0);
+                const lines = b.itemCount || (Array.isArray(b.state?.cart) ? b.state.cart.length : 0);
+                const value = b.total || (b.state?.cart ?? []).reduce((a: number, r: any) => a + Number(r.line_total ?? 0), 0);
                 return (
                   <div key={b.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                     <div>
                       <div className="font-medium">{b.label}</div>
                       <div className="text-xs text-muted-foreground">
-                        {lines} item{lines === 1 ? "" : "s"} · {npr(value)} · held {new Date(b.savedAt).toLocaleTimeString()}
+                        {b.ownerName} · {lines} item{lines === 1 ? "" : "s"} · {npr(value)} · held {new Date(b.savedAt).toLocaleTimeString()}
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <Button size="sm" onClick={() => pullHeldBill(b.id)}>Resume</Button>
+                      <Button size="sm" onClick={() => pullHeldBill(b)}>Resume</Button>
                       <Button size="sm" variant="ghost"
-                        onClick={() => setHeld(removeHeldBill(b.id))}>
+                        onClick={async () => { await discardSharedHeldBill(b); await refreshHeld(); }}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

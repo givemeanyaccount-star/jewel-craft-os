@@ -111,3 +111,97 @@ export function resumeHeldBill(id: string): HeldBill | null {
   removeHeldBill(id);
   return bill;
 }
+
+/* ------------------------------------------------------------------ */
+/* Backend-held bills (shared across counters)                         */
+/*                                                                     */
+/* Parking now writes to the database so any counter can see and pick  */
+/* up the queue. Resuming removes the row, which is what stops two     */
+/* people finishing the same bill. If the network is down we fall back */
+/* to the local queue above so the counter keeps working.              */
+/* ------------------------------------------------------------------ */
+
+import { supabase } from "@/integrations/supabase/client";
+
+export interface SharedHeldBill extends HeldBill {
+  ownerName: string;
+  remote: boolean;
+  itemCount: number;
+  total: number;
+}
+
+function billFigures(state: Record<string, any>) {
+  const cart = Array.isArray(state?.cart) ? state.cart : [];
+  return {
+    itemCount: cart.length,
+    total: cart.reduce((a: number, r: any) => a + Number(r.line_total ?? 0), 0),
+  };
+}
+
+export async function fetchSharedHeldBills(): Promise<SharedHeldBill[]> {
+  const local = listHeldBills().map((b) => ({
+    ...b,
+    ownerName: "This counter (offline)",
+    remote: false,
+    ...billFigures(b.state),
+  }));
+  const { data, error } = await supabase
+    .from("pos_held_bills")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  if (error || !data) return local;
+  const remote: SharedHeldBill[] = data.map((r: any) => ({
+    id: r.id,
+    label: r.label ?? "Bill",
+    savedAt: r.updated_at ?? r.created_at,
+    userId: r.owner_id,
+    source: { kind: (r.source_kind ?? "none") as any, id: r.source_id ?? null },
+    state: (r.state ?? {}) as Record<string, any>,
+    ownerName: r.owner_name || "Counter",
+    remote: true,
+    itemCount: Number(r.item_count ?? 0),
+    total: Number(r.total ?? 0),
+  }));
+  return [...remote, ...local];
+}
+
+export async function parkBillShared(bill: {
+  label: string;
+  ownerName: string;
+  userId: string | null;
+  source: PosDraft["source"];
+  state: Record<string, any>;
+  customerName?: string | null;
+}): Promise<boolean> {
+  const f = billFigures(bill.state);
+  if (!bill.userId) { holdBill(bill); return false; }
+  const { error } = await supabase.from("pos_held_bills").insert({
+    owner_id: bill.userId,
+    owner_name: bill.ownerName,
+    label: bill.label,
+    source_kind: bill.source.kind,
+    source_id: bill.source.id,
+    customer_name: bill.customerName ?? null,
+    item_count: f.itemCount,
+    total: f.total,
+    state: bill.state as any,
+  });
+  if (error) { holdBill(bill); return false; }
+  return true;
+}
+
+/** Take a parked bill over: it leaves the shared queue and becomes this counter's draft. */
+export async function claimSharedHeldBill(bill: SharedHeldBill): Promise<boolean> {
+  if (!bill.remote) return !!resumeHeldBill(bill.id);
+  const { data, error } = await supabase
+    .from("pos_held_bills").delete().eq("id", bill.id).select("id");
+  if (error || !data?.length) return false;
+  savePosDraft({ userId: bill.userId, source: bill.source, state: bill.state });
+  return true;
+}
+
+export async function discardSharedHeldBill(bill: SharedHeldBill): Promise<boolean> {
+  if (!bill.remote) { removeHeldBill(bill.id); return true; }
+  const { error } = await supabase.from("pos_held_bills").delete().eq("id", bill.id);
+  return !error;
+}
