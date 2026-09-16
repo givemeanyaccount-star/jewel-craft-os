@@ -918,20 +918,20 @@ function PosScreen({ reload }: { reload: () => void }) {
           ) : (
             <div className="max-h-[50vh] divide-y overflow-y-auto rounded-md border">
               {held.map((b) => {
-                const lines = Array.isArray(b.state?.cart) ? b.state.cart.length : 0;
-                const value = (b.state?.cart ?? []).reduce((a: number, r: any) => a + Number(r.line_total ?? 0), 0);
+                const lines = b.itemCount || (Array.isArray(b.state?.cart) ? b.state.cart.length : 0);
+                const value = b.total || (b.state?.cart ?? []).reduce((a: number, r: any) => a + Number(r.line_total ?? 0), 0);
                 return (
                   <div key={b.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                     <div>
                       <div className="font-medium">{b.label}</div>
                       <div className="text-xs text-muted-foreground">
-                        {lines} item{lines === 1 ? "" : "s"} · {npr(value)} · held {new Date(b.savedAt).toLocaleTimeString()}
+                        {b.ownerName} · {lines} item{lines === 1 ? "" : "s"} · {npr(value)} · held {new Date(b.savedAt).toLocaleTimeString()}
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <Button size="sm" onClick={() => pullHeldBill(b.id)}>Resume</Button>
+                      <Button size="sm" onClick={() => pullHeldBill(b)}>Resume</Button>
                       <Button size="sm" variant="ghost"
-                        onClick={() => setHeld(removeHeldBill(b.id))}>
+                        onClick={async () => { await discardSharedHeldBill(b); await refreshHeld(); }}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
