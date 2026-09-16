@@ -1336,6 +1336,48 @@ export type Database = {
           },
         ]
       }
+      pos_held_bills: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          id: string
+          item_count: number
+          label: string
+          owner_id: string
+          source_id: string | null
+          source_kind: string
+          state: Json
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          item_count?: number
+          label?: string
+          owner_id: string
+          source_id?: string | null
+          source_kind?: string
+          state?: Json
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          id?: string
+          item_count?: number
+          label?: string
+          owner_id?: string
+          source_id?: string | null
+          source_kind?: string
+          state?: Json
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
