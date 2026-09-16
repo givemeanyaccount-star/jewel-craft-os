@@ -111,7 +111,7 @@ export default function QuotationDetail() {
             </div>
             <div className="mt-4 ml-auto max-w-sm space-y-1.5 text-sm">
               <Row label="Subtotal" value={npr(q.subtotal)} />
-              {Number(q.stones_total) > 0 && <Row label="  Stones (VAT-able)" value={npr(q.stones_total)} />}
+              {Number(q.stones_total) > 0 && <Row label={`  Stones${Number(q.vat_amount) > 0 ? " (VAT-able)" : ""}`} value={npr(q.stones_total)} />}
               <Row label="Discount" value={`- ${npr(q.discount)}`} />
               {Number(q.vat_amount) > 0 && <Row label={`VAT ${q.vat_rate}% (stones only)`} value={npr(q.vat_amount)} />}
               {Number(q.sd_tax) > 0 && <Row label={`SD tax ${q.sd_tax_rate}% (gold + making − old metal)`} value={npr(q.sd_tax)} />}

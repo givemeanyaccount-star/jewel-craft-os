@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Users, FileText, Receipt,
   Settings, LogOut, Menu, ShieldCheck, TrendingUp,
-  Wrench, Truck, ShoppingCart, Home, Undo2, ClipboardList, Hammer, Factory
+  Wrench, Truck, ShoppingCart, Home, Undo2, ClipboardList, Hammer, Factory, Layers, BarChart3
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -30,9 +30,11 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     items: [
       { to: "/", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
       { to: "/pos", label: "POS / New Sale", icon: Receipt, permission: "pos_create_sale" },
+      { to: "/counter", label: "Counter", icon: Layers, permission: "pos_create_sale" },
       { to: "/quotations", label: "Quotations", icon: FileText, permission: "quotation_create_edit" },
       { to: "/invoices", label: "Invoices", icon: Receipt, permission: "invoice_view" },
       { to: "/returns", label: "Sales Returns", icon: Undo2, permission: "invoice_cancel_refund" },
+      { to: "/reports/sales", label: "Sales Report", icon: BarChart3, permission: "report_view" },
     ],
   },
   {
