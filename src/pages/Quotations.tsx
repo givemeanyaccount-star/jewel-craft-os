@@ -475,7 +475,7 @@ function QuotationBuilder({ open, onOpenChange, userId, editing, onSaved }: {
             <CardHeader><CardTitle>Summary</CardTitle></CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{npr(subtotal)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">  Stones (VAT-able)</span><span>{npr(stonesTotal)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{settings.vat_enabled ? "  Stones (VAT-able)" : "  Stones"}</span><span>{npr(stonesTotal)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">  Gold + Making + Wastage</span><span>{npr(tax.nonStoneTotal)}</span></div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Discount</span>
