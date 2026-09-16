@@ -6,7 +6,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   loadPosDraft, savePosDraft, clearPosDraft, draftHasContent,
-  listHeldBills, holdBill, removeHeldBill, resumeHeldBill, type HeldBill,
+  fetchSharedHeldBills, parkBillShared, claimSharedHeldBill, discardSharedHeldBill,
+  type SharedHeldBill,
 } from "@/hooks/usePosDraft";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { AppLayout } from "@/components/AppLayout";
@@ -177,7 +178,7 @@ function PosScreen({ reload }: { reload: () => void }) {
   const [issueDate, setIssueDate] = useState<string>(d.issueDate ?? todayISO());
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
-  const [held, setHeld] = useState<HeldBill[]>(() => listHeldBills());
+  const [held, setHeld] = useState<SharedHeldBill[]>([]);
   const [heldOpen, setHeldOpen] = useState(false);
 
 
