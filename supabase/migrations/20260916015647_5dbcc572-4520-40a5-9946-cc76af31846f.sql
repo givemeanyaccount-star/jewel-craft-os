@@ -1,0 +1,1 @@
+ALTER TABLE public.pos_held_bills ADD COLUMN owner_name text NOT NULL DEFAULT '';

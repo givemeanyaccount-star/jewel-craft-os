@@ -1344,6 +1344,7 @@ export type Database = {
           item_count: number
           label: string
           owner_id: string
+          owner_name: string
           source_id: string | null
           source_kind: string
           state: Json
@@ -1357,6 +1358,7 @@ export type Database = {
           item_count?: number
           label?: string
           owner_id: string
+          owner_name?: string
           source_id?: string | null
           source_kind?: string
           state?: Json
@@ -1370,6 +1372,7 @@ export type Database = {
           item_count?: number
           label?: string
           owner_id?: string
+          owner_name?: string
           source_id?: string | null
           source_kind?: string
           state?: Json
