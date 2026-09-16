@@ -41,10 +41,9 @@ export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
   const { user } = useAuth();
-  const { hasPermission } = usePermission();
+  const { hasPermission, roles } = usePermission();
   const canManage = hasPermission("order_manage");
   const canBill = hasPermission("order_bill");
-  const { roles } = usePermission();
   const canRemoveBill = roles.includes("admin");
 
   const [order, setOrder] = useState<any>(null);
