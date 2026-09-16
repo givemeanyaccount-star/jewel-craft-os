@@ -843,21 +843,46 @@ function PosScreen({ reload }: { reload: () => void }) {
     return name || order?.order_no || "Walk-in bill";
   }, [customers, customerId, order]);
 
+  const counterName =
+    (user?.user_metadata as any)?.full_name || user?.email || "Counter";
+
+  const refreshHeld = useCallback(async () => { setHeld(await fetchSharedHeldBills()); }, []);
+  useEffect(() => { refreshHeld(); }, [refreshHeld]);
+
   /** Park the current bill and clear the counter for the next customer. */
-  const parkBill = useCallback(() => {
+  const parkBill = useCallback(async () => {
     if (!dirty) { toast.error("Nothing to hold yet"); return; }
-    setHeld(holdBill({ label: billLabel(), ...snapshot() }));
+    const snap = snapshot();
+    const online = await parkBillShared({
+      label: billLabel(),
+      ownerName: counterName,
+      customerName: customers.find((c) => c.id === customerId)?.full_name ?? null,
+      ...snap,
+    });
     resetBill();
-    toast.success("Bill held — it will keep its place in the queue until posted");
-  }, [dirty, billLabel, snapshot, resetBill]);
+    await refreshHeld();
+    toast.success(online
+      ? "Bill held — any counter can pick it up until it is posted"
+      : "Bill held on this counter (offline) — it will stay here until posted");
+  }, [dirty, billLabel, snapshot, resetBill, counterName, customers, customerId, refreshHeld]);
 
   /** Bring a parked bill back, parking whatever is on the counter first. */
-  const pullHeldBill = useCallback((id: string) => {
-    if (dirty) holdBill({ label: billLabel(), ...snapshot() });
-    if (!resumeHeldBill(id)) { toast.error("That bill is no longer available"); return; }
+  const pullHeldBill = useCallback(async (bill: SharedHeldBill) => {
+    if (dirty) {
+      await parkBillShared({
+        label: billLabel(), ownerName: counterName,
+        customerName: customers.find((c) => c.id === customerId)?.full_name ?? null,
+        ...snapshot(),
+      });
+    }
+    if (!(await claimSharedHeldBill(bill))) {
+      toast.error("That bill was already picked up at another counter");
+      await refreshHeld();
+      return;
+    }
     setHeldOpen(false);
     reload();
-  }, [dirty, billLabel, snapshot, reload]);
+  }, [dirty, billLabel, snapshot, reload, counterName, customers, customerId, refreshHeld]);
 
 
 
@@ -885,7 +910,7 @@ function PosScreen({ reload }: { reload: () => void }) {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Held bills</DialogTitle></DialogHeader>
           <p className="text-xs text-muted-foreground">
-            Held bills are saved on this counter only. No invoice number is reserved — the next
+            Held bills are shared with every counter. No bill number is reserved — the next
             number goes to whichever bill is posted first, so the numbering never skips.
           </p>
           {held.length === 0 ? (
