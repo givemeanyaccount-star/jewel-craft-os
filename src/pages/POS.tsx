@@ -1003,16 +1003,17 @@ function PosScreen({ reload }: { reload: () => void }) {
               <CustomerSelector label="" value={pickedCustomer}
                 onChange={(c) => { setPickedCustomer(c); setCustomerId(c?.id ?? null); if (c) void loadCustomers(); }} />
               {!customerId && <p className="mt-1.5 text-xs text-destructive">Every sale must be linked to a customer.</p>}
-              {/* Order date and rate basis only mean something once an order is attached. */}
-              {(order || orderDate) && (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <div>
-                    <Label className="text-xs">Order date</Label>
-                    <Input type="date" className="h-9" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
-                  </div>
+              {/* Optional on any sale: setting an order date lets the bill be priced
+                  at that day's metal rate instead of today's. */}
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div>
+                  <Label className="text-xs">Order date (optional)</Label>
+                  <Input type="date" className="h-9" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+                </div>
+                {orderDate && (
                   <div>
                     <Label className="text-xs">Rate basis</Label>
-                    <Select value={rateBasis} onValueChange={(v) => applyRateBasis(v as any)} disabled={!orderDate}>
+                    <Select value={rateBasis} onValueChange={(v) => applyRateBasis(v as any)}>
                       <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="order">Rate of order date</SelectItem>
@@ -1020,8 +1021,8 @@ function PosScreen({ reload }: { reload: () => void }) {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
               {canBackdate ? (
                 <div className="mt-3 sm:w-1/2">
                   <Label className="text-xs">Invoice date</Label>
