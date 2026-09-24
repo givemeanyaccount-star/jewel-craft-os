@@ -1041,7 +1041,7 @@ function PosScreen({ reload }: { reload: () => void }) {
                       <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="order">Rate of order date</SelectItem>
-                        <SelectItem value="current">Today's rate</SelectContent>
+                        <SelectItem value="current">Today's rate</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
