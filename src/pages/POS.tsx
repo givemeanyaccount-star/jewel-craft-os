@@ -1447,8 +1447,9 @@ function PosScreen({ reload }: { reload: () => void }) {
               )}
 
             </div>
-            <Button className="w-full" onClick={checkout} disabled={saving || cart.length === 0 || !customerId}>
-              {saving ? "Processing..." : "Complete Sale"}
+            <Button className="w-full" onClick={checkout}
+              disabled={saving || cart.length === 0 || !customerId || orderDateInvalid}>
+              {saving ? "Processing..." : orderDateInvalid ? "Fix order date to complete sale" : "Complete Sale"}
             </Button>
           </CardContent>
         </Card>
