@@ -176,6 +176,10 @@ function PosScreen({ reload }: { reload: () => void }) {
   const [refundMethod, setRefundMethod] = useState<string>(d.refundMethod ?? "cash");
   const [advDialogOpen, setAdvDialogOpen] = useState(false);
   const [issueDate, setIssueDate] = useState<string>(d.issueDate ?? todayISO());
+  // The bill's own date: the (possibly backdated) invoice date for staff who may
+  // backdate, otherwise today. An order date after this is invalid.
+  const saleDate = canBackdate && issueDate ? issueDate : todayISO();
+  const orderDateInvalid = !!orderDate && orderDate > saleDate;
   const [orderPickerOpen, setOrderPickerOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [held, setHeld] = useState<SharedHeldBill[]>([]);
@@ -557,6 +561,7 @@ function PosScreen({ reload }: { reload: () => void }) {
   async function checkout() {
     if (!customerId) return toast.error("Select a customer for this sale");
     if (cart.length === 0) return toast.error("Add at least one item");
+    if (orderDateInvalid) return toast.error(`Order date cannot be after the sale date (${saleDate}).`);
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
     // Re-derive the refund from the live totals: never persist a value larger than the excess.
     const maxRefund = refundDueOfCredits(tax.grossTotal, round2(totalOldGoldCredit + advanceRequested));
@@ -1008,7 +1013,26 @@ function PosScreen({ reload }: { reload: () => void }) {
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <div>
                   <Label className="text-xs">Order date (optional)</Label>
-                  <Input type="date" className="h-9" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
+                  <Input type="date" className="h-9" value={orderDate} max={saleDate}
+                    aria-invalid={orderDateInvalid}
+                    onChange={(e) => setOrderDate(e.target.value)} />
+                  {orderDateInvalid ? (
+                    <p className="mt-1 text-xs text-destructive">
+                      Order date cannot be after the sale date ({saleDate}).
+                    </p>
+                  ) : order && orderDate && orderDate === order.order_date ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      From order {order.order_no} — set when the order was booked.
+                    </p>
+                  ) : orderDate ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Entered manually — bill can be priced at this date's rate.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Left blank — bill is priced at today's rate.
+                    </p>
+                  )}
                 </div>
                 {orderDate && (
                   <div>
@@ -1423,8 +1447,9 @@ function PosScreen({ reload }: { reload: () => void }) {
               )}
 
             </div>
-            <Button className="w-full" onClick={checkout} disabled={saving || cart.length === 0 || !customerId}>
-              {saving ? "Processing..." : "Complete Sale"}
+            <Button className="w-full" onClick={checkout}
+              disabled={saving || cart.length === 0 || !customerId || orderDateInvalid}>
+              {saving ? "Processing..." : orderDateInvalid ? "Fix order date to complete sale" : "Complete Sale"}
             </Button>
           </CardContent>
         </Card>
