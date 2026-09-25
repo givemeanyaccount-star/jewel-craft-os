@@ -2125,6 +2125,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      correct_invoice_order_date: {
+        Args: { _invoice_id: string; _new_date: string; _reason: string }
+        Returns: undefined
+      }
       log_audit_event: {
         Args: {
           _action: string
