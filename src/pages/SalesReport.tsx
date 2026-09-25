@@ -43,6 +43,8 @@ interface Row {
   netPayable: number;
   roundOff: number;
   status: string;
+  orderDate: string | null;
+  days: number | null;
 }
 
 export default function SalesReport() {
@@ -52,6 +54,9 @@ export default function SalesReport() {
   const [to, setTo] = useState(todayISO());
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
+  const [oFrom, setOFrom] = useState("");
+  const [oTo, setOTo] = useState("");
+  const [onlyOrdered, setOnlyOrdered] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,7 +64,7 @@ export default function SalesReport() {
     setLoading(true);
     const { data } = await supabase
       .from("invoices")
-      .select("id, invoice_number, issued_at, status, total, round_off, old_gold_credit, customers(full_name), invoice_items(weight, wastage_input, wastage_type)")
+      .select("id, invoice_number, issued_at, status, total, round_off, order_date, old_gold_credit, customers(full_name), invoice_items(weight, wastage_input, wastage_type)")
       .gte("issued_at", `${from}T00:00:00`)
       .lte("issued_at", `${to}T23:59:59`)
       .order("issued_at", { ascending: false });
@@ -76,6 +81,10 @@ export default function SalesReport() {
         netPayable: Number(inv.total ?? 0),
         roundOff: Number(inv.round_off ?? 0),
         status: inv.status,
+        orderDate: inv.order_date ?? null,
+        days: inv.order_date
+          ? Math.round((new Date(String(inv.issued_at).slice(0, 10)).getTime() - new Date(inv.order_date).getTime()) / 86400000)
+          : null,
       };
     }));
     setLoading(false);
@@ -87,8 +96,11 @@ export default function SalesReport() {
     const q = search.trim().toLowerCase();
     return rows.filter((r) =>
       (status === "all" || r.status === status) &&
+      (!onlyOrdered || !!r.orderDate) &&
+      (!oFrom || (!!r.orderDate && r.orderDate >= oFrom)) &&
+      (!oTo || (!!r.orderDate && r.orderDate <= oTo)) &&
       (!q || r.number.toLowerCase().includes(q) || r.customer.toLowerCase().includes(q)));
-  }, [rows, status, search]);
+  }, [rows, status, search, oFrom, oTo, onlyOrdered]);
 
   const totals = useMemo(() => filtered.reduce((a, r) => ({
     tola: a.tola + r.tola,
@@ -98,9 +110,9 @@ export default function SalesReport() {
   }), { tola: 0, wastage: 0, net: 0, roundOff: 0 }), [filtered]);
 
   function exportCsv() {
-    const head = ["Date", "Bill no.", "Customer", "Tola sold", "Wastage (g)", "Net payable", "Round-off", "Status"];
+    const head = ["Sale date", "Order date", "Days (order to sale)", "Bill no.", "Customer", "Tola sold", "Wastage (g)", "Net payable", "Round-off", "Status"];
     const body = filtered.map((r) => [
-      new Date(r.date).toLocaleDateString(), r.number, r.customer,
+      new Date(r.date).toLocaleDateString(), r.orderDate ?? "", r.days ?? "", r.number, r.customer,
       r.tola.toFixed(3), r.wastage.toFixed(3), r.netPayable.toFixed(2), r.roundOff.toFixed(2), r.status,
     ]);
     const csv = [head, ...body].map((line) =>
@@ -127,11 +139,11 @@ export default function SalesReport() {
       <Card className="mb-4">
         <CardContent className="grid gap-3 pt-6 md:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
           <div className="space-y-1">
-            <Label className="text-xs">From</Label>
+            <Label className="text-xs">Sale date from</Label>
             <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">To</Label>
+            <Label className="text-xs">Sale date to</Label>
             <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
           <div className="space-y-1">
@@ -154,6 +166,22 @@ export default function SalesReport() {
             <Button size="sm" variant="outline" onClick={() => { setFrom(todayISO()); setTo(todayISO()); }}>Today</Button>
             <Button size="sm" variant="outline" onClick={() => { setFrom(shiftISO(6)); setTo(todayISO()); }}>This week</Button>
             <Button size="sm" variant="outline" onClick={() => { setFrom(monthStartISO()); setTo(todayISO()); }}>This month</Button>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Order date from</Label>
+            <Input type="date" value={oFrom} onChange={(e) => setOFrom(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Order date to</Label>
+            <Input type="date" value={oTo} onChange={(e) => setOTo(e.target.value)} />
+          </div>
+          <label className="flex items-end gap-2 pb-2 text-sm">
+            <input type="checkbox" checked={onlyOrdered} onChange={(e) => setOnlyOrdered(e.target.checked)} />
+            Only bills with an order date
+          </label>
+          <div className="flex items-end">
+            <Button size="sm" variant="ghost" disabled={!oFrom && !oTo && !onlyOrdered}
+              onClick={() => { setOFrom(""); setOTo(""); setOnlyOrdered(false); }}>Clear order-date filter</Button>
           </div>
         </CardContent>
       </Card>
@@ -180,7 +208,9 @@ export default function SalesReport() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
+                <TableHead>Sale date</TableHead>
+                <TableHead>Order date</TableHead>
+                <TableHead className="text-right">Days</TableHead>
                 <TableHead>Bill no.</TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead className="text-right">Tola sold</TableHead>
@@ -192,12 +222,14 @@ export default function SalesReport() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} className="py-6 text-center text-muted-foreground">Loading…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="py-6 text-center text-muted-foreground">Loading…</TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="py-6 text-center text-muted-foreground">No bills in this period.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="py-6 text-center text-muted-foreground">No bills in this period.</TableCell></TableRow>
               ) : filtered.map((r) => (
                 <TableRow key={r.id} className="cursor-pointer" onClick={() => nav(`/invoices/${r.id}`)}>
                   <TableCell>{new Date(r.date).toLocaleDateString()}</TableCell>
+                  <TableCell>{r.orderDate ?? "—"}</TableCell>
+                  <TableCell className="text-right">{r.days ?? "—"}</TableCell>
                   <TableCell className="font-medium">{r.number}</TableCell>
                   <TableCell>{r.customer}</TableCell>
                   <TableCell className="text-right">{r.tola.toFixed(3)}</TableCell>

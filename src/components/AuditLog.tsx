@@ -31,6 +31,8 @@ const describe = (row: LogRow) => {
       }`;
     case "user_removed":
       return row.target_email ?? row.target_user_id ?? "";
+    case "order_date_corrected":
+      return `${d.invoice_number ?? ""}: ${d.old_value ?? "blank"} → ${d.new_value ?? "blank"}${d.reason ? ` · ${d.reason}` : ""}`;
     case "password_set":
       return row.target_email ?? "";
     default:

@@ -50,6 +50,10 @@ export default function InvoiceDetail() {
 
   const [payOpen, setPayOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [odOpen, setOdOpen] = useState(false);
+  const [odValue, setOdValue] = useState("");
+  const [odReason, setOdReason] = useState("");
+  const [odSaving, setOdSaving] = useState(false);
   const [fineRates, setFineRates] = useState<FineRates>({});
   const [tradeMetal, setTradeMetal] = useState<string>("gold");
 
@@ -136,7 +140,16 @@ export default function InvoiceDetail() {
             <div>
               <CardTitle>Invoice {inv.invoice_number}</CardTitle>
               <div className="mt-1 text-sm text-muted-foreground">
-                {inv.customers?.full_name ?? "Walk-in"} · {new Date(inv.issued_at).toLocaleString()}
+                {inv.customers?.full_name ?? "Walk-in"} · Sale {new Date(inv.issued_at).toLocaleString()}
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span>Order date: <b className="text-foreground">{inv.order_date ?? "—"}</b></span>
+                {inv.order_date && <span>· Priced at {inv.rate_basis === "order" ? "order-date rate" : "sale-date rate"}</span>}
+                {hasPermission("invoice_order_date_correct") && (
+                  <Button size="sm" variant="link" className="h-auto p-0" onClick={() => { setOdValue(inv.order_date ?? ""); setOdReason(""); setOdOpen(true); }}>
+                    Correct order date
+                  </Button>
+                )}
               </div>
             </div>
             <Badge className="capitalize">{inv.status}</Badge>
@@ -272,6 +285,36 @@ export default function InvoiceDetail() {
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} invoice={inv} userId={user?.id ?? null} onSaved={() => { setPayOpen(false); load(); }} />
       <CancelInvoiceDialog open={cancelOpen} onOpenChange={setCancelOpen} invoice={inv} items={items}
         userId={user?.id ?? null} onDone={load} />
+      <Dialog open={odOpen} onOpenChange={setOdOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Correct order date</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Posted bills keep their order date. A correction is recorded in the audit log with the old and new value, your name and the time. Amounts are not repriced.
+          </p>
+          <div className="space-y-1">
+            <Label>New order date</Label>
+            <Input type="date" value={odValue} max={String(inv.issued_at).slice(0, 10)} onChange={(e) => setOdValue(e.target.value)} />
+            <p className="text-xs text-muted-foreground">Leave empty to clear. Cannot be after the sale date.</p>
+          </div>
+          <div className="space-y-1">
+            <Label>Reason</Label>
+            <Input value={odReason} onChange={(e) => setOdReason(e.target.value)} placeholder="Why is this being corrected?" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOdOpen(false)}>Cancel</Button>
+            <Button disabled={odSaving || odReason.trim().length < 3} onClick={async () => {
+              setOdSaving(true);
+              const { error } = await supabase.rpc("correct_invoice_order_date" as never, {
+                _invoice_id: inv.id, _new_date: odValue || null, _reason: odReason.trim(),
+              } as never);
+              setOdSaving(false);
+              if (error) { toast.error(error.message); return; }
+              toast.success("Order date corrected and logged");
+              setOdOpen(false); load();
+            }}>Save correction</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

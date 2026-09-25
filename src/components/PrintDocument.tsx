@@ -231,7 +231,7 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
           </div>
           <div style={{ width: "30%", padding: "5px 10px" }}>
             <div><b>Pan No.</b> &nbsp;&nbsp;: {cust?.id_doc_number ?? "n/a"}</div>
-            <div><b>Order Date</b> : {doc.created_at ? toADDate(doc.created_at) : ""}</div>
+            <div><b>Order Date</b> : {(doc as any).order_date ? `${(doc as any).order_date} (${toBS((doc as any).order_date)})` : "—"}</div>
             <div><b>Tran. Date</b> : {toADDate(docDate)} ({toBS(docDate)})</div>
           </div>
           <div style={{ flex: 1, padding: "5px 10px" }}>

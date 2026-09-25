@@ -73,16 +73,17 @@ export default function Invoices() {
       <Card><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Invoice</TableHead><TableHead>Customer</TableHead><TableHead>Date</TableHead>
+            <TableHead>Invoice</TableHead><TableHead>Customer</TableHead><TableHead>Sale date</TableHead><TableHead>Order date</TableHead>
             <TableHead className="text-right">Total</TableHead><TableHead className="text-right">Balance</TableHead><TableHead>Status</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {filtered.length === 0 ? <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No invoices</TableCell></TableRow>
+            {filtered.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No invoices</TableCell></TableRow>
               : filtered.map((i) => (
                 <TableRow key={i.id} className="cursor-pointer">
                   <TableCell><Link to={`/invoices/${i.id}`} className="font-medium hover:underline">{i.invoice_number}</Link></TableCell>
                   <TableCell>{i.customers?.full_name ?? "Walk-in"}</TableCell>
                   <TableCell>{new Date(i.issued_at).toLocaleDateString()}</TableCell>
+                  <TableCell>{i.order_date ?? "—"}</TableCell>
                   <TableCell className="text-right">{npr(i.total)}</TableCell>
                   <TableCell className="text-right">{Number(i.balance_due) > 0 ? <span className="text-destructive">{npr(i.balance_due)}</span> : "—"}</TableCell>
                   <TableCell><Badge variant="outline" className="capitalize">{i.status}</Badge></TableCell>
