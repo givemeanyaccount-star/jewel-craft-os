@@ -24,7 +24,8 @@ export type AppPermission =
   | "old_gold_purchase"
   | "order_view"
   | "order_manage"
-  | "order_bill";
+  | "order_bill"
+  | "invoice_order_date_correct";
 
 export const ALL_PERMISSIONS: AppPermission[] = [
   "view_dashboard",
@@ -48,11 +49,12 @@ export const ALL_PERMISSIONS: AppPermission[] = [
   "order_view",
   "order_manage",
   "order_bill",
+  "invoice_order_date_correct",
 ];
 
 export const ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
   admin: ALL_PERMISSIONS,
-  manager: ALL_PERMISSIONS.filter((p) => p !== "role_manage"),
+  manager: ALL_PERMISSIONS.filter((p) => p !== "role_manage" && p !== "invoice_order_date_correct"),
   sales: [
     "view_dashboard",
     "pos_create_sale",
