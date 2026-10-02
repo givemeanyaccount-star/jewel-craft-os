@@ -47,6 +47,7 @@ Deno.serve(async (req) => {
           email: u.email,
           created_at: u.created_at,
           last_sign_in_at: u.last_sign_in_at,
+          email_confirmed_at: u.email_confirmed_at ?? null,
         })),
       });
     }
@@ -158,6 +159,53 @@ Deno.serve(async (req) => {
 
 
 
+
+    if (action === "resend_invite") {
+      const targetId = String(body.user_id ?? "");
+      const redirectTo = String(body.redirect_to ?? "") || undefined;
+      const { data: t } = await admin.auth.admin.getUserById(targetId);
+      if (!t?.user?.email) return json({ error: "User not found" }, 404);
+      const email = t.user.email;
+      let sendErr: { message: string } | null = null;
+      if (!t.user.email_confirmed_at) {
+        const r = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
+        sendErr = r.error;
+      }
+      if (t.user.email_confirmed_at || sendErr) {
+        // Already confirmed (or invite refused): send a password-reset link instead.
+        const r = await userClient.auth.resetPasswordForEmail(email, { redirectTo });
+        sendErr = r.error;
+      }
+      if (sendErr) return json({ error: sendErr.message }, 400);
+      await admin.from("audit_logs").insert({
+        actor_id: userData.user.id, actor_email: userData.user.email ?? null,
+        action: "user_invited", target_user_id: targetId, target_email: email,
+        details: { resent: true },
+      });
+      return json({ ok: true });
+    }
+
+    if (action === "set_password") {
+      const targetId = String(body.user_id ?? "");
+      const password = String(body.password ?? "");
+      if (password.length < 8 || password.length > 72) {
+        return json({ error: "Password must be 8-72 characters" }, 400);
+      }
+      const { data: t, error: uErr } = await admin.auth.admin.updateUserById(targetId, {
+        password, email_confirm: true,
+      });
+      if (uErr) {
+        const msg = /weak|guess/i.test(uErr.message)
+          ? "That password is too common — choose a less common one" : uErr.message;
+        return json({ error: msg }, 400);
+      }
+      await admin.from("audit_logs").insert({
+        actor_id: userData.user.id, actor_email: userData.user.email ?? null,
+        action: "password_set", target_user_id: targetId, target_email: t.user?.email ?? null,
+        details: { by_admin: true },
+      });
+      return json({ ok: true });
+    }
 
     if (action === "delete") {
       const targetId = String(body.user_id ?? "");

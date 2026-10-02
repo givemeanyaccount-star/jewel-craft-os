@@ -46,7 +46,71 @@ interface UserRow {
   username?: string | null;
   email?: string | null;
   last_sign_in_at?: string | null;
+  email_confirmed_at?: string | null;
   roles: AppRole[];
+}
+
+/** Reads the real error text from a failed function call. */
+async function fnError(error: any, data: any): Promise<string | null> {
+  if (data?.error) return String(data.error);
+  if (!error) return null;
+  try {
+    const body = await error.context?.json?.();
+    if (body?.error) return String(body.error);
+  } catch { /* ignore */ }
+  return error.message ?? "Request failed";
+}
+
+function AccountAccessActions({ user, onDone }: { user: UserRow; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState("");
+  const pending = !user.email_confirmed_at && !user.last_sign_in_at;
+
+  const resend = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-users", {
+      body: { action: "resend_invite", user_id: user.id, redirect_to: `${window.location.origin}/reset-password` },
+    });
+    setBusy(false);
+    const msg = await fnError(error, data);
+    if (msg) return toast({ title: "Could not send link", description: msg, variant: "destructive" });
+    toast({ title: pending ? "Invite re-sent" : "Password link sent", description: `${user.email} — the link works once and expires soon.` });
+  };
+
+  const setPassword = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-users", {
+      body: { action: "set_password", user_id: user.id, password: pw },
+    });
+    setBusy(false);
+    const msg = await fnError(error, data);
+    if (msg) return toast({ title: "Password not set", description: msg, variant: "destructive" });
+    toast({ title: "Password set", description: `${user.email} can now sign in with it.` });
+    setOpen(false); setPw(""); onDone();
+  };
+
+  return (
+    <>
+      <Button variant="outline" size="sm" disabled={busy} onClick={resend}>
+        {pending ? "Resend invite" : "Send reset link"}
+      </Button>
+      <Button variant="outline" size="sm" disabled={busy} onClick={() => setOpen(true)}>Set password</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Set password for {user.email}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            The account is activated immediately. Share the password privately; the user can change it later with "Forgot password".
+          </p>
+          <Input type="text" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="At least 8 characters" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button disabled={busy || pw.length < 8} onClick={setPassword}>Save password</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 const RoleManagement = () => {
@@ -75,11 +139,11 @@ const RoleManagement = () => {
       byUser.set(r.user_id, arr);
     });
 
-    let accounts: Record<string, { email?: string | null; last_sign_in_at?: string | null }> = {};
+    let accounts: Record<string, { email?: string | null; last_sign_in_at?: string | null; email_confirmed_at?: string | null }> = {};
     const { data: fnData } = await supabase.functions.invoke("admin-users", { body: { action: "list" } });
     if (fnData?.users) {
       accounts = Object.fromEntries(
-        fnData.users.map((u: any) => [u.id, { email: u.email, last_sign_in_at: u.last_sign_in_at }]),
+        fnData.users.map((u: any) => [u.id, { email: u.email, last_sign_in_at: u.last_sign_in_at, email_confirmed_at: u.email_confirmed_at }]),
       );
     }
 
@@ -91,6 +155,7 @@ const RoleManagement = () => {
         username: (p as any).username ?? null,
         email: accounts[p.id]?.email ?? null,
         last_sign_in_at: accounts[p.id]?.last_sign_in_at ?? null,
+        email_confirmed_at: accounts[p.id]?.email_confirmed_at ?? null,
         roles: byUser.get(p.id) ?? [],
       })),
     );
@@ -209,6 +274,9 @@ const RoleManagement = () => {
                           <div className="font-medium">
                             {u.full_name || "(no name)"}
                             {isSelf && <Badge variant="outline" className="ml-2">you</Badge>}
+                            {!u.email_confirmed_at && !u.last_sign_in_at && (
+                              <Badge variant="outline" className="ml-2 border-destructive/50 text-destructive">Pending activation</Badge>
+                            )}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {[u.username ? `@${u.username}` : null, u.email, u.phone].filter(Boolean).join(" · ") || "—"}
@@ -221,6 +289,7 @@ const RoleManagement = () => {
                             u.roles.map((r) => <Badge key={r} variant="secondary">{r}</Badge>)
                           )}
                           <EditUserDialog user={u} onSaved={load} />
+                          {!isSelf && <AccountAccessActions user={u} onDone={load} />}
                           {!isSelf && (
                             <Button
                               variant="ghost"
@@ -318,8 +387,9 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
       },
     });
     setSaving(false);
-    if (error || data?.error) {
-      toast({ title: "Could not add user", description: data?.error ?? error?.message, variant: "destructive" });
+    const failMsg = await fnError(error, data);
+    if (failMsg) {
+      toast({ title: "Could not add user", description: failMsg, variant: "destructive" });
       return;
     }
     toast({ title: "Invitation sent", description: `${email} can set a password from the emailed link.` });
