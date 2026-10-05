@@ -14,6 +14,7 @@ import logoUrl from "@/assets/logo.png";
 import { AppPermission } from "@/lib/permissions";
 import { usePermission } from "@/hooks/usePermission";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { DateModeToggle } from "@/components/DateModeToggle";
 import { useEscapeBack } from "@/hooks/useEscapeBack";
 
 
@@ -170,6 +171,7 @@ export function AppLayout({ children, title, actions }: { children: ReactNode; t
 
           <div className="flex items-center gap-2">
             {actions}
+            <DateModeToggle />
             <ThemeSwitcher className="hidden sm:flex" />
           </div>
         </header>
