@@ -826,6 +826,33 @@ function PosScreen({ reload }: { reload: () => void }) {
     setRefundInput(""); setRefundMethod("cash"); setRestoredBanner(false);
   }, []);
 
+  // ---- Draft preview (nothing is saved, no number is used) -------------------
+  const [previewing, setPreviewing] = useState(false);
+  const draftBill = useMemo(() => {
+    const cust = customers.find((c) => c.id === customerId) ?? null;
+    const now = new Date().toISOString();
+    const issued = canBackdate && issueDate && issueDate !== todayISO()
+      ? new Date(`${issueDate}T12:00:00`).toISOString() : now;
+    const doc = {
+      id: null, customers: cust, subtotal, stones_total: stonesTotal,
+      vat_rate: settings.vat_enabled ? settings.vat_rate : 0, vat_amount: tax.vat,
+      sd_tax_rate: settings.sd_tax_rate, sd_tax: tax.sdTax,
+      discount, round_off: roundOff, old_gold_credit: tax.creditApplied, total: tax.total,
+      amount_paid: paid, balance_due: balance, notes: notes || null,
+      order_date: orderDate || null, rate_basis: rateBasis, issued_at: issued, created_at: now,
+    };
+    const pays: any[] = payments.filter((p) => Number(p.amount) > 0)
+      .map((p) => ({ amount: Number(p.amount), method: p.method, paid_at: now }));
+    if (order && advanceConsumed > 0.004) {
+      pays.unshift({ amount: advanceConsumed, method: "cash", order_id: order.id, notes: "Advance applied", paid_at: now });
+    }
+    if (changeReturned > 0.004) {
+      pays.push({ amount: -changeReturned, method: "cash", notes: CHANGE_NOTE, reference: "CHANGE", paid_at: now });
+    }
+    return { doc, items: cart.map((r) => ({ ...r })), payments: pays, keptOnOrder: order ? advanceKept : 0 };
+  }, [customers, customerId, canBackdate, issueDate, subtotal, stonesTotal, settings, tax, discount, roundOff,
+      paid, balance, notes, orderDate, rateBasis, payments, order, advanceConsumed, changeReturned, cart, advanceKept]);
+
   // ---- Park & queue ----------------------------------------------------------
   // Nothing here touches the database, so no invoice number is reserved while a
   // bill waits: the next number goes to whichever bill is posted first and the
@@ -836,13 +863,14 @@ function PosScreen({ reload }: { reload: () => void }) {
       : quotationId ? { kind: "quotation" as const, id: quotationId }
       : { kind: "none" as const, id: null }),
     state: {
+      previewBill: draftBill,
       customerId, cart, discount, roundOff, targetTotal, oldGoldCredit, oldGoldPurchaseId, oldGoldMetal,
       payments, notes, issueDate, orderDate, rateBasis, order, orderLineByItem,
       advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput, refundMethod,
     },
   }), [user?.id, order, quotationId, customerId, cart, discount, roundOff, targetTotal, oldGoldCredit,
        oldGoldPurchaseId, oldGoldMetal, payments, notes, issueDate, orderDate, rateBasis,
-       orderLineByItem, advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput, refundMethod]);
+       orderLineByItem, advance, advanceOldMetal, applyCashAdv, applyOldMetalAdv, refundInput, refundMethod, draftBill]);
 
   const billLabel = useCallback(() => {
     const name = customers.find((c) => c.id === customerId)?.full_name;
@@ -856,11 +884,13 @@ function PosScreen({ reload }: { reload: () => void }) {
   useEffect(() => { refreshHeld(); }, [refreshHeld]);
 
   /** Park the current bill and clear the counter for the next customer. */
-  const parkBill = useCallback(async () => {
+  const [holdOpen, setHoldOpen] = useState(false);
+  const [holdNote, setHoldNote] = useState("");
+  const parkBill = useCallback(async (note?: string) => {
     if (!dirty) { toast.error("Nothing to hold yet"); return; }
     const snap = snapshot();
     const online = await parkBillShared({
-      label: billLabel(),
+      label: note?.trim() ? `${billLabel()} · ${note.trim()}` : billLabel(),
       ownerName: counterName,
       customerName: customers.find((c) => c.id === customerId)?.full_name ?? null,
       ...snap,
@@ -870,6 +900,7 @@ function PosScreen({ reload }: { reload: () => void }) {
     toast.success(online
       ? "Bill held — any counter can pick it up until it is posted"
       : "Bill held on this counter (offline) — it will stay here until posted");
+    setHoldOpen(false); setHoldNote("");
   }, [dirty, billLabel, snapshot, resetBill, counterName, customers, customerId, refreshHeld]);
 
   /** Bring a parked bill back, parking whatever is on the counter first. */
@@ -896,7 +927,7 @@ function PosScreen({ reload }: { reload: () => void }) {
   return (
     <AppLayout title="New Sale (POS)" actions={
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={parkBill} disabled={!dirty || saving}>
+        <Button variant="outline" size="sm" onClick={() => setHoldOpen(true)} disabled={!dirty || saving}>
           <PauseCircle className="mr-1 h-4 w-4" /> Hold bill
         </Button>
         <Button variant={held.length ? "secondary" : "outline"} size="sm" onClick={() => setHeldOpen(true)}>
@@ -1448,10 +1479,40 @@ function PosScreen({ reload }: { reload: () => void }) {
               )}
 
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={() => setPreviewing(true)} disabled={cart.length === 0 || previewing}>
+                <Eye className="mr-1 h-4 w-4" /> {previewing ? "Preparing…" : "Preview bill"}
+              </Button>
+              <Button variant="outline" onClick={() => setHoldOpen(true)} disabled={!dirty || saving}>
+                <PauseCircle className="mr-1 h-4 w-4" /> Hold bill
+              </Button>
+            </div>
             <Button className="w-full" onClick={checkout}
               disabled={saving || cart.length === 0 || !customerId || orderDateInvalid}>
               {saving ? "Processing..." : orderDateInvalid ? "Fix order date to complete sale" : "Complete Sale"}
             </Button>
+            <p className="text-center text-[11px] text-muted-foreground">
+              Preview and Hold don't post the bill or use an invoice number.
+            </p>
+            {previewing && (
+              <DraftBillPreview doc={draftBill.doc} items={draftBill.items} payments={draftBill.payments}
+                keptOnOrder={draftBill.keptOnOrder} onDone={() => setPreviewing(false)} />
+            )}
+            <Dialog open={holdOpen} onOpenChange={setHoldOpen}>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Hold this bill</DialogTitle></DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  The bill is saved on the Counter page for any counter to resume, preview or print later. It isn't posted and no invoice number is used.
+                </p>
+                <Input autoFocus placeholder="Optional note, e.g. back at 5pm for necklace" value={holdNote}
+                  onChange={(e) => setHoldNote(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") parkBill(holdNote); }} />
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setHoldOpen(false)}>Cancel</Button>
+                  <Button onClick={() => parkBill(holdNote)}>Hold bill</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
       </div>
