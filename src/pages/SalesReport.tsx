@@ -1,4 +1,7 @@
+import { DateText } from "@/components/DateText";
+import { toADDate, toBSLong } from "@/lib/nepaliDate";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DateField } from "@/components/DateField";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -110,9 +113,9 @@ export default function SalesReport() {
   }), { tola: 0, wastage: 0, net: 0, roundOff: 0 }), [filtered]);
 
   function exportCsv() {
-    const head = ["Sale date", "Order date", "Days (order to sale)", "Bill no.", "Customer", "Tola sold", "Wastage (g)", "Net payable", "Round-off", "Status"];
+    const head = ["Sale date", "Sale date (BS)", "Order date", "Order date (BS)", "Days (order to sale)", "Bill no.", "Customer", "Tola sold", "Wastage (g)", "Net payable", "Round-off", "Status"];
     const body = filtered.map((r) => [
-      new Date(r.date).toLocaleDateString(), r.orderDate ?? "", r.days ?? "", r.number, r.customer,
+      toADDate(r.date), toBSLong(r.date), r.orderDate ?? "", r.orderDate ? toBSLong(r.orderDate) : "", r.days ?? "", r.number, r.customer,
       r.tola.toFixed(3), r.wastage.toFixed(3), r.netPayable.toFixed(2), r.roundOff.toFixed(2), r.status,
     ]);
     const csv = [head, ...body].map((line) =>
@@ -140,11 +143,11 @@ export default function SalesReport() {
         <CardContent className="grid gap-3 pt-6 md:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
           <div className="space-y-1">
             <Label className="text-xs">Sale date from</Label>
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <DateField value={from} onChange={(v) => setFrom(v)} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Sale date to</Label>
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <DateField value={to} onChange={(v) => setTo(v)} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Status</Label>
@@ -169,11 +172,11 @@ export default function SalesReport() {
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Order date from</Label>
-            <Input type="date" value={oFrom} onChange={(e) => setOFrom(e.target.value)} />
+            <DateField value={oFrom} onChange={(v) => setOFrom(v)} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Order date to</Label>
-            <Input type="date" value={oTo} onChange={(e) => setOTo(e.target.value)} />
+            <DateField value={oTo} onChange={(v) => setOTo(v)} />
           </div>
           <label className="flex items-end gap-2 pb-2 text-sm">
             <input type="checkbox" checked={onlyOrdered} onChange={(e) => setOnlyOrdered(e.target.checked)} />
@@ -227,8 +230,8 @@ export default function SalesReport() {
                 <TableRow><TableCell colSpan={10} className="py-6 text-center text-muted-foreground">No bills in this period.</TableCell></TableRow>
               ) : filtered.map((r) => (
                 <TableRow key={r.id} className="cursor-pointer" onClick={() => nav(`/invoices/${r.id}`)}>
-                  <TableCell>{new Date(r.date).toLocaleDateString()}</TableCell>
-                  <TableCell>{r.orderDate ?? "—"}</TableCell>
+                  <TableCell><DateText value={r.date} /></TableCell>
+                  <TableCell><DateText value={r.orderDate} /></TableCell>
                   <TableCell className="text-right">{r.days ?? "—"}</TableCell>
                   <TableCell className="font-medium">{r.number}</TableCell>
                   <TableCell>{r.customer}</TableCell>

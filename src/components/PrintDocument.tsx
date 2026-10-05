@@ -84,9 +84,11 @@ type Props = {
   keptOnOrder?: number;
   cashierName?: string;
   domId: string;
+  /** Unposted bill: placeholder number and a DRAFT mark across the page. */
+  draft?: boolean;
 };
 
-export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0, cashierName, domId }: Props) {
+export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0, cashierName, domId, draft = false }: Props) {
 
   const profile = useCompanyProfile();
   const [logo, setLogo] = useState<string>(logoAsset);
@@ -142,7 +144,7 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
 
   const isInvoice = kind === "invoice";
   const cust = doc.customers;
-  const docNo = isInvoice ? doc.invoice_number : doc.quote_number;
+  const docNo = draft ? "DRAFT — number given on posting" : isInvoice ? doc.invoice_number : doc.quote_number;
   const docDate = doc.issued_at ?? doc.created_at;
 
   const gross = items.reduce((s, r) => s + docRowMath(r).rowTotal, 0);
@@ -183,7 +185,14 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
 
   return (
     <div id={domId} style={{ display: "none" }}>
-      <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#000", border: "1.5px solid #000" }}>
+      <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#000", border: "1.5px solid #000", position: "relative" }}>
+        {draft && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 5 }}>
+            <div style={{ transform: "rotate(-20deg)", fontSize: "64px", fontWeight: "bold", color: "rgba(200,0,0,0.13)", border: "6px solid rgba(200,0,0,0.13)", padding: "4px 24px", letterSpacing: "6px" }}>
+              DRAFT / NOT POSTED
+            </div>
+          </div>
+        )}
 
         {/* HEADER */}
         <div className="pd-keep" style={{ display: "flex", padding: "8px 10px", gap: "10px", alignItems: "flex-start" }}>
@@ -466,4 +475,21 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
       </div>
     </div>
   );
+}
+
+
+/** Mounts a draft bill off-screen, then opens the print preview once images have loaded. */
+export function DraftBillPreview({ doc, items, payments = [], keptOnOrder = 0, onDone }: {
+  doc: any; items: any[]; payments?: any[]; keptOnOrder?: number; onDone: () => void;
+}) {
+  const domId = "draft-bill-print";
+  useEffect(() => {
+    const t = setTimeout(() => {
+      printDocument(domId, "Draft bill (not posted)", "Draft-bill");
+      onDone();
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return <PrintDocument kind="invoice" draft doc={doc} items={items} payments={payments} keptOnOrder={keptOnOrder} domId={domId} />;
 }

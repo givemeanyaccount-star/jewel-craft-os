@@ -1,3 +1,4 @@
+import { DateText } from "@/components/DateText";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -83,8 +84,8 @@ export default function Quotations() {
                 <TableRow key={q.id} className="cursor-pointer" onClick={() => nav(`/quotations/${q.id}`)}>
                   <TableCell className="font-medium">{q.quote_number}</TableCell>
                   <TableCell>{q.customers?.full_name ?? "—"}</TableCell>
-                  <TableCell>{new Date(q.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell>{q.valid_until ? new Date(q.valid_until).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell><DateText value={q.created_at} /></TableCell>
+                  <TableCell><DateText value={q.valid_until} /></TableCell>
                   <TableCell>
                     <Badge variant={q.status === "expired" ? "destructive" : "secondary"} className="capitalize">{q.status}</Badge>
                   </TableCell>

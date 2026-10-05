@@ -1,4 +1,6 @@
+import { DateText } from "@/components/DateText";
 import { useEffect, useState } from "react";
+import { DateField } from "@/components/DateField";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,7 +81,7 @@ function StockPurchasesTab() {
                   <TableRow key={p.id} className="cursor-pointer" onClick={() => nav(`/purchases/${p.id}`)}>
                     <TableCell className="font-medium">{p.purchase_no}</TableCell>
                     <TableCell>{p.suppliers?.name ?? "—"}</TableCell>
-                    <TableCell>{new Date(p.purchase_date).toLocaleDateString()}</TableCell>
+                    <TableCell><DateText value={p.purchase_date} /></TableCell>
                     <TableCell>{p.purchase_items?.length ?? 0}</TableCell>
                     <TableCell className="capitalize">{p.payment_status}</TableCell>
                     <TableCell className="text-right font-medium">{npr(p.total_amount)}</TableCell>
@@ -172,7 +174,7 @@ function NewPurchaseDialog({ open, onOpenChange, onSaved }: any) {
               <SelectContent>{suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><Label>Purchase date</Label><Input type="date" value={form.purchase_date ?? ""} onChange={(e) => setForm({ ...form, purchase_date: e.target.value })} /></div>
+          <div><Label>Purchase date</Label><DateField value={form.purchase_date ?? ""} onChange={(v) => setForm({ ...form, purchase_date: v })} /></div>
           <div><Label>Supplier's invoice no.</Label><Input value={form.invoice_no ?? ""} onChange={(e) => setForm({ ...form, invoice_no: e.target.value })} /></div>
         </div>
 
@@ -298,7 +300,7 @@ function OldGoldPurchasesTab() {
                     {isMissingId(p) && <Badge variant="outline" className="ml-2 text-amber-600">Missing ID</Badge>}
                   </TableCell>
                   <TableCell><div>{p.customers?.full_name ?? p.customer_name}</div><div className="text-xs text-muted-foreground">{p.customers?.phone ?? p.customer_phone}</div></TableCell>
-                  <TableCell>{new Date(p.purchased_at).toLocaleDateString()}</TableCell>
+                  <TableCell><DateText value={p.purchased_at} /></TableCell>
                   <TableCell className="capitalize">{p.metal} {p.purity}</TableCell>
                   <TableCell className="text-right">{gms(p.net_weight)}</TableCell>
                   <TableCell className="text-right font-medium">{npr(p.total_amount)}</TableCell>

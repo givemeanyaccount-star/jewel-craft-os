@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { DateField } from "@/components/DateField";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -970,8 +971,8 @@ function EditOrderDialog({ open, onOpenChange, order, onDone }: {
         <DialogHeader><DialogTitle>Edit order details</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Order date</Label><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></div>
-            <div><Label>Promised delivery</Label><Input type="date" value={promised} onChange={(e) => setPromised(e.target.value)} /></div>
+            <div><Label>Order date</Label><DateField value={orderDate} onChange={(v) => setOrderDate(v)} /></div>
+            <div><Label>Promised delivery</Label><DateField value={promised} onChange={(v) => setPromised(v)} /></div>
           </div>
           <div><Label>Notes</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
         </div>

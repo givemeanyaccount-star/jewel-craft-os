@@ -1,3 +1,4 @@
+import { DateText } from "@/components/DateText";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
@@ -82,8 +83,8 @@ export default function Invoices() {
                 <TableRow key={i.id} className="cursor-pointer">
                   <TableCell><Link to={`/invoices/${i.id}`} className="font-medium hover:underline">{i.invoice_number}</Link></TableCell>
                   <TableCell>{i.customers?.full_name ?? "Walk-in"}</TableCell>
-                  <TableCell>{new Date(i.issued_at).toLocaleDateString()}</TableCell>
-                  <TableCell>{i.order_date ?? "—"}</TableCell>
+                  <TableCell><DateText value={i.issued_at} /></TableCell>
+                  <TableCell><DateText value={i.order_date} /></TableCell>
                   <TableCell className="text-right">{npr(i.total)}</TableCell>
                   <TableCell className="text-right">{Number(i.balance_due) > 0 ? <span className="text-destructive">{npr(i.balance_due)}</span> : "—"}</TableCell>
                   <TableCell><Badge variant="outline" className="capitalize">{i.status}</Badge></TableCell>

@@ -1,4 +1,6 @@
+import { DateText } from "@/components/DateText";
 import { useEffect, useMemo, useState } from "react";
+import { DateField } from "@/components/DateField";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -101,8 +103,8 @@ export default function Orders() {
                   <TableRow key={o.id} className="cursor-pointer" onClick={() => nav(`/orders/${o.id}`)}>
                     <TableCell className="font-medium">{o.order_no}</TableCell>
                     <TableCell>{o.customers?.full_name ?? "-"}</TableCell>
-                    <TableCell>{o.order_date}</TableCell>
-                    <TableCell className={overdue ? "text-destructive font-medium" : ""}>{o.promised_date ?? "-"}</TableCell>
+                    <TableCell><DateText value={o.order_date} /></TableCell>
+                    <TableCell className={overdue ? "text-destructive font-medium" : ""}><DateText value={o.promised_date} /></TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {(o.order_items ?? []).slice(0, 3).map((it: any) => (
@@ -242,8 +244,8 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="sm:col-span-3"><CustomerSelector value={customer} onChange={setCustomer} /></div>
-          <div><Label>Order date</Label><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></div>
-          <div><Label>Promised delivery</Label><Input type="date" value={promised} onChange={(e) => setPromised(e.target.value)} /></div>
+          <div><Label>Order date</Label><DateField value={orderDate} onChange={(v) => setOrderDate(v)} /></div>
+          <div><Label>Promised delivery</Label><DateField value={promised} onChange={(v) => setPromised(v)} /></div>
           <div>
             <Label>Advance received</Label>
             <div className="flex gap-1">
