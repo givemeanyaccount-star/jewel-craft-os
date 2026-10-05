@@ -1,3 +1,4 @@
+import { DateText } from "@/components/DateText";
 import { useEffect, useMemo, useState } from "react";
 import { DateField } from "@/components/DateField";
 import { useNavigate } from "react-router-dom";
@@ -102,8 +103,8 @@ export default function Orders() {
                   <TableRow key={o.id} className="cursor-pointer" onClick={() => nav(`/orders/${o.id}`)}>
                     <TableCell className="font-medium">{o.order_no}</TableCell>
                     <TableCell>{o.customers?.full_name ?? "-"}</TableCell>
-                    <TableCell>{o.order_date}</TableCell>
-                    <TableCell className={overdue ? "text-destructive font-medium" : ""}>{o.promised_date ?? "-"}</TableCell>
+                    <TableCell><DateText value={o.order_date} /></TableCell>
+                    <TableCell className={overdue ? "text-destructive font-medium" : ""}><DateText value={o.promised_date} /></TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {(o.order_items ?? []).slice(0, 3).map((it: any) => (

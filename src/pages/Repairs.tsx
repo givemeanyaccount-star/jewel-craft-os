@@ -1,3 +1,4 @@
+import { DateText } from "@/components/DateText";
 import { useEffect, useState } from "react";
 import { DateField } from "@/components/DateField";
 import { Link, useNavigate } from "react-router-dom";
@@ -124,7 +125,7 @@ export default function Repairs() {
                       </div>
                     </TableCell>
                     <TableCell><Badge className={STATUS_COLOR[status]}>{STATUS_LABEL[status]}</Badge></TableCell>
-                    <TableCell>{r.expected_delivery ? new Date(r.expected_delivery).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell><DateText value={r.expected_delivery} /></TableCell>
                     <TableCell className="text-right">{npr(total)}</TableCell>
                   </TableRow>
                 );
