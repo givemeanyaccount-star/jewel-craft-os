@@ -1,3 +1,4 @@
+import { DateText } from "@/components/DateText";
 import { useEffect, useState } from "react";
 import { DateField } from "@/components/DateField";
 import { useNavigate, useParams } from "react-router-dom";
@@ -141,10 +142,10 @@ export default function InvoiceDetail() {
             <div>
               <CardTitle>Invoice {inv.invoice_number}</CardTitle>
               <div className="mt-1 text-sm text-muted-foreground">
-                {inv.customers?.full_name ?? "Walk-in"} · Sale {new Date(inv.issued_at).toLocaleString()}
+                {inv.customers?.full_name ?? "Walk-in"} · Sale <DateText value={inv.issued_at} withTime />
               </div>
               <div className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <span>Order date: <b className="text-foreground">{inv.order_date ?? "—"}</b></span>
+                <span>Order date: <b className="text-foreground"><DateText value={inv.order_date} /></b></span>
                 {inv.order_date && <span>· Priced at {inv.rate_basis === "order" ? "order-date rate" : "sale-date rate"}</span>}
                 {hasPermission("invoice_order_date_correct") && (
                   <Button size="sm" variant="link" className="h-auto p-0" onClick={() => { setOdValue(inv.order_date ?? ""); setOdReason(""); setOdOpen(true); }}>
