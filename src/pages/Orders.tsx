@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { DateField } from "@/components/DateField";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -242,8 +243,8 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="sm:col-span-3"><CustomerSelector value={customer} onChange={setCustomer} /></div>
-          <div><Label>Order date</Label><Input type="date" value={orderDate} onChange={(e) => setOrderDate(e.target.value)} /></div>
-          <div><Label>Promised delivery</Label><Input type="date" value={promised} onChange={(e) => setPromised(e.target.value)} /></div>
+          <div><Label>Order date</Label><DateField value={orderDate} onChange={(v) => setOrderDate(v)} /></div>
+          <div><Label>Promised delivery</Label><DateField value={promised} onChange={(v) => setPromised(v)} /></div>
           <div>
             <Label>Advance received</Label>
             <div className="flex gap-1">

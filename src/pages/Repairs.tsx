@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DateField } from "@/components/DateField";
 import { Link, useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -210,7 +211,7 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
 
         <div className="grid gap-3 md:grid-cols-2">
           <CustomerSelector value={customer} onChange={setCustomer} />
-          <div><Label>Expected delivery</Label><Input type="date" value={header.expected_delivery ?? ""} onChange={(e) => setHeader({ ...header, expected_delivery: e.target.value })} /></div>
+          <div><Label>Expected delivery</Label><DateField value={header.expected_delivery ?? ""} onChange={(v) => setHeader({ ...header, expected_delivery: v })} /></div>
         </div>
 
         <div className="mt-4 space-y-3">

@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DateField } from "@/components/DateField";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -1013,9 +1014,9 @@ function PosScreen({ reload }: { reload: () => void }) {
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <div>
                   <Label className="text-xs">Order date (optional)</Label>
-                  <Input type="date" className="h-9" value={orderDate} max={saleDate}
+                  <DateField value={orderDate} max={saleDate}
                     aria-invalid={orderDateInvalid}
-                    onChange={(e) => setOrderDate(e.target.value)} />
+                    onChange={(v) => setOrderDate(v)} />
                   {orderDateInvalid ? (
                     <p className="mt-1 text-xs text-destructive">
                       Order date cannot be after the sale date ({saleDate}).
@@ -1050,8 +1051,8 @@ function PosScreen({ reload }: { reload: () => void }) {
               {canBackdate ? (
                 <div className="mt-3 sm:w-1/2">
                   <Label className="text-xs">Invoice date</Label>
-                  <Input type="date" className="h-9" value={issueDate}
-                    onChange={(e) => setIssueDate(e.target.value)} />
+                  <DateField value={issueDate}
+                    onChange={(v) => setIssueDate(v)} />
                 </div>
               ) : (
                 <p className="mt-2 text-xs text-muted-foreground">Invoice date {issueDate} · priced at today's rate.</p>

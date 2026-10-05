@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DateField } from "@/components/DateField";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,11 +141,11 @@ export default function SalesReport() {
         <CardContent className="grid gap-3 pt-6 md:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
           <div className="space-y-1">
             <Label className="text-xs">Sale date from</Label>
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <DateField value={from} onChange={(v) => setFrom(v)} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Sale date to</Label>
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <DateField value={to} onChange={(v) => setTo(v)} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Status</Label>
@@ -169,11 +170,11 @@ export default function SalesReport() {
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Order date from</Label>
-            <Input type="date" value={oFrom} onChange={(e) => setOFrom(e.target.value)} />
+            <DateField value={oFrom} onChange={(v) => setOFrom(v)} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Order date to</Label>
-            <Input type="date" value={oTo} onChange={(e) => setOTo(e.target.value)} />
+            <DateField value={oTo} onChange={(v) => setOTo(v)} />
           </div>
           <label className="flex items-end gap-2 pb-2 text-sm">
             <input type="checkbox" checked={onlyOrdered} onChange={(e) => setOnlyOrdered(e.target.checked)} />

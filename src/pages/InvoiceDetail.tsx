@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DateField } from "@/components/DateField";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -293,7 +294,7 @@ export default function InvoiceDetail() {
           </p>
           <div className="space-y-1">
             <Label>New order date</Label>
-            <Input type="date" value={odValue} max={String(inv.issued_at).slice(0, 10)} onChange={(e) => setOdValue(e.target.value)} />
+            <DateField value={odValue} max={String(inv.issued_at).slice(0, 10)} onChange={(v) => setOdValue(v)} />
             <p className="text-xs text-muted-foreground">Leave empty to clear. Cannot be after the sale date.</p>
           </div>
           <div className="space-y-1">
