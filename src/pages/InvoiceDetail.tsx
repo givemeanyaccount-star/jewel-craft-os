@@ -295,7 +295,7 @@ export default function InvoiceDetail() {
           </p>
           <div className="space-y-1">
             <Label>New order date</Label>
-            <DateField value={odValue} max={String(inv.issued_at).slice(0, 10)} onChange={(v) => setOdValue(v)} />
+            <DateField showToggle value={odValue} max={String(inv.issued_at).slice(0, 10)} onChange={(v) => setOdValue(v)} />
             <p className="text-xs text-muted-foreground">Leave empty to clear. Cannot be after the sale date.</p>
           </div>
           <div className="space-y-1">

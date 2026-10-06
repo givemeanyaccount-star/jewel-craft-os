@@ -244,7 +244,7 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="sm:col-span-3"><CustomerSelector value={customer} onChange={setCustomer} /></div>
-          <div><Label>Order date</Label><DateField value={orderDate} onChange={(v) => setOrderDate(v)} /></div>
+          <div><Label>Order date</Label><DateField showToggle value={orderDate} onChange={(v) => setOrderDate(v)} /></div>
           <div><Label>Promised delivery</Label><DateField value={promised} onChange={(v) => setPromised(v)} /></div>
           <div>
             <Label>Advance received</Label>

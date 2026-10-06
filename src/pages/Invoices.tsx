@@ -1,3 +1,4 @@
+import { useDateMode } from "@/hooks/useDateMode";
 import { DateText } from "@/components/DateText";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -30,6 +31,7 @@ export function InvoiceSubNav({ active }: { active: "sales" | "oldgold" }) {
 }
 
 export default function Invoices() {
+  const [mode] = useDateMode();
   const { hasPermission } = usePermission();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [q, setQ] = useState("");
@@ -74,7 +76,7 @@ export default function Invoices() {
       <Card><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Invoice</TableHead><TableHead>Customer</TableHead><TableHead>Sale date</TableHead><TableHead>Order date</TableHead>
+            <TableHead>Invoice</TableHead><TableHead>Customer</TableHead><TableHead>Sale date ({mode})</TableHead><TableHead>Order date ({mode})</TableHead>
             <TableHead className="text-right">Total</TableHead><TableHead className="text-right">Balance</TableHead><TableHead>Status</TableHead>
           </TableRow></TableHeader>
           <TableBody>

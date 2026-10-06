@@ -1112,7 +1112,7 @@ function PosScreen({ reload }: { reload: () => void }) {
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <div>
                   <Label className="text-xs">Order date (optional)</Label>
-                  <DateField value={orderDate} max={saleDate}
+                  <DateField showToggle value={orderDate} max={saleDate}
                     aria-invalid={orderDateInvalid}
                     onChange={(v) => changeOrderDate(v)} />
                   {orderDateInvalid ? (

@@ -212,7 +212,7 @@ function NewRepairDialog({ open, onOpenChange, onSaved }: any) {
 
         <div className="grid gap-3 md:grid-cols-2">
           <CustomerSelector value={customer} onChange={setCustomer} />
-          <div><Label>Expected delivery</Label><DateField value={header.expected_delivery ?? ""} onChange={(v) => setHeader({ ...header, expected_delivery: v })} /></div>
+          <div><Label>Expected delivery</Label><DateField showToggle value={header.expected_delivery ?? ""} onChange={(v) => setHeader({ ...header, expected_delivery: v })} /></div>
         </div>
 
         <div className="mt-4 space-y-3">

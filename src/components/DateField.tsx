@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useDateMode } from "@/hooks/useDateMode";
+import { DateModeToggle } from "@/components/DateModeToggle";
 import { adToBSParts, bsToAD, bsMonthDays, BS_MONTHS, toADDate, toBSLong } from "@/lib/nepaliDate";
 
 interface Props {
@@ -15,6 +16,8 @@ interface Props {
   "aria-invalid"?: boolean;
   /** Allow clearing the date (shows an empty choice in BS mode). */
   clearable?: boolean;
+  /** Show the AD | BS switch at the right of the label row above this box. */
+  showToggle?: boolean;
 }
 
 const selectCls =
@@ -24,7 +27,7 @@ const selectCls =
  * Date box that follows the AD/BS switch. Always reads and emits an AD
  * YYYY-MM-DD value, so storage and reports are unaffected.
  */
-export function DateField({ value, onChange, min, max, id, className, disabled, clearable = true, ...rest }: Props) {
+export function DateField({ value, onChange, min, max, id, className, disabled, clearable = true, showToggle = false, ...rest }: Props) {
   const [mode] = useDateMode();
   const today = toADDate(new Date());
   const parts = adToBSParts(value || "") ;
@@ -36,9 +39,11 @@ export function DateField({ value, onChange, min, max, id, className, disabled, 
     return out;
   }, [base.y]);
 
+  const toggle = showToggle ? <DateModeToggle compact className="absolute -top-[1.35rem] right-0" /> : null;
   if (mode === "AD") {
     return (
-      <div className={className}>
+      <div className={cn("relative", className)}>
+        {toggle}
         <Input id={id} type="date" value={value} min={min} max={max} disabled={disabled}
           aria-invalid={rest["aria-invalid"]} onChange={(e) => onChange(e.target.value)} />
         {value && <p className="mt-0.5 text-[11px] text-muted-foreground">BS {toBSLong(value)}</p>}
@@ -56,7 +61,8 @@ export function DateField({ value, onChange, min, max, id, className, disabled, 
   const days = bsMonthDays(base.y, base.m);
 
   return (
-    <div className={className}>
+    <div className={cn("relative", className)}>
+      {toggle}
       <div className={cn("flex gap-1", rest["aria-invalid"] && "rounded-md ring-2 ring-destructive")} id={id}>
         <select aria-label="BS year" className={selectCls} disabled={disabled}
           value={parts ? base.y : ""} onChange={(e) => e.target.value ? emit(Number(e.target.value), base.m, base.d) : onChange("")}>

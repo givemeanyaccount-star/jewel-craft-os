@@ -174,7 +174,7 @@ function NewPurchaseDialog({ open, onOpenChange, onSaved }: any) {
               <SelectContent>{suppliers.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div><Label>Purchase date</Label><DateField value={form.purchase_date ?? ""} onChange={(v) => setForm({ ...form, purchase_date: v })} /></div>
+          <div><Label>Purchase date</Label><DateField showToggle value={form.purchase_date ?? ""} onChange={(v) => setForm({ ...form, purchase_date: v })} /></div>
           <div><Label>Supplier's invoice no.</Label><Input value={form.invoice_no ?? ""} onChange={(e) => setForm({ ...form, invoice_no: e.target.value })} /></div>
         </div>
 
