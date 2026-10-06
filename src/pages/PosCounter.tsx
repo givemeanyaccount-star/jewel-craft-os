@@ -1,3 +1,4 @@
+import { DraftBillPreview } from "@/components/PrintDocument";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
@@ -9,7 +10,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { RefreshCw, Trash2, Plus } from "lucide-react";
+import { RefreshCw, Trash2, Plus, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { npr } from "@/lib/format";
 import {
@@ -30,6 +31,7 @@ export default function PosCounter() {
   const [bills, setBills] = useState<SharedHeldBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [discardTarget, setDiscardTarget] = useState<SharedHeldBill | null>(null);
+  const [printing, setPrinting] = useState<SharedHeldBill | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -127,6 +129,11 @@ export default function PosCounter() {
                         <TableCell className="text-muted-foreground">{ageLabel(b.savedAt)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            <Button size="sm" variant="outline" disabled={!b.state?.previewBill || !!printing}
+                              title={b.state?.previewBill ? "Preview or print this bill without posting it" : "Held before previews were available — resume it to print"}
+                              onClick={() => setPrinting(b)}>
+                              <Printer className="mr-1 h-4 w-4" /> Preview / Print
+                            </Button>
                             <Button size="sm" onClick={() => resume(b)}>Resume</Button>
                             <Button size="sm" variant="ghost" onClick={() => setDiscardTarget(b)}>
                               <Trash2 className="h-4 w-4" />
@@ -143,6 +150,11 @@ export default function PosCounter() {
         </CardContent>
       </Card>
 
+      {printing?.state?.previewBill && (
+        <DraftBillPreview doc={printing.state.previewBill.doc} items={printing.state.previewBill.items}
+          payments={printing.state.previewBill.payments} keptOnOrder={printing.state.previewBill.keptOnOrder}
+          onDone={() => setPrinting(null)} />
+      )}
       <AlertDialog open={!!discardTarget} onOpenChange={(v) => !v && setDiscardTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -1,3 +1,4 @@
+import { DraftBillPreview } from "@/components/PrintDocument";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateField } from "@/components/DateField";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -25,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil, ClipboardList, PauseCircle, Layers } from "lucide-react";
+import { Plus, Trash2, Search, ShoppingCart, RefreshCw, UserPlus, Coins, Pencil, ClipboardList, PauseCircle, Layers, Eye } from "lucide-react";
 import {
   npr, computeLineTotal,
   nextNumber, computeInvoiceTaxes, solveTargetTotal, solveTargetRefund,
