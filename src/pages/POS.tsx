@@ -66,6 +66,12 @@ export interface CartRow {
   wastage_input: number;
   wastage_type: "percentage" | "weight" | "fixed";
   raw_item?: any; // full inventory row for editing
+  /** Rate typed by hand — never overwritten when the rate basis or order date changes. */
+  rate_manual?: boolean;
+  /** Effective date of the rate applied (for the caption). */
+  rate_date?: string | null;
+  /** No rate on or before the order date — today's rate kept. */
+  rate_missing?: boolean;
 }
 
 interface PayLine { method: string; amount: number; }
@@ -333,15 +339,34 @@ function PosScreen({ reload }: { reload: () => void }) {
 
   /** Re-price the whole cart from the order date or from the latest rates. */
   async function applyRateBasis(basis: "order" | "current") {
-    const date = orderDate;
-    const updated = await Promise.all(cart.map(async (r) => {
-      if (!r.metal || !r.purity) return r;
-      const look = basis === "order" && date ? await fetchRateOn(r.metal, r.purity, date) : await fetchLatestRate(r.metal, r.purity);
-      return look.rate ? recompute({ ...r, rate: look.rate }) : r;
-    }));
-    setCart(updated);
     setRateBasis(basis);
-    toast.success(basis === "order" ? `Priced at the ${date} rate` : "Priced at today's rate");
+    toast.success(basis === "order" ? `Priced at the ${orderDate} rate` : "Priced at today's rate");
+  }
+
+  // Keep the latest basis/date for lookups made from async handlers.
+  const rateBasisRef = useRef(rateBasis); rateBasisRef.current = rateBasis;
+  const orderDateRef = useRef(orderDate); orderDateRef.current = orderDate;
+  // Re-price the bill whenever the basis or the order date changes (not on first load,
+  // so a restored or freshly loaded bill keeps the rates it already has).
+  const repriceReady = useRef(false);
+  useEffect(() => {
+    if (!repriceReady.current) { repriceReady.current = true; return; }
+    let cancelled = false;
+    (async () => {
+      const current = cartRef.current;
+      if (!current.length) return;
+      const updated = await repriceCart(rateBasis, orderDate, current);
+      if (!cancelled) setCart(updated);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rateBasis, orderDate]);
+
+  /** Order date edits: a new date prices at that day's rate; clearing goes back to today's. */
+  function changeOrderDate(v: string) {
+    if (!orderDate && v) setRateBasis("order");
+    if (!v) setRateBasis("current");
+    setOrderDate(v);
   }
 
   useEffect(() => {
@@ -358,15 +383,33 @@ function PosScreen({ reload }: { reload: () => void }) {
   }, [search, categoryId]);
 
 
+  /** Rate for a line under the chosen basis (order-date rate or today's). */
+  async function lookupRate(metal: string, purity: string, basis = rateBasisRef.current, date = orderDateRef.current) {
+    if (basis === "order" && date) {
+      const on = await fetchRateOn(metal, purity, date);
+      if (on.rate) return { rate: on.rate, rate_date: on.effective_date, rate_missing: false };
+      const now = await fetchLatestRate(metal, purity);
+      return { rate: now.rate, rate_date: now.effective_date, rate_missing: true };
+    }
+    const now = await fetchLatestRate(metal, purity);
+    return { rate: now.rate, rate_date: now.effective_date, rate_missing: false };
+  }
   async function fetchRate(metal: string, purity: string): Promise<number> {
-    const { data } = await supabase.from("metal_rates")
-      .select("rate_per_gram").eq("metal", metal as any).eq("purity", purity)
-      .order("effective_date", { ascending: false }).limit(1).maybeSingle();
-    return Number(data?.rate_per_gram ?? 0);
+    return (await lookupRate(metal, purity)).rate;
+  }
+
+  /** Re-price every line (except hand-typed rates) for a basis and order date. */
+  async function repriceCart(basis: "order" | "current", date: string, rows: CartRow[]) {
+    return Promise.all(rows.map(async (r) => {
+      if (!r.metal || !r.purity || r.rate_manual) return r;
+      const look = await lookupRate(r.metal, r.purity, basis, date);
+      return look.rate ? recompute({ ...r, rate: look.rate, rate_date: look.rate_date, rate_missing: look.rate_missing }) : { ...r, rate_missing: true };
+    }));
   }
 
   async function addToCart(item: any) {
-    const rate = await fetchRate(item.metal, item.purity);
+    const look = await lookupRate(item.metal, item.purity);
+    const rate = look.rate;
     if (!rate) toast.warning(`No ${item.metal} ${item.purity} rate set — enter rate on the line or update Metal Rates.`);
     const row: CartRow = {
       inventory_item_id: item.id,
@@ -386,6 +429,7 @@ function PosScreen({ reload }: { reload: () => void }) {
       wastage_input: Number(item.wastage_value ?? 0),
       wastage_type: (item.wastage_type ?? "percentage") as any,
       raw_item: item,
+      rate_date: look.rate_date, rate_missing: look.rate_missing,
     };
     setCart((c) => [...c, recompute(row)]);
     setSearch(""); setItems([]);
@@ -408,11 +452,7 @@ function PosScreen({ reload }: { reload: () => void }) {
   }
 
   async function refreshAllRates() {
-    const updated = await Promise.all(cart.map(async (r) => {
-      if (!r.metal || !r.purity) return r;
-      const rate = await fetchRate(r.metal, r.purity);
-      return recompute({ ...r, rate: rate || r.rate });
-    }));
+    const updated = await repriceCart(rateBasis, orderDate, cart.map((r) => ({ ...r, rate_manual: false })));
     setCart(updated);
     toast.success("Rates refreshed");
   }
@@ -1048,7 +1088,7 @@ function PosScreen({ reload }: { reload: () => void }) {
                   <Label className="text-xs">Order date (optional)</Label>
                   <DateField value={orderDate} max={saleDate}
                     aria-invalid={orderDateInvalid}
-                    onChange={(v) => setOrderDate(v)} />
+                    onChange={(v) => changeOrderDate(v)} />
                   {orderDateInvalid ? (
                     <p className="mt-1 text-xs text-destructive">
                       Order date cannot be after the sale date ({saleDate}).
@@ -1206,7 +1246,7 @@ function PosScreen({ reload }: { reload: () => void }) {
                         <TableCell className="text-right">
                           <UnitNumberField mode="rate" className="w-28" hideToggle
                             inputClassName={`h-8 text-right ${r.rate <= 0 ? "border-destructive" : ""}`}
-                            value={r.rate} onChange={(v) => updateRow(i, { rate: v })} />
+                            value={r.rate} onChange={(v) => updateRow(i, { rate: v, rate_manual: true, rate_missing: false })} />
                         </TableCell>
                         <TableCell className="text-right">
                           <NumberField className="h-8 w-24 text-right" value={r.stone_value}
