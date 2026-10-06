@@ -1,3 +1,4 @@
+import { toBSLong } from "@/lib/nepaliDate";
 import { DraftBillPreview } from "@/components/PrintDocument";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateField } from "@/components/DateField";
@@ -346,6 +347,7 @@ function PosScreen({ reload }: { reload: () => void }) {
   // Keep the latest basis/date for lookups made from async handlers.
   const rateBasisRef = useRef(rateBasis); rateBasisRef.current = rateBasis;
   const orderDateRef = useRef(orderDate); orderDateRef.current = orderDate;
+  const cartRef = useRef(cart); cartRef.current = cart;
   // Re-price the bill whenever the basis or the order date changes (not on first load,
   // so a restored or freshly loaded bill keeps the rates it already has).
   const repriceReady = useRef(false);
@@ -867,6 +869,30 @@ function PosScreen({ reload }: { reload: () => void }) {
     setRefundInput(""); setRefundMethod("cash"); setRestoredBanner(false);
   }, []);
 
+  // Which rate each metal/purity on the bill was priced at.
+  const rateNotes = useMemo(() => {
+    const seen = new Map<string, { key: string; text: string; warn: boolean }>();
+    for (const r of cart) {
+      if (!r.metal || !r.purity) continue;
+      const key = `${r.metal}|${r.purity}|${r.rate}`;
+      if (seen.has(key)) continue;
+      const label = `${r.metal[0].toUpperCase()}${r.metal.slice(1)} ${r.purity} at ${npr(r.rate)}/g`;
+      let text: string; let warn = false;
+      if (r.rate_manual) text = `${label} — typed by hand`;
+      else if (rateBasis === "order" && orderDate && r.rate_missing) {
+        text = `${label} — no rate on or before ${orderDate}, today's rate kept. Add a rate in Metal Rates or type one on the line.`;
+        warn = true;
+      } else if (rateBasis === "order" && orderDate) {
+        const d = r.rate_date ?? orderDate;
+        text = d === orderDate
+          ? `${label} — rate of ${d} (${toBSLong(d)})`
+          : `${label} — nearest earlier rate: ${d} (${toBSLong(d)})`;
+      } else text = `${label} — today's rate${r.rate_date ? ` (${r.rate_date})` : ""}`;
+      seen.set(key, { key, text, warn });
+    }
+    return Array.from(seen.values());
+  }, [cart, rateBasis, orderDate]);
+
   // ---- Draft preview (nothing is saved, no number is used) -------------------
   const [previewing, setPreviewing] = useState(false);
   const draftBill = useMemo(() => {
@@ -1117,6 +1143,13 @@ function PosScreen({ reload }: { reload: () => void }) {
                         <SelectItem value="current">Today's rate</SelectItem>
                       </SelectContent>
                     </Select>
+                    {rateNotes.length > 0 && (
+                      <div className="mt-1 space-y-0.5 text-[11px]">
+                        {rateNotes.map((n) => (
+                          <p key={n.key} className={n.warn ? "text-destructive" : "text-muted-foreground"}>{n.text}</p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
