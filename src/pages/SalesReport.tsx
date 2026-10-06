@@ -1,3 +1,4 @@
+import { useDateMode } from "@/hooks/useDateMode";
 import { DateText } from "@/components/DateText";
 import { toADDate, toBSLong } from "@/lib/nepaliDate";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -52,6 +53,7 @@ interface Row {
 
 export default function SalesReport() {
   const nav = useNavigate();
+  const [mode] = useDateMode();
   const { hasPermission } = usePermission();
   const [from, setFrom] = useState(monthStartISO());
   const [to, setTo] = useState(todayISO());
@@ -143,7 +145,7 @@ export default function SalesReport() {
         <CardContent className="grid gap-3 pt-6 md:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
           <div className="space-y-1">
             <Label className="text-xs">Sale date from</Label>
-            <DateField value={from} onChange={(v) => setFrom(v)} />
+            <DateField showToggle value={from} onChange={(v) => setFrom(v)} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Sale date to</Label>
@@ -172,7 +174,7 @@ export default function SalesReport() {
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Order date from</Label>
-            <DateField value={oFrom} onChange={(v) => setOFrom(v)} />
+            <DateField showToggle value={oFrom} onChange={(v) => setOFrom(v)} />
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Order date to</Label>
@@ -211,8 +213,8 @@ export default function SalesReport() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Sale date</TableHead>
-                <TableHead>Order date</TableHead>
+                <TableHead>Sale date ({mode})</TableHead>
+                <TableHead>Order date ({mode})</TableHead>
                 <TableHead className="text-right">Days</TableHead>
                 <TableHead>Bill no.</TableHead>
                 <TableHead>Customer</TableHead>

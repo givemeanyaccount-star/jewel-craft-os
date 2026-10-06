@@ -971,7 +971,7 @@ function EditOrderDialog({ open, onOpenChange, order, onDone }: {
         <DialogHeader><DialogTitle>Edit order details</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Order date</Label><DateField value={orderDate} onChange={(v) => setOrderDate(v)} /></div>
+            <div><Label>Order date</Label><DateField showToggle value={orderDate} onChange={(v) => setOrderDate(v)} /></div>
             <div><Label>Promised delivery</Label><DateField value={promised} onChange={(v) => setPromised(v)} /></div>
           </div>
           <div><Label>Notes</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
