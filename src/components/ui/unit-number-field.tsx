@@ -63,15 +63,21 @@ export function UnitNumberField({
   const isTola = unit === "tola";
   const decimals = mode === "weight" ? (isTola ? 4 : 3) : 2;
 
-  const shown = isTola
+  // Remember exactly what was typed in tola so converting back to grams and
+  // re-displaying never turns 150000 into 149999.95.
+  const typed = React.useRef<{ unit: WeightUnit; canonical: number; shown: number } | null>(null);
+  const converted = isTola
     ? mode === "weight"
       ? gramsToTola(value)
       : ratePerTola(value)
     : Number(value ?? 0);
+  const t = typed.current;
+  const shown = t && t.unit === unit && t.canonical === Number(value ?? 0) ? t.shown : converted;
 
   const handle = (v: number) => {
-    if (!isTola) return onChange(v);
-    onChange(mode === "weight" ? tolaToGrams(v) : ratePerGramFromTola(v));
+    const canonical = !isTola ? v : mode === "weight" ? tolaToGrams(v) : ratePerGramFromTola(v);
+    typed.current = { unit, canonical, shown: v };
+    onChange(canonical);
   };
 
   const hint =
