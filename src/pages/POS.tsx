@@ -602,11 +602,13 @@ function PosScreen({ reload }: { reload: () => void }) {
   }
 
 
-  async function checkout() {
+  async function checkout(rateConfirmed = false) {
     if (!customerId) return toast.error("Select a customer for this sale");
     if (cart.length === 0) return toast.error("Add at least one item");
     if (orderDateInvalid) return toast.error(`Order date cannot be after the sale date (${saleDate}).`);
     if (cart.some((r) => r.rate <= 0)) return toast.error("One or more lines have no rate. Set rate or update Metal Rates.");
+    if (!rateConfirmed && rateFallbacks.length > 0) { setRateConfirmOpen(true); return; }
+    setRateConfirmOpen(false);
     // Re-derive the refund from the live totals: never persist a value larger than the excess.
     const maxRefund = refundDueOfCredits(tax.grossTotal, round2(totalOldGoldCredit + advanceRequested));
     if (refund > maxRefund + 0.005) {
@@ -891,6 +893,17 @@ function PosScreen({ reload }: { reload: () => void }) {
       seen.set(key, { key, text, warn });
     }
     return Array.from(seen.values());
+  }, [cart, rateBasis, orderDate]);
+
+  // Lines priced at an earlier date's or today's rate although the order-date rate was chosen.
+  const [rateConfirmOpen, setRateConfirmOpen] = useState(false);
+  const rateFallbacks = useMemo(() => {
+    if (rateBasis !== "order" || !orderDate) return [];
+    return cart.filter((r) => !r.rate_manual && r.metal && r.purity && (r.rate_missing || (r.rate_date && r.rate_date !== orderDate)))
+      .map((r) => ({
+        description: r.description, metal: r.metal, purity: r.purity, rate: r.rate,
+        date: r.rate_date ?? null, today: !!r.rate_missing, amount: r.line_total,
+      }));
   }, [cart, rateBasis, orderDate]);
 
   // ---- Draft preview (nothing is saved, no number is used) -------------------
@@ -1561,10 +1574,40 @@ function PosScreen({ reload }: { reload: () => void }) {
                 <PauseCircle className="mr-1 h-4 w-4" /> Hold bill
               </Button>
             </div>
-            <Button className="w-full" onClick={checkout}
-              disabled={saving || cart.length === 0 || !customerId || orderDateInvalid}>
-              {saving ? "Processing..." : orderDateInvalid ? "Fix order date to complete sale" : "Complete Sale"}
+            <Button className="w-full" onClick={() => checkout()} disabled={saving}>
+              {saving ? "Processing..."
+                : !customerId ? "Select a customer to complete sale"
+                : cart.length === 0 ? "Add items to complete sale"
+                : orderDateInvalid ? "Fix order date to complete sale"
+                : "Complete Sale"}
             </Button>
+            <Dialog open={rateConfirmOpen} onOpenChange={setRateConfirmOpen}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader><DialogTitle>Confirm rates used on this bill</DialogTitle></DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  No rate was recorded for the order date {orderDate} ({orderDate ? toBSLong(orderDate) : ""}) for these lines.
+                </p>
+                <div className="space-y-2 text-sm">
+                  {rateFallbacks.map((f, i) => (
+                    <div key={i} className="rounded-md border p-2">
+                      <div className="font-medium">{f.description}</div>
+                      <div className="text-xs text-muted-foreground">{f.metal} {f.purity}</div>
+                      <div className="mt-1 text-xs">
+                        {f.today ? "Using today's rate" : "Using nearest earlier rate"} — rate date{" "}
+                        <strong>{f.date ? `${f.date} (${toBSLong(f.date)})` : "unknown"}</strong>
+                      </div>
+                      <div className="text-xs">
+                        Rate <strong>{npr(f.rate)}/g</strong> · {npr(round2(f.rate * 11.6638))}/tola · Line amount <strong>{npr(f.amount)}</strong>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setRateConfirmOpen(false)}>Cancel</Button>
+                  <Button onClick={() => checkout(true)} disabled={saving}>Confirm &amp; complete sale</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <p className="text-center text-[11px] text-muted-foreground">
               Preview and Hold don't post the bill or use an invoice number.
             </p>
