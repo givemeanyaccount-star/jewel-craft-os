@@ -47,7 +47,7 @@ import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector"
 import { fetchRateOn, fetchLatestRate, todayISO, logOrderItemStatus, syncOrderStatus, recalcOrderItem, lineProgress } from "@/lib/orders";
 
 
-const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
+const PAYMENT_METHODS = ["cash", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
 
 export interface CartRow {
   inventory_item_id: string | null;

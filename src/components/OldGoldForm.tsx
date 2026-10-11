@@ -20,7 +20,7 @@ import { PuritySelect } from "@/components/PuritySelect";
 
 const METALS = ["gold", "silver"];
 
-const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
+const PAYMENT_METHODS = ["cash", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
 export interface OldGoldSaveResult { id: string; receiptNumber: string; total: number; metal: string; purity: string; }
 

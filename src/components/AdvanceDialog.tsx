@@ -13,7 +13,7 @@ import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
 import { PickedCustomer } from "@/components/CustomerSelector";
 import { printOldMetalReceipt } from "@/lib/oldMetalReceipt";
 
-const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
+const PAYMENT_METHODS = ["cash", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
 /**
  * Records one or more advance payments against an order, in a single session,

@@ -25,7 +25,7 @@ import { usePermission } from "@/hooks/usePermission";
 import { CancelInvoiceDialog } from "@/components/CancelInvoiceDialog";
 import logoUrl from "@/assets/logo.png";
 
-const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
+const PAYMENT_METHODS = ["cash", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
 
 function rowMath(r: any) {
   const netWt = Number(r.weight ?? 0);

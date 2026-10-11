@@ -47,7 +47,7 @@ import {
 import { fetchLineCodes, resolveScannedCode, withCodes } from "@/lib/scanMatch";
 import { QRScanButton } from "@/components/QRScanButton";
 
-const REFUND_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
+const REFUND_METHODS = ["cash", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
 interface LineState { selected: boolean; disposition: Disposition }
 

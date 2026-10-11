@@ -36,7 +36,7 @@ import {
 } from "@/lib/orders";
 
 
-const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
+const PAYMENT_METHODS = ["cash", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();

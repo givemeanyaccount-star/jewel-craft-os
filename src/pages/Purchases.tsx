@@ -29,7 +29,7 @@ import logoUrl from "@/assets/logo.png";
 
 const METALS = ["gold", "silver"];
 const PURITIES = ["24K", "22K", "20K", "18K", "999", "925"];
-const PAYMENT_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
+const PAYMENT_METHODS = ["cash", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
 export default function Purchases() {
   const [params] = useSearchParams();
