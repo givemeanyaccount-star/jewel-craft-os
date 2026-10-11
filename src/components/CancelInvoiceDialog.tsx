@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { npr } from "@/lib/format";
 
-const REFUND_METHODS = ["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
+const REFUND_METHODS = ["cash", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
 /**
  * Guided cancellation of an issued / partially-paid invoice:

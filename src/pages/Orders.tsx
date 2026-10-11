@@ -253,7 +253,7 @@ export function NewOrderDialog({ open, onOpenChange, onSaved, initialCustomer }:
               <Select value={advanceMethod} onValueChange={setAdvanceMethod}>
                 <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["cash", "card", "bank_transfer", "esewa", "khalti", "fonepay", "other"].map((m) => (
+                  {["cash", "bank_transfer", "esewa", "khalti", "fonepay", "other"].map((m) => (
                     <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>
                   ))}
                 </SelectContent>
