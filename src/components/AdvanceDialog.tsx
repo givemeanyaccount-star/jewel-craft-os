@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { NumberField } from "@/components/ui/number-field";
 import { DateField } from "@/components/DateField";
 import { DateText } from "@/components/DateText";
-import { todayISO } from "@/lib/format";
+import { todayISO } from "@/lib/orders";
 import { Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { npr, round2 } from "@/lib/format";
