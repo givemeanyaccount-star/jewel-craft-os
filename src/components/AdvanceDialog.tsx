@@ -6,6 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { NumberField } from "@/components/ui/number-field";
+import { DateField } from "@/components/DateField";
+import { DateText } from "@/components/DateText";
+import { todayISO } from "@/lib/format";
 import { Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { npr, round2 } from "@/lib/format";
@@ -41,10 +44,11 @@ export function AdvanceDialog({
   const [amount, setAmount] = useState(0);
   const [method, setMethod] = useState("cash");
   const [reference, setReference] = useState("");
+  const [paidOn, setPaidOn] = useState(todayISO());
 
   useEffect(() => {
     if (!open) return;
-    setAmount(0); setMethod("cash"); setReference("");
+    setAmount(0); setMethod("cash"); setReference(""); setPaidOn(todayISO());
     loadEntries();
   }, [open]);
 
@@ -57,7 +61,8 @@ export function AdvanceDialog({
     const { error } = await supabase.from("payments").insert({
       order_id: orderId, customer_id: customerId, amount: round2(amt),
       method: m as any, reference: ref,
-      notes: `Advance for order ${orderNo}`, created_by: userId,
+      paid_at: new Date(`${paidOn || todayISO()}T12:00:00+05:45`).toISOString(),
+      notes: `Advance for order ${orderNo} paid on ${paidOn || todayISO()}`, created_by: userId,
     } as any);
     if (error) throw error;
     const { data: pays } = await supabase.from("payments").select("amount").eq("order_id", orderId);
@@ -107,7 +112,7 @@ export function AdvanceDialog({
             <div className="max-h-28 space-y-1 overflow-y-auto">
               {entries.map((p) => (
                 <div key={p.id} className="flex justify-between text-xs">
-                  <span className="capitalize">{p.method?.replace("_", " ")} {p.reference && `· ${p.reference}`}</span>
+                  <span className="capitalize"><DateText value={p.paid_at?.slice(0, 10)} /> · {p.method?.replace("_", " ")} {p.reference && `· ${p.reference}`}</span>
                   <span>{npr(p.amount)}</span>
                 </div>
               ))}
@@ -115,6 +120,7 @@ export function AdvanceDialog({
           </div>
         )}
 
+        <div><Label>Date paid</Label><DateField value={paidOn} max={todayISO()} clearable={false} showToggle onChange={setPaidOn} /></div>
         {method === "old_gold" ? (
           <>
             <Button size="sm" variant="ghost" className="w-fit" onClick={() => setMethod("cash")}>&larr; Use cash/bank instead</Button>
