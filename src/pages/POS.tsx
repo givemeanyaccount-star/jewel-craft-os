@@ -47,7 +47,7 @@ import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector"
 import { fetchRateOn, fetchLatestRate, todayISO, logOrderItemStatus, syncOrderStatus, recalcOrderItem, lineProgress } from "@/lib/orders";
 
 
-const PAYMENT_METHODS = ["cash", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
+const PAYMENT_METHODS = ["cash", "advance", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
 
 export interface CartRow {
   inventory_item_id: string | null;
@@ -75,7 +75,7 @@ export interface CartRow {
   rate_missing?: boolean;
 }
 
-interface PayLine { method: string; amount: number; }
+interface PayLine { method: string; amount: number; paid_on?: string; }
 
 export function recompute(r: CartRow): CartRow {
   const { making, wastageAmount, lineTotal } = computeLineTotal({
@@ -169,6 +169,7 @@ function PosScreen({ reload }: { reload: () => void }) {
   const [targetTotal, setTargetTotal] = useState<string>(d.targetTotal ?? "");
   const [payments, setPayments] = useState<PayLine[]>(d.payments ?? [{ method: "cash", amount: 0 }]);
   const [notes, setNotes] = useState(d.notes ?? "");
+  const [advanceList, setAdvanceList] = useState<{ amount: number; method: string; paid_at: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [editItem, setEditItem] = useState<{ row: number; item: any } | null>(null);
 
@@ -271,7 +272,7 @@ function PosScreen({ reload }: { reload: () => void }) {
         .select("*, order_item_receipts(*, inventory_items(*))")
         .eq("order_id", id)
         .neq("status", "cancelled"),
-      supabase.from("payments").select("amount, method").eq("order_id", id).is("invoice_id", null),
+      supabase.from("payments").select("amount, method, paid_at").eq("order_id", id).is("invoice_id", null),
     ]);
     if (!o) return toast.error("Order not found");
     const billable = ((lines ?? []) as any[]).flatMap((l) =>
@@ -292,6 +293,7 @@ function PosScreen({ reload }: { reload: () => void }) {
     const oldMetalAdv = round2(advPays.filter((p) => p.method === "old_gold").reduce((a, p) => a + Number(p.amount ?? 0), 0));
     const cashAdv = round2(advPays.filter((p) => p.method !== "old_gold").reduce((a, p) => a + Number(p.amount ?? 0), 0));
     setAdvance(cashAdv);
+    setAdvanceList(advPays.filter((p) => p.method !== "old_gold").map((p) => ({ amount: Number(p.amount ?? 0), method: p.method, paid_at: p.paid_at })));
     setAdvanceOldMetal(oldMetalAdv);
     setApplyCashAdv(cashAdv);
     setApplyOldMetalAdv(oldMetalAdv);
@@ -703,7 +705,11 @@ function PosScreen({ reload }: { reload: () => void }) {
       if (validPays.length) {
         await supabase.from("payments").insert(validPays.map((p) => ({
           invoice_id: inv.id, customer_id: customerId, amount: Number(p.amount),
-          method: p.method as any, created_by: user?.id,
+          method: (p.method === "advance" ? "cash" : p.method) as any, created_by: user?.id,
+          ...(p.method === "advance" ? {
+            paid_at: new Date(`${p.paid_on || todayISO()}T12:00:00+05:45`).toISOString(),
+            reference: "ADVANCE", notes: `Advance paid on ${p.paid_on || todayISO()}`,
+          } : {}),
         })));
       }
 
@@ -867,7 +873,7 @@ function PosScreen({ reload }: { reload: () => void }) {
     setOldGoldCredit(0); setOldGoldPurchaseId(null); setOldGoldMetal("gold");
     setPayments([{ method: "cash", amount: 0 }]); setNotes(""); setIssueDate(todayISO());
     setOrder(null); setOrderLineByItem({}); setOrderDate(""); setRateBasis("current");
-    setAdvance(0); setAdvanceOldMetal(0); setApplyCashAdv(0); setApplyOldMetalAdv(0);
+    setAdvance(0); setAdvanceList([]); setAdvanceOldMetal(0); setApplyCashAdv(0); setApplyOldMetalAdv(0);
     setRefundInput(""); setRefundMethod("cash"); setRestoredBanner(false);
   }, []);
 
@@ -1537,6 +1543,18 @@ function PosScreen({ reload }: { reload: () => void }) {
                   <Plus className="mr-1 h-3 w-3" /> Add
                 </Button>
               </div>
+              {order && advanceList.length > 0 && (
+                <div className="mt-1 rounded-md border bg-muted/30 p-2 text-xs">
+                  <div className="mb-1 font-medium">Advance paid on order {order.order_no}</div>
+                  {advanceList.map((a, i) => (
+                    <div key={i} className="flex justify-between text-muted-foreground">
+                      <span><DateText value={a.paid_at?.slice(0, 10)} /> · <span className="capitalize">{a.method.replace("_", " ")}</span></span>
+                      <span>{npr(a.amount)}</span>
+                    </div>
+                  ))}
+                  <div className="mt-1 flex justify-between border-t pt-1"><span>Applied on this bill</span><span>{npr(appliedAdvance)}</span></div>
+                </div>
+              )}
               <div className="mt-1 space-y-2">
                 {payments.map((p, i) => (
                   <div key={i} className="flex gap-1">
@@ -1544,6 +1562,10 @@ function PosScreen({ reload }: { reload: () => void }) {
                       <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
                       <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
                     </Select>
+                    {p.method === "advance" && (
+                      <DateField className="h-9 w-36" value={p.paid_on ?? todayISO()} max={todayISO()} clearable={false}
+                        onChange={(v) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, paid_on: v } : x))} />
+                    )}
                     <NumberField className="h-9 w-28 text-right" value={p.amount}
                       onChange={(v) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, amount: v } : x))} />
                     {payments.length > 1 && (
