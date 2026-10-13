@@ -1116,9 +1116,9 @@ function PosScreen({ reload }: { reload: () => void }) {
       </AlertDialog>
 
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
 
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <Card>
             <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
             <CardContent>
@@ -1367,7 +1367,7 @@ function PosScreen({ reload }: { reload: () => void }) {
           </Card>
         </div>
 
-        <Card className="h-fit">
+        <Card className="h-fit min-w-0">
           <CardHeader><CardTitle className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Summary</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Row label="Subtotal" value={npr(subtotal)} />
@@ -1558,22 +1558,27 @@ function PosScreen({ reload }: { reload: () => void }) {
               )}
               <div className="mt-1 space-y-2">
                 {payments.map((p, i) => (
-                  <div key={i} className="flex gap-1">
+                  <div key={i} className="min-w-0 space-y-1">
+                    <div className="flex min-w-0 gap-1">
                     <Select value={p.method} onValueChange={(v) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, method: v } : x))}>
-                      <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-9 min-w-0 flex-1"><SelectValue /></SelectTrigger>
                       <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}</SelectContent>
                     </Select>
-                    {p.method === "advance" && (
-                      <DateField className="h-9 w-36" value={p.paid_on ?? todayISO()} max={todayISO()} clearable={false}
-                        onChange={(v) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, paid_on: v } : x))} />
-                    )}
-                    <NumberField className="h-9 w-28 text-right" value={p.amount}
+                    <NumberField aria-label="Payment amount" className="h-9 w-28 shrink-0 text-right" value={p.amount}
                       onChange={(v) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, amount: v } : x))} />
                     {payments.length > 1 && (
-                      <Button size="icon" variant="ghost" className="h-9 w-9"
+                      <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" aria-label="Remove payment"
                         onClick={() => setPayments((arr) => arr.filter((_, j) => j !== i))}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                    )}
+                    </div>
+                    {p.method === "advance" && (
+                      <div className="min-w-0 pb-1">
+                        <Label className="text-xs">Date paid</Label>
+                        <DateField showToggle value={p.paid_on ?? todayISO()} max={todayISO()} clearable={false}
+                          onChange={(v) => setPayments((arr) => arr.map((x, j) => j === i ? { ...x, paid_on: v } : x))} />
+                      </div>
                     )}
                   </div>
                 ))}

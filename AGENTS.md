@@ -1,0 +1,2 @@
+# Project architecture
+- Keep date-entry behavior in the shared DateField and BS calendar, emitting AD date-only strings; this gives every form consistent conversion and validation without changing storage.
