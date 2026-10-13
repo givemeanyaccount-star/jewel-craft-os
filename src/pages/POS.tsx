@@ -1116,9 +1116,9 @@ function PosScreen({ reload }: { reload: () => void }) {
       </AlertDialog>
 
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
 
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <Card>
             <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
             <CardContent>
@@ -1367,7 +1367,7 @@ function PosScreen({ reload }: { reload: () => void }) {
           </Card>
         </div>
 
-        <Card className="h-fit">
+        <Card className="h-fit min-w-0">
           <CardHeader><CardTitle className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Summary</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Row label="Subtotal" value={npr(subtotal)} />
