@@ -8,7 +8,9 @@ export type AuditAction =
   | "role_revoked"
   | "permission_changed"
   | "permissions_reset"
-  | "order_date_corrected";
+  | "order_date_corrected"
+  | "rates_auto_updated"
+  | "rates_auto_failed";
 
 export interface AuditEntry {
   action: AuditAction;
@@ -40,4 +42,6 @@ export const AUDIT_LABELS: Record<string, string> = {
   permission_changed: "Permission changed",
   permissions_reset: "Permissions reset to defaults",
   order_date_corrected: "Order date corrected",
+  rates_auto_updated: "Rates filled automatically",
+  rates_auto_failed: "Automatic rate update failed",
 };
