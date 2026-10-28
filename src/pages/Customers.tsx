@@ -4,23 +4,34 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, User } from "lucide-react";
+import { Plus, Search, User, Wallet } from "lucide-react";
+import { AdvanceDialog } from "@/components/AdvanceDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { npr } from "@/lib/format";
+import { npr, round2, CUSTOMER_ADVANCE_REF } from "@/lib/format";
 import { CustomerDialog } from "@/components/CustomerDialog";
 
 export default function Customers() {
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const canWrite = hasRole("admin") || hasRole("manager") || hasRole("sales");
   const [customers, setCustomers] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
+  const [advFor, setAdvFor] = useState<any>(null);
+  const [advBal, setAdvBal] = useState<Record<string, number>>({});
 
   useEffect(() => { load(); }, []);
   async function load() {
     const { data } = await supabase.from("customers").select("*").order("full_name").limit(500);
     setCustomers(data ?? []);
+    loadAdvances();
+  }
+  async function loadAdvances() {
+    const { data } = await supabase.from("payments").select("customer_id, amount")
+      .is("order_id", null).is("invoice_id", null).eq("reference", CUSTOMER_ADVANCE_REF);
+    const m: Record<string, number> = {};
+    for (const p of (data ?? []) as any[]) m[p.customer_id] = round2((m[p.customer_id] ?? 0) + Number(p.amount ?? 0));
+    setAdvBal(m);
   }
 
   const filtered = useMemo(() => {
@@ -55,12 +66,28 @@ export default function Customers() {
                   <span className="text-muted-foreground">Balance</span>
                   <span className={Number(c.balance) > 0 ? "font-medium text-destructive" : "text-muted-foreground"}>{npr(c.balance)}</span>
                 </div>
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Advance held</span>
+                  <span className="flex items-center gap-1">
+                    <span className={advBal[c.id] > 0 ? "font-medium text-primary" : "text-muted-foreground"}>{npr(advBal[c.id] ?? 0)}</span>
+                    {canWrite && (
+                      <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" aria-label={`Advance for ${c.full_name}`}
+                        onClick={(e) => { e.stopPropagation(); setAdvFor(c); }}>
+                        <Wallet className="mr-1 h-3 w-3" /> Add
+                      </Button>
+                    )}
+                  </span>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
 
+      {advFor && (
+        <AdvanceDialog open={!!advFor} onOpenChange={(v) => !v && setAdvFor(null)}
+          customerId={advFor.id} customer={advFor} userId={user?.id} onChanged={loadAdvances} />
+      )}
       <CustomerDialog open={open} onOpenChange={setOpen} editing={editing} onSaved={() => { setOpen(false); load(); }} />
     </AppLayout>
   );
