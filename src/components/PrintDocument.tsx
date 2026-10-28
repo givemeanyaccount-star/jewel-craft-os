@@ -4,7 +4,7 @@ import { getSignedUrls } from "@/lib/storage";
 import { toBS, toADDate, toADDateTime, toNepaliDigits } from "@/lib/nepaliDate";
 import { amountInWords } from "@/lib/numberToWords";
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
-import { reconcile, gramsToTola, ratePerTola } from "@/lib/format";
+import { reconcile, gramsToTola, ratePerTola, isAdvanceRow } from "@/lib/format";
 
 import logoAsset from "@/assets/logo.png";
 import { openPrintPreview } from "@/components/PrintPreview";
@@ -163,6 +163,10 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
     balanceDue: doc.balance_due, keptOnOrder, payments: payments as any,
   });
   const { advanceApplied: advanceReceived, refundPaid, netPayable, modeRows, totalReceived, balanceDue } = rec;
+  // Each advance on its own line with the date it was actually paid.
+  const advanceRows = (payments as any[])
+    .filter((p) => isAdvanceRow(p) && Number(p.amount ?? 0) > 0)
+    .sort((a, b) => String(a.paid_at ?? "").localeCompare(String(b.paid_at ?? "")));
 
 
 
@@ -364,12 +368,23 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
                       </td>
                     </tr>
                   )}
-                  {advanceReceived > 0 && (
+                  {advanceReceived > 0 && (advanceRows.length ? advanceRows.map((a, i) => {
+                    const d = String(a.paid_at ?? "").slice(0, 10);
+                    return (
+                      <tr key={`adv-${i}`}>
+                        <td style={{ border: bd, padding: "3px 6px" }}>
+                          Advance{a.order_id ? " (order)" : ""}
+                          {d && <div style={{ fontSize: "8px", color: "#777" }}>Paid {d} ({toBS(d)})</div>}
+                        </td>
+                        <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(a.amount)}</td>
+                      </tr>
+                    );
+                  }) : (
                     <tr>
-                      <td style={{ border: bd, padding: "3px 6px" }}>Advance (order)</td>
+                      <td style={{ border: bd, padding: "3px 6px" }}>Advance</td>
                       <td style={{ border: bd, padding: "3px 6px", textAlign: "right" }}>{n2(advanceReceived)}</td>
                     </tr>
-                  )}
+                  ))}
                   {modeRows.map(([method, amt]) => (
                     <tr key={method}>
                       <td style={{ border: bd, padding: "3px 6px" }}>{PAYMENT_LABEL[method] ?? method}</td>
