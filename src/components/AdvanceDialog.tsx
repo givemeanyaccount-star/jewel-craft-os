@@ -11,7 +11,7 @@ import { DateText } from "@/components/DateText";
 import { todayISO } from "@/lib/orders";
 import { Wallet } from "lucide-react";
 import { toast } from "sonner";
-import { npr, round2 } from "@/lib/format";
+import { npr, round2, CUSTOMER_ADVANCE_REF } from "@/lib/format";
 import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
 import { PickedCustomer } from "@/components/CustomerSelector";
 import { printOldMetalReceipt } from "@/lib/oldMetalReceipt";
@@ -30,8 +30,9 @@ export function AdvanceDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  orderId: string;
-  orderNo: string;
+  /** Leave empty to record a customer advance balance (not tied to an order). */
+  orderId?: string | null;
+  orderNo?: string | null;
   customerId: string;
   customer?: PickedCustomer | null;
   userId?: string;
@@ -53,18 +54,25 @@ export function AdvanceDialog({
   }, [open]);
 
   async function loadEntries() {
-    const { data } = await supabase.from("payments").select("*").eq("order_id", orderId).order("paid_at", { ascending: false });
+    let q = supabase.from("payments").select("*");
+    q = orderId ? q.eq("order_id", orderId)
+      : q.eq("customer_id", customerId).is("order_id", null).is("invoice_id", null).eq("reference", CUSTOMER_ADVANCE_REF);
+    const { data } = await q.order("paid_at", { ascending: false });
     setEntries(data ?? []);
   }
 
   async function recordPayment(amt: number, m: string, ref: string | null) {
     const { error } = await supabase.from("payments").insert({
-      order_id: orderId, customer_id: customerId, amount: round2(amt),
-      method: m as any, reference: ref,
+      order_id: orderId || null, customer_id: customerId, amount: round2(amt),
+      method: m as any, reference: orderId ? ref : CUSTOMER_ADVANCE_REF,
       paid_at: new Date(`${paidOn || todayISO()}T12:00:00+05:45`).toISOString(),
-      notes: `Advance for order ${orderNo} paid on ${paidOn || todayISO()}`, created_by: userId,
+      notes: orderId
+        ? `Advance for order ${orderNo} paid on ${paidOn || todayISO()}`
+        : `Customer advance paid on ${paidOn || todayISO()}${ref ? ` · ${ref}` : ""}`,
+      created_by: userId,
     } as any);
     if (error) throw error;
+    if (!orderId) { await loadEntries(); onChanged?.(); return; }
     const { data: pays } = await supabase.from("payments").select("amount").eq("order_id", orderId);
     const total = round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0));
     await supabase.from("orders").update({ advance_paid: total }).eq("id", orderId);
@@ -102,12 +110,12 @@ export function AdvanceDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Wallet className="h-5 w-5" /> Advances — {orderNo}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Wallet className="h-5 w-5" /> {orderId ? `Advances — ${orderNo}` : `Advance balance — ${customer?.full_name ?? "customer"}`}</DialogTitle></DialogHeader>
 
         {entries.length > 0 && (
           <div className="rounded border p-2">
             <div className="mb-1 flex justify-between text-xs font-medium text-muted-foreground">
-              <span>Recorded so far</span><span>{npr(runningTotal)}</span>
+              <span>{orderId ? "Recorded so far" : "Unused balance"}</span><span>{npr(runningTotal)}</span>
             </div>
             <div className="max-h-28 space-y-1 overflow-y-auto">
               {entries.map((p) => (
@@ -136,7 +144,7 @@ export function AdvanceDialog({
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m.replace("_", " ")}</SelectItem>)}
-                  <SelectItem value="old_gold">Old metal trade-in</SelectItem>
+                  {orderId && <SelectItem value="old_gold">Old metal trade-in</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
