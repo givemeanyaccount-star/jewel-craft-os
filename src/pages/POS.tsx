@@ -34,6 +34,7 @@ import {
   nextNumber, computeInvoiceTaxes, solveTargetTotal, solveTargetRefund,
   round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE, REFUND_NOTE, gramsToTola,
   gmsWithTola, computeNetWeight,
+  CUSTOMER_ADVANCE_REF,
 } from "@/lib/format";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
@@ -265,6 +266,29 @@ function PosScreen({ reload }: { reload: () => void }) {
     if (orderIdFromState && billMode === "fresh") void loadOrder(orderIdFromState);
   }, [orderIdFromState, billMode]);
 
+
+  // Customer advance balance: advances paid earlier and not yet used on any bill.
+  // Staff choose how much of it this bill uses; the rest stays saved for later.
+  const lastAdvCustomer = useRef<string | null>(customerId ?? null);
+  useEffect(() => {
+    if (order) return;
+    let cancelled = false;
+    const sameCustomer = lastAdvCustomer.current === customerId;
+    lastAdvCustomer.current = customerId ?? null;
+    if (!customerId) { setAdvance(0); setAdvanceList([]); setApplyCashAdv(0); return; }
+    supabase.from("payments").select("amount, method, paid_at")
+      .eq("customer_id", customerId).is("order_id", null).is("invoice_id", null)
+      .eq("reference", CUSTOMER_ADVANCE_REF).order("paid_at")
+      .then(({ data }) => {
+        if (cancelled) return;
+        const rows = ((data ?? []) as any[]).filter((p) => Number(p.amount) > 0);
+        const total = round2(rows.reduce((a, p) => a + Number(p.amount ?? 0), 0));
+        setAdvance(total);
+        setAdvanceList(rows.map((p) => ({ amount: Number(p.amount ?? 0), method: p.method, paid_at: p.paid_at })));
+        setApplyCashAdv((prev) => sameCustomer ? Math.min(prev, total) : 0);
+      });
+    return () => { cancelled = true; };
+  }, [customerId, order]);
 
   async function loadOrder(id: string) {
     const [{ data: o }, { data: lines }, { data: pays }] = await Promise.all([
@@ -737,7 +761,7 @@ function PosScreen({ reload }: { reload: () => void }) {
           let remaining = round2(want);
           if (remaining <= 0.004) return;
           let q = supabase.from("payments")
-            .select("id, amount, method").eq("order_id", order.id).is("invoice_id", null);
+            .select("id, amount, method, paid_at").eq("order_id", order.id).is("invoice_id", null);
           q = isOldMetal ? q.eq("method", "old_gold" as any) : q.neq("method", "old_gold" as any);
           const { data: adv } = await q.order("paid_at");
           const note = isOldMetal
@@ -756,7 +780,7 @@ function PosScreen({ reload }: { reload: () => void }) {
               await supabase.from("payments").insert({
                 order_id: order.id, invoice_id: inv.id, customer_id: order.customer_id,
                 amount: remaining, method: (p.method ?? (isOldMetal ? "old_gold" : "cash")) as any,
-                notes: note, created_by: user?.id,
+                notes: note, created_by: user?.id, paid_at: p.paid_at,
               } as any);
               remaining = 0;
             }
@@ -768,6 +792,29 @@ function PosScreen({ reload }: { reload: () => void }) {
         await consumeAdvance(false, advanceConsumed);
 
         await syncOrderStatus(order.id);
+      } else if (advanceConsumed > 0.004) {
+        // Draw on the customer's saved advance balance, oldest first; the rest stays saved.
+        let remaining = round2(advanceConsumed);
+        const { data: adv } = await supabase.from("payments")
+          .select("id, amount, method, paid_at").eq("customer_id", customerId)
+          .is("order_id", null).is("invoice_id", null).eq("reference", CUSTOMER_ADVANCE_REF).order("paid_at");
+        const note = `Advance applied to invoice ${invNumber}`;
+        for (const p of (adv ?? []) as any[]) {
+          if (remaining <= 0.004) break;
+          const amt = Number(p.amount ?? 0);
+          if (amt <= 0) continue;
+          if (amt <= remaining + 0.004) {
+            await supabase.from("payments").update({ invoice_id: inv.id, notes: note } as any).eq("id", p.id);
+            remaining = round2(remaining - amt);
+          } else {
+            await supabase.from("payments").update({ amount: round2(amt - remaining) }).eq("id", p.id);
+            await supabase.from("payments").insert({
+              invoice_id: inv.id, customer_id: customerId, amount: remaining, method: p.method as any,
+              reference: CUSTOMER_ADVANCE_REF, paid_at: p.paid_at, notes: note, created_by: user?.id,
+            } as any);
+            remaining = 0;
+          }
+        }
       }
 
       // Money handed back because credits (old metal trade-in and/or order advance)
@@ -930,15 +977,27 @@ function PosScreen({ reload }: { reload: () => void }) {
     };
     const pays: any[] = payments.filter((p) => Number(p.amount) > 0)
       .map((p) => ({ amount: Number(p.amount), method: p.method, paid_at: now }));
-    if (order && advanceConsumed > 0.004) {
-      pays.unshift({ amount: advanceConsumed, method: "cash", order_id: order.id, notes: "Advance applied", paid_at: now });
+    if (advanceConsumed > 0.004) {
+      // Mirror checkout: advances are used oldest first, each keeping its paid date.
+      let left = advanceConsumed;
+      const advRows: any[] = [];
+      for (const a of [...advanceList].sort((x, y) => String(x.paid_at).localeCompare(String(y.paid_at)))) {
+        if (left <= 0.004) break;
+        const use = round2(Math.min(a.amount, left));
+        left = round2(left - use);
+        advRows.push({ amount: use, method: a.method, paid_at: a.paid_at, notes: "Advance applied",
+          ...(order ? { order_id: order.id } : { reference: CUSTOMER_ADVANCE_REF }) });
+      }
+      if (left > 0.004) advRows.push({ amount: left, method: "cash", paid_at: now, notes: "Advance applied",
+        ...(order ? { order_id: order.id } : { reference: CUSTOMER_ADVANCE_REF }) });
+      pays.unshift(...advRows);
     }
     if (changeReturned > 0.004) {
       pays.push({ amount: -changeReturned, method: "cash", notes: CHANGE_NOTE, reference: "CHANGE", paid_at: now });
     }
     return { doc, items: cart.map((r) => ({ ...r })), payments: pays, keptOnOrder: order ? advanceKept : 0 };
   }, [customers, customerId, canBackdate, issueDate, subtotal, stonesTotal, settings, tax, discount, roundOff,
-      paid, balance, notes, orderDate, rateBasis, payments, order, advanceConsumed, changeReturned, cart, advanceKept]);
+      paid, balance, notes, orderDate, rateBasis, payments, order, advanceConsumed, changeReturned, cart, advanceKept, advanceList]);
 
   // ---- Park & queue ----------------------------------------------------------
   // Nothing here touches the database, so no invoice number is reserved while a
@@ -1427,7 +1486,7 @@ function PosScreen({ reload }: { reload: () => void }) {
             {(advance > 0 || advanceOldMetal > 0) && (
               <div className="rounded-md border p-2 text-sm">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="font-medium">Order advances</span>
+                  <span className="font-medium">{order ? "Order advances" : "Saved advance balance"}</span>
                   <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setAdvDialogOpen(true)}>Adjust</Button>
                 </div>
                 {advanceOldMetal > 0 && (
@@ -1544,9 +1603,9 @@ function PosScreen({ reload }: { reload: () => void }) {
                   <Plus className="mr-1 h-3 w-3" /> Add
                 </Button>
               </div>
-              {order && advanceList.length > 0 && (
+              {advanceList.length > 0 && (order || appliedAdvance > 0) && (
                 <div className="mt-1 rounded-md border bg-muted/30 p-2 text-xs">
-                  <div className="mb-1 font-medium">Advance paid on order {order.order_no}</div>
+                  <div className="mb-1 font-medium">{order ? `Advance paid on order ${order.order_no}` : "Customer's saved advances"}</div>
                   {advanceList.map((a, i) => (
                     <div key={i} className="flex justify-between text-muted-foreground">
                       <span><DateText value={a.paid_at?.slice(0, 10)} /> · <span className="capitalize">{a.method.replace("_", " ")}</span></span>
@@ -1669,10 +1728,11 @@ function PosScreen({ reload }: { reload: () => void }) {
         onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); setOldGoldMetal(result.metal ?? "gold"); toast.success(`Old metal credit set to ${npr(result.total)}`); }} />
       <Dialog open={advDialogOpen} onOpenChange={setAdvDialogOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Adjust order advances</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{order ? "Adjust order advances" : "Use saved advance"}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This bill covers only part of the order. Choose how much of the advance to settle here —
-            the rest stays on the order for the remaining items.
+            {order
+              ? "This bill covers only part of the order. Choose how much of the advance to settle here — the rest stays on the order for the remaining items."
+              : "Choose how much of the customer's saved advance to use on this bill — the rest stays saved for later bills."}
           </p>
           {advanceOldMetal > 0 && (
             <div className="space-y-1">

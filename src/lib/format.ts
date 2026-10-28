@@ -87,11 +87,19 @@ export function computeInvoiceTaxes(opts: {
  * old metal credit line (pre-tax), so counting them here would double-deduct.
  * Shared by POS, InvoiceDetail and the printed bill so all three agree.
  */
+/** Reference tag on payments that came out of a customer's saved advance balance. */
+export const CUSTOMER_ADVANCE_REF = "CUST_ADVANCE";
+
+/** True when a payment row is a previously paid advance (order or customer balance). */
+export function isAdvanceRow(p: { order_id?: string | null; reference?: string | null; method?: string | null } | null | undefined): boolean {
+  return !!p && p.method !== "old_gold" && (!!p.order_id || p.reference === CUSTOMER_ADVANCE_REF);
+}
+
 export function advanceReceivedFromPayments(
-  payments: Array<{ order_id?: string | null; method?: string | null; amount?: number | string | null }> = [],
+  payments: Array<{ order_id?: string | null; reference?: string | null; method?: string | null; amount?: number | string | null }> = [],
 ): number {
   return round2(payments
-    .filter((p) => p?.order_id && p?.method !== "old_gold")
+    .filter((p) => isAdvanceRow(p))
     .reduce((s, p) => s + (Number(p?.amount ?? 0) || 0), 0));
 }
 
@@ -131,7 +139,7 @@ export function classifyPayment(p: PayRow): PaymentKind {
     return tag.includes(CHANGE_NOTE) || String(p?.reference ?? "") === "CHANGE" ? "change" : "refund";
   }
   if (p?.method === "old_gold") return "old_metal";
-  if (p?.order_id) return "advance";
+  if (isAdvanceRow(p as any)) return "advance";
   return "sale";
 }
 
