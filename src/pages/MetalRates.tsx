@@ -229,7 +229,9 @@ export default function MetalRates() {
                   <TableRow key={r.id}>
                     <TableCell>{new Date(r.effective_date).toLocaleDateString()}</TableCell>
                     <TableCell className="capitalize">{r.metal}</TableCell>
-                    <TableCell>{r.purity}</TableCell>
+                    <TableCell>{r.purity}{String(r.source ?? "").endsWith("(auto)") && (
+                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title="Filled automatically by the daily 1:00 PM check">Auto</span>
+                    )}</TableCell>
                     <TableCell className="text-right font-medium">{npr(r.rate_per_gram)}</TableCell>
                   </TableRow>
                 ))
