@@ -1728,10 +1728,11 @@ function PosScreen({ reload }: { reload: () => void }) {
         onSaved={(result) => { setOgOpen(false); setOldGoldCredit(result.total); setOldGoldPurchaseId(result.id); setOldGoldMetal(result.metal ?? "gold"); toast.success(`Old metal credit set to ${npr(result.total)}`); }} />
       <Dialog open={advDialogOpen} onOpenChange={setAdvDialogOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Adjust order advances</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{order ? "Adjust order advances" : "Use saved advance"}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This bill covers only part of the order. Choose how much of the advance to settle here —
-            the rest stays on the order for the remaining items.
+            {order
+              ? "This bill covers only part of the order. Choose how much of the advance to settle here — the rest stays on the order for the remaining items."
+              : "Choose how much of the customer's saved advance to use on this bill — the rest stays saved for later bills."}
           </p>
           {advanceOldMetal > 0 && (
             <div className="space-y-1">
