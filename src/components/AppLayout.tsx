@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Users, FileText, Receipt,
-  Settings, LogOut, Menu, ShieldCheck, TrendingUp,
+  Settings, ClipboardCheck, FileUp, LogOut, Menu, ShieldCheck, TrendingUp,
   Wrench, Truck, ShoppingCart, Home, Undo2, ClipboardList, Hammer, Factory, Layers, BarChart3
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -65,6 +65,8 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     label: "Admin",
     items: [
       { to: "/settings", label: "Settings", icon: Settings, permission: "settings_manage" },
+      { to: "/setup", label: "Shop Setup", icon: ClipboardCheck, permission: "settings_manage" },
+      { to: "/import", label: "Bring Over Old Data", icon: FileUp, permission: "settings_manage" },
       { to: "/admin/roles", label: "Role Management", icon: ShieldCheck, permission: "role_manage" },
     ],
   },

@@ -83,7 +83,7 @@ export default function Invoices() {
             {filtered.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No invoices</TableCell></TableRow>
               : filtered.map((i) => (
                 <TableRow key={i.id} className="cursor-pointer">
-                  <TableCell><Link to={`/invoices/${i.id}`} className="font-medium hover:underline">{i.invoice_number}</Link></TableCell>
+                  <TableCell><Link to={`/invoices/${i.id}`} className="font-medium hover:underline">{i.invoice_number}</Link>{i.is_imported && <span className="ml-1 text-[10px] text-muted-foreground">Imported</span>}</TableCell>
                   <TableCell>{i.customers?.full_name ?? "Walk-in"}</TableCell>
                   <TableCell><DateText value={i.issued_at} /></TableCell>
                   <TableCell><DateText value={i.order_date} /></TableCell>

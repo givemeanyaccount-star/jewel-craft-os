@@ -7,7 +7,7 @@
 - [x] Show each advance's paid date on printed bills.
 
 # Shop reset & import
-- [ ] Reset: password + phrase + emailed code, backup download, server-side wipe, setup checklist
-- [ ] Go-live date setting
-- [ ] Import stock items (file + received date by hand)
-- [ ] Import past sales bills (file + by hand), legacy numbers, locked
+- [x] Reset: password + phrase (emailed code not done — no sender email), backup download, server-side wipe, setup checklist
+- [x] Go-live date setting
+- [x] Import stock items (file + received date by hand)
+- [x] Import past sales bills (file + by hand), legacy numbers, locked

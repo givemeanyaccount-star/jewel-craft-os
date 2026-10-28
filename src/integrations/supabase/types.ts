@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           allow_custom_purity: boolean
           created_at: string
+          go_live_date: string | null
           id: string
           purities: string[]
           sd_tax_rate: number
@@ -29,6 +30,7 @@ export type Database = {
         Insert: {
           allow_custom_purity?: boolean
           created_at?: string
+          go_live_date?: string | null
           id?: string
           purities?: string[]
           sd_tax_rate?: number
@@ -40,6 +42,7 @@ export type Database = {
         Update: {
           allow_custom_purity?: boolean
           created_at?: string
+          go_live_date?: string | null
           id?: string
           purities?: string[]
           sd_tax_rate?: number
@@ -316,6 +319,7 @@ export type Database = {
           gross_weight: number
           id: string
           image_urls: string[]
+          legacy_code: string | null
           location_id: string | null
           making_charge: number
           making_charge_type: string
@@ -344,6 +348,7 @@ export type Database = {
           gross_weight?: number
           id?: string
           image_urls?: string[]
+          legacy_code?: string | null
           location_id?: string | null
           making_charge?: number
           making_charge_type?: string
@@ -372,6 +377,7 @@ export type Database = {
           gross_weight?: number
           id?: string
           image_urls?: string[]
+          legacy_code?: string | null
           location_id?: string | null
           making_charge?: number
           making_charge_type?: string
@@ -525,7 +531,9 @@ export type Database = {
           discount: number
           id: string
           invoice_number: string
+          is_imported: boolean
           issued_at: string
+          legacy_number: string | null
           luxury_tax: number
           luxury_tax_rate: number
           notes: string | null
@@ -557,7 +565,9 @@ export type Database = {
           discount?: number
           id?: string
           invoice_number: string
+          is_imported?: boolean
           issued_at?: string
+          legacy_number?: string | null
           luxury_tax?: number
           luxury_tax_rate?: number
           notes?: string | null
@@ -589,7 +599,9 @@ export type Database = {
           discount?: number
           id?: string
           invoice_number?: string
+          is_imported?: boolean
           issued_at?: string
+          legacy_number?: string | null
           luxury_tax?: number
           luxury_tax_rate?: number
           notes?: string | null
@@ -2196,6 +2208,7 @@ export type Database = {
         Args: { _invoice_id: string; _new_date: string; _reason: string }
         Returns: undefined
       }
+      import_past_invoice: { Args: { _bill: Json }; Returns: string }
       log_audit_event: {
         Args: {
           _action: string
@@ -2219,6 +2232,10 @@ export type Database = {
           _reference?: string
         }
         Returns: string
+      }
+      reset_shop_data: {
+        Args: { _actor: string; _actor_email: string }
+        Returns: Json
       }
       reverse_customer_advance: {
         Args: { _payment_id: string; _reason: string }

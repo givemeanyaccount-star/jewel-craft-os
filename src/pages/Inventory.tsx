@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Search, Package, QrCode } from "lucide-react";
+import { DateField } from "@/components/DateField";
+import { todayISO } from "@/lib/orders";
 import { usePermission } from "@/hooks/usePermission";
 import { computeNetWeight, computeFineWeight, npr, gms, gramsToTola } from "@/lib/format";
 import { uploadImage } from "@/lib/storage";
@@ -28,6 +30,7 @@ interface Item {
   making_charge: number; making_charge_type: string; wastage_type: string; wastage_value: number;
   status: string; category_id: string | null; location_id: string | null; image_urls: string[];
   description: string | null; stone_value: number; qr_code: string | null;
+  received_at?: string | null; legacy_code?: string | null; barcode?: string | null;
 }
 
 const METALS = ["gold", "silver", "diamond", "other"];
@@ -64,7 +67,7 @@ export default function Inventory() {
       if (filterStatus !== "all" && it.status !== filterStatus) return false;
       if (filterCat !== "all" && it.category_id !== filterCat) return false;
       if (!ql) return true;
-      return [it.sku, it.name, it.description ?? "", it.qr_code ?? ""].some((f) => f.toLowerCase().includes(ql));
+      return [it.sku, it.name, it.description ?? "", it.qr_code ?? "", it.legacy_code ?? "", it.barcode ?? ""].some((f) => f.toLowerCase().includes(ql));
     });
   }, [items, q, filterCat, filterStatus]);
 
@@ -200,6 +203,8 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
         stone_value: Number(form.stone_value) || 0,
         status: form.status,
         image_urls: imagePaths,
+        received_at: form.received_at ? `${String(form.received_at).slice(0, 10)}T12:00:00+05:45` : null,
+        legacy_code: form.legacy_code?.trim() || null,
       };
 
       if (editing) {
@@ -287,6 +292,15 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
             <p className="text-[10px] text-muted-foreground mt-1">{gramsToTola(fineWeight).toFixed(4)} tola</p>
           </div>
 
+          <div>
+            <Label>Received date</Label>
+            <DateField value={form.received_at ? String(form.received_at).slice(0, 10) : ""} max={todayISO()} showToggle
+              onChange={(v) => setForm({ ...form, received_at: v || null })} />
+          </div>
+          <div>
+            <Label>Old software code (optional)</Label>
+            <Input value={form.legacy_code ?? ""} onChange={(e) => setForm({ ...form, legacy_code: e.target.value })} />
+          </div>
           <div>
             <Label>Stone value (रू)</Label>
             <NumberField value={form.stone_value ?? 0} onChange={(v) => setForm({ ...form, stone_value: v })} />
