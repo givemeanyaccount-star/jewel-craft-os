@@ -200,6 +200,8 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
         stone_value: Number(form.stone_value) || 0,
         status: form.status,
         image_urls: imagePaths,
+        received_at: form.received_at ? `${String(form.received_at).slice(0, 10)}T12:00:00+05:45` : null,
+        legacy_code: form.legacy_code?.trim() || null,
       };
 
       if (editing) {
@@ -287,6 +289,15 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
             <p className="text-[10px] text-muted-foreground mt-1">{gramsToTola(fineWeight).toFixed(4)} tola</p>
           </div>
 
+          <div>
+            <Label>Received date</Label>
+            <DateField value={form.received_at ? String(form.received_at).slice(0, 10) : ""} max={todayISO()} showToggle
+              onChange={(v) => setForm({ ...form, received_at: v || null })} />
+          </div>
+          <div>
+            <Label>Old software code (optional)</Label>
+            <Input value={form.legacy_code ?? ""} onChange={(e) => setForm({ ...form, legacy_code: e.target.value })} />
+          </div>
           <div>
             <Label>Stone value (रू)</Label>
             <NumberField value={form.stone_value ?? 0} onChange={(v) => setForm({ ...form, stone_value: v })} />

@@ -44,4 +44,6 @@ export const AUDIT_LABELS: Record<string, string> = {
   order_date_corrected: "Order date corrected",
   rates_auto_updated: "Rates filled automatically",
   rates_auto_failed: "Automatic rate update failed",
+  shop_reset: "Shop data reset",
+  shop_reset_denied: "Shop reset refused (wrong password)",
 };

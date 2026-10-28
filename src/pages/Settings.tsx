@@ -15,10 +15,13 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { RecalcTaxesDialog } from "@/components/RecalcTaxesDialog";
 import { CompanyProfileCard } from "@/components/CompanyProfileCard";
 import { resetAllowCustomPurityCache } from "@/lib/purity";
+import { ShopResetCard } from "@/components/ShopResetCard";
+import { useAuth } from "@/hooks/useAuth";
 
 
 export default function Settings() {
   const { hasPermission } = usePermission();
+  const { hasRole } = useAuth();
   if (!hasPermission("settings_manage")) return <AppLayout><p>Access denied.</p></AppLayout>;
   return (
     <AppLayout title="Settings">
@@ -27,6 +30,7 @@ export default function Settings() {
         <TaxationCard />
         <CategoriesEditor />
         <SimpleList table="locations" title="Showcase Locations" />
+        {hasRole("admin") && <ShopResetCard />}
       </div>
 
     </AppLayout>
