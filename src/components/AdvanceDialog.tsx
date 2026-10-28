@@ -147,7 +147,7 @@ export function AdvanceDialog({
             <div className="max-h-28 space-y-1 overflow-y-auto">
               {entries.map((p) => (
                 <div key={p.id} className="flex justify-between text-xs">
-                  <span className="capitalize"><DateText value={p.paid_at?.slice(0, 10)} /> · {p.method?.replace("_", " ")} {p.reference && `· ${p.reference}`}</span>
+                  <span className="capitalize"><DateText value={p.paid_at?.slice(0, 10)} /> · {p.method?.replace("_", " ")} {p.reference && p.reference !== "CUST_ADVANCE" && `· ${p.reference}`}</span>
                   <span className="flex items-center gap-1">
                     {npr(p.amount)}
                     {!orderId && (
