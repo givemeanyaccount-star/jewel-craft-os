@@ -59,6 +59,18 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    // Scheduled mode: daily cron check (1 PM / 3 PM Nepal). Only fills a day with no rates.
+    const cronToken = req.headers.get("x-cron-token");
+    if (cronToken) {
+      const { data: ok } = await supa.rpc("verify_cron_token", { _name: "rates", _token: cronToken });
+      if (!ok) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return await scheduledFill(supa);
+    }
+
     // Verify the caller is signed in.
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -88,7 +100,7 @@ Deno.serve(async (req) => {
     const { fineGoldPer10g, silverPer10g, source } = await scrape();
     const goldPerGram999 = fineGoldPer10g / 10; // 9999 fine basis
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = kathmanduToday();
     const rows: any[] = [];
     // Gold rows: 24K (fine), 22K (916), 18K (750), 14K (585)
     for (const purity of ["24K", "22K", "18K", "14K"]) {
@@ -136,3 +148,51 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+/** Today's date in Nepal (UTC+5:45), as YYYY-MM-DD. */
+function kathmanduToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kathmandu" }).format(new Date());
+}
+
+async function scheduledFill(supa: any): Promise<Response> {
+  const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+  const today = kathmanduToday();
+  const { data: existing } = await supa.from("metal_rates")
+    .select("metal, purity").eq("effective_date", today);
+  const have = new Set((existing ?? []).map((r: any) => `${r.metal}|${r.purity}`));
+  if ((existing ?? []).some((r: any) => r.metal === "gold")) {
+    return json({ ok: true, skipped: true, reason: "rates already entered", date: today });
+  }
+  try {
+    const { fineGoldPer10g, silverPer10g } = await scrape();
+    const source = "fenegosida.org (auto)";
+    const g = fineGoldPer10g / 10;
+    const rows: any[] = [];
+    for (const purity of ["24K", "22K", "18K", "14K"]) {
+      rows.push({ metal: "gold", purity, rate_per_gram: Math.round(g * PURITY_FACTORS[purity] * 100) / 100 });
+    }
+    if (silverPer10g > 0) {
+      rows.push({ metal: "silver", purity: "999", rate_per_gram: Math.round((silverPer10g / 10) * 100) / 100 });
+      rows.push({ metal: "silver", purity: "925", rate_per_gram: Math.round((silverPer10g / 10) * 0.925 * 100) / 100 });
+    }
+    const missing = rows.filter((r) => !have.has(`${r.metal}|${r.purity}`))
+      .map((r) => ({ ...r, effective_date: today, source, created_by: null }));
+    if (missing.length) {
+      const { error } = await supa.from("metal_rates").insert(missing);
+      if (error) throw error;
+    }
+    await supa.from("audit_logs").insert({
+      actor_email: "system (daily rate check)", action: "rates_auto_updated",
+      details: { date: today, fineGoldPer10g, silverPer10g, count: missing.length },
+    });
+    return json({ ok: true, date: today, count: missing.length });
+  } catch (e) {
+    await supa.from("audit_logs").insert({
+      actor_email: "system (daily rate check)", action: "rates_auto_failed",
+      details: { date: today, error: (e as Error).message },
+    });
+    return json({ error: (e as Error).message }, 500);
+  }
+}
