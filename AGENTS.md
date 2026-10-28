@@ -1,2 +1,3 @@
 # Project architecture
 - Keep date-entry behavior in the shared DateField and BS calendar, emitting AD date-only strings; this gives every form consistent conversion and validation without changing storage.- Scheduled jobs authenticate to edge functions with a token stored in private.cron_config (checked via verify_cron_token), so no secret is written into job definitions.
+- Shop reset runs only through the shop-reset edge function (admin + fresh password check) calling service-role-only reset_shop_data(); past bills enter only via import_past_invoice() and are locked by a trigger, so history cannot be altered from the client.
