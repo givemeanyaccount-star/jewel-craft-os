@@ -2143,6 +2143,10 @@ export type Database = {
         Args: { p_pad?: number; p_prefix: string }
         Returns: string
       }
+      verify_cron_token: {
+        Args: { _name: string; _token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
