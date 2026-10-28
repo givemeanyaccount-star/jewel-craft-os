@@ -8,6 +8,13 @@
       "when": 1793200514509,
       "tag": "0000_rate_autoupdate_cron",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793200702979,
+      "tag": "0001_customer_advance_history",
+      "breakpoints": true
     }
   ]
 }

@@ -176,6 +176,60 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_advance_events: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          amount: number
+          created_at: string
+          customer_id: string
+          event: string
+          id: string
+          invoice_id: string | null
+          invoice_number: string | null
+          method: string | null
+          new_amount: number | null
+          old_amount: number | null
+          paid_at: string | null
+          payment_id: string | null
+          reason: string | null
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          amount?: number
+          created_at?: string
+          customer_id: string
+          event: string
+          id?: string
+          invoice_id?: string | null
+          invoice_number?: string | null
+          method?: string | null
+          new_amount?: number | null
+          old_amount?: number | null
+          paid_at?: string | null
+          payment_id?: string | null
+          reason?: string | null
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          amount?: number
+          created_at?: string
+          customer_id?: string
+          event?: string
+          id?: string
+          invoice_id?: string | null
+          invoice_number?: string | null
+          method?: string | null
+          new_amount?: number | null
+          old_amount?: number | null
+          paid_at?: string | null
+          payment_id?: string | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
@@ -2125,6 +2179,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      adjust_customer_advance: {
+        Args: { _new_amount: number; _payment_id: string; _reason: string }
+        Returns: undefined
+      }
+      apply_advances_to_invoice: {
+        Args: {
+          _amount: number
+          _invoice_id: string
+          _old_metal?: boolean
+          _order_id?: string
+        }
+        Returns: number
+      }
       correct_invoice_order_date: {
         Args: { _invoice_id: string; _new_date: string; _reason: string }
         Returns: undefined
@@ -2142,6 +2209,20 @@ export type Database = {
       next_document_number: {
         Args: { p_pad?: number; p_prefix: string }
         Returns: string
+      }
+      record_customer_advance: {
+        Args: {
+          _amount: number
+          _customer_id: string
+          _method: Database["public"]["Enums"]["payment_method"]
+          _paid_on: string
+          _reference?: string
+        }
+        Returns: string
+      }
+      reverse_customer_advance: {
+        Args: { _payment_id: string; _reason: string }
+        Returns: undefined
       }
       verify_cron_token: {
         Args: { _name: string; _token: string }
