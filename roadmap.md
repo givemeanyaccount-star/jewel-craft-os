@@ -5,3 +5,9 @@
 # Customer advances
 - [x] Save customer advance balance (dated) and apply on future bills.
 - [x] Show each advance's paid date on printed bills.
+
+# Shop reset & import
+- [ ] Reset: password + phrase + emailed code, backup download, server-side wipe, setup checklist
+- [ ] Go-live date setting
+- [ ] Import stock items (file + received date by hand)
+- [ ] Import past sales bills (file + by hand), legacy numbers, locked
