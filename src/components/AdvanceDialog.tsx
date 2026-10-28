@@ -16,6 +16,7 @@ import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
 import { PickedCustomer } from "@/components/CustomerSelector";
 import { printOldMetalReceipt } from "@/lib/oldMetalReceipt";
 
+const EVENT_LABEL: Record<string, string> = { created: "Created", applied: "Applied to bill", adjusted: "Adjusted", reversed: "Reversed" };
 const PAYMENT_METHODS = ["cash", "bank_transfer", "esewa", "khalti", "fonepay", "other"];
 
 /**
@@ -46,6 +47,21 @@ export function AdvanceDialog({
   const [method, setMethod] = useState("cash");
   const [reference, setReference] = useState("");
   const [paidOn, setPaidOn] = useState(todayISO());
+  const [history, setHistory] = useState<any[]>([]);
+  const [editing, setEditing] = useState<{ id: string; mode: "adjust" | "reverse"; amount: number } | null>(null);
+  const [editAmount, setEditAmount] = useState(0);
+  const [editReason, setEditReason] = useState("");
+
+  async function submitEdit() {
+    if (!editing) return;
+    const { error } = editing.mode === "adjust"
+      ? await supabase.rpc("adjust_customer_advance" as any, { _payment_id: editing.id, _new_amount: round2(editAmount), _reason: editReason })
+      : await supabase.rpc("reverse_customer_advance" as any, { _payment_id: editing.id, _reason: editReason });
+    if (error) return toast.error(error.message);
+    toast.success(editing.mode === "adjust" ? "Advance adjusted" : "Advance reversed");
+    setEditing(null); setEditReason("");
+    await loadEntries(); onChanged?.();
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -59,9 +75,21 @@ export function AdvanceDialog({
       : q.eq("customer_id", customerId).is("order_id", null).is("invoice_id", null).eq("reference", CUSTOMER_ADVANCE_REF);
     const { data } = await q.order("paid_at", { ascending: false });
     setEntries(data ?? []);
+    if (!orderId) {
+      const { data: ev } = await supabase.from("customer_advance_events" as any).select("*")
+        .eq("customer_id", customerId).order("created_at", { ascending: false }).limit(100);
+      setHistory((ev ?? []) as any[]);
+    }
   }
 
   async function recordPayment(amt: number, m: string, ref: string | null) {
+    if (!orderId) {
+      const { error: rErr } = await supabase.rpc("record_customer_advance" as any, {
+        _customer_id: customerId, _amount: round2(amt), _method: m, _paid_on: paidOn || todayISO(), _reference: ref,
+      });
+      if (rErr) throw rErr;
+      await loadEntries(); onChanged?.(); return;
+    }
     const { error } = await supabase.from("payments").insert({
       order_id: orderId || null, customer_id: customerId, amount: round2(amt),
       method: m as any, reference: orderId ? ref : CUSTOMER_ADVANCE_REF,
@@ -72,7 +100,6 @@ export function AdvanceDialog({
       created_by: userId,
     } as any);
     if (error) throw error;
-    if (!orderId) { await loadEntries(); onChanged?.(); return; }
     const { data: pays } = await supabase.from("payments").select("amount").eq("order_id", orderId);
     const total = round2((pays ?? []).reduce((a: number, p: any) => a + Number(p.amount ?? 0), 0));
     await supabase.from("orders").update({ advance_paid: total }).eq("id", orderId);
@@ -121,9 +148,35 @@ export function AdvanceDialog({
               {entries.map((p) => (
                 <div key={p.id} className="flex justify-between text-xs">
                   <span className="capitalize"><DateText value={p.paid_at?.slice(0, 10)} /> · {p.method?.replace("_", " ")} {p.reference && `· ${p.reference}`}</span>
-                  <span>{npr(p.amount)}</span>
+                  <span className="flex items-center gap-1">
+                    {npr(p.amount)}
+                    {!orderId && (
+                      <>
+                        <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[11px]"
+                          onClick={() => { setEditing({ id: p.id, mode: "adjust", amount: Number(p.amount) }); setEditAmount(Number(p.amount)); setEditReason(""); }}>Adjust</Button>
+                        <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[11px] text-destructive"
+                          onClick={() => { setEditing({ id: p.id, mode: "reverse", amount: Number(p.amount) }); setEditReason(""); }}>Reverse</Button>
+                      </>
+                    )}
+                  </span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {editing && (
+          <div className="space-y-2 rounded border border-primary/40 p-2">
+            <div className="text-sm font-medium">
+              {editing.mode === "adjust" ? "Adjust advance" : `Reverse advance of ${npr(editing.amount)}`}
+            </div>
+            {editing.mode === "adjust" && (
+              <div><Label className="text-xs">New amount</Label><NumberField value={editAmount} onChange={setEditAmount} className="text-right" /></div>
+            )}
+            <div><Label className="text-xs">Reason (required)</Label><Input value={editReason} onChange={(e) => setEditReason(e.target.value)} /></div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={submitEdit} disabled={editReason.trim().length < 3}>Save</Button>
+              <Button size="sm" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
             </div>
           </div>
         )}
@@ -150,6 +203,29 @@ export function AdvanceDialog({
             </div>
             <div><Label>Reference (optional)</Label><Input value={reference} onChange={(e) => setReference(e.target.value)} /></div>
             <Button className="w-full" onClick={saveSimple}>Add This Advance</Button>
+          </div>
+        )}
+
+        {!orderId && history.length > 0 && (
+          <div className="rounded border p-2">
+            <div className="mb-1 text-xs font-medium text-muted-foreground">History</div>
+            <div className="max-h-48 space-y-1.5 overflow-y-auto">
+              {history.map((h) => (
+                <div key={h.id} className="border-b pb-1 text-xs last:border-0">
+                  <div className="flex justify-between gap-2">
+                    <span><span className="font-medium">{EVENT_LABEL[h.event] ?? h.event}</span> · <DateText value={String(h.created_at).slice(0, 10)} /> {new Date(h.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                    <span className={Number(h.amount) < 0 ? "text-destructive" : ""}>{Number(h.amount) > 0 ? "+" : ""}{npr(h.amount)}</span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    by {h.actor_email ?? "unknown"}
+                    {h.paid_at && <> · advance paid <DateText value={String(h.paid_at).slice(0, 10)} /></>}
+                    {h.old_amount != null && h.new_amount != null && <> · {npr(h.old_amount)} → {npr(h.new_amount)}</>}
+                    {h.invoice_number && <> · bill {h.invoice_number}</>}
+                    {h.reason && <> · “{h.reason}”</>}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
