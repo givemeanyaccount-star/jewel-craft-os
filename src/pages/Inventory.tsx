@@ -30,6 +30,7 @@ interface Item {
   making_charge: number; making_charge_type: string; wastage_type: string; wastage_value: number;
   status: string; category_id: string | null; location_id: string | null; image_urls: string[];
   description: string | null; stone_value: number; qr_code: string | null;
+  received_at?: string | null; legacy_code?: string | null; barcode?: string | null;
 }
 
 const METALS = ["gold", "silver", "diamond", "other"];
@@ -66,7 +67,7 @@ export default function Inventory() {
       if (filterStatus !== "all" && it.status !== filterStatus) return false;
       if (filterCat !== "all" && it.category_id !== filterCat) return false;
       if (!ql) return true;
-      return [it.sku, it.name, it.description ?? "", it.qr_code ?? ""].some((f) => f.toLowerCase().includes(ql));
+      return [it.sku, it.name, it.description ?? "", it.qr_code ?? "", it.legacy_code ?? "", it.barcode ?? ""].some((f) => f.toLowerCase().includes(ql));
     });
   }, [items, q, filterCat, filterStatus]);
 
