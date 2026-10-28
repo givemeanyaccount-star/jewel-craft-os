@@ -34,6 +34,7 @@ import {
   nextNumber, computeInvoiceTaxes, solveTargetTotal, solveTargetRefund,
   round2, netPayableOf, refundDueOf, refundDueOfCredits, CHANGE_NOTE, REFUND_NOTE, gramsToTola,
   gmsWithTola, computeNetWeight,
+  CUSTOMER_ADVANCE_REF,
 } from "@/lib/format";
 
 import { fetchLatestFineRates, billFineRate, fineEquivalentNote, type FineRates } from "@/lib/fineEquivalent";
