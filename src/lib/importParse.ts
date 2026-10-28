@@ -31,7 +31,7 @@ export function parseDateCell(v: unknown): string | null {
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
   if (mo < 1 || mo > 12 || d < 1 || d > 32) return null;
   if (isBS || y >= 2060) {
-    try { return bsToAD(y, mo, d); } catch { return null; }
+    try { return bsToAD(y, mo - 1, d) || null; } catch { return null; }
   }
   const iso = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const dt = new Date(`${iso}T00:00:00Z`);
