@@ -123,12 +123,12 @@ export default function InvoiceDetail() {
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
         <Button size="sm" variant="outline" onClick={() => printDocument(`invoice-print-${inv.id}`, `Invoice ${inv.invoice_number}`)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
-        {returnableInvoice && hasPermission("invoice_cancel_refund") && (
+        {returnableInvoice && !inv.is_imported && hasPermission("invoice_cancel_refund") && (
           <Button size="sm" variant="outline" onClick={() => nav(`/returns?invoice=${inv.id}`)}>
             <Undo2 className="mr-1 h-4 w-4" /> Sales return
           </Button>
         )}
-        {cancellable && hasPermission("invoice_cancel_refund") && (
+        {cancellable && !inv.is_imported && hasPermission("invoice_cancel_refund") && (
           <Button size="sm" variant="destructive" onClick={() => setCancelOpen(true)}>
             <Ban className="mr-1 h-4 w-4" /> Cancel invoice
           </Button>
@@ -140,7 +140,7 @@ export default function InvoiceDetail() {
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
-              <CardTitle>Invoice {inv.invoice_number}</CardTitle>
+              <CardTitle>Invoice {inv.invoice_number}{inv.is_imported && <span className="ml-2 rounded bg-muted px-2 py-0.5 align-middle text-xs font-normal text-muted-foreground">Imported · locked</span>}</CardTitle>
               <div className="mt-1 text-sm text-muted-foreground">
                 {inv.customers?.full_name ?? "Walk-in"} · Sale <DateText value={inv.issued_at} withTime />
               </div>
