@@ -757,64 +757,24 @@ function PosScreen({ reload }: { reload: () => void }) {
         }
         // Consume order advances up to the amounts applied on this bill; anything left
         // stays on the order (splitting a row when only part of it is used here).
+        // Attach order advances to this bill (oldest first, splitting when only part is used).
         const consumeAdvance = async (isOldMetal: boolean, want: number) => {
-          let remaining = round2(want);
-          if (remaining <= 0.004) return;
-          let q = supabase.from("payments")
-            .select("id, amount, method, paid_at").eq("order_id", order.id).is("invoice_id", null);
-          q = isOldMetal ? q.eq("method", "old_gold" as any) : q.neq("method", "old_gold" as any);
-          const { data: adv } = await q.order("paid_at");
-          const note = isOldMetal
-            ? `Old metal advance credited on invoice ${invNumber}`
-            : `Advance applied to invoice ${invNumber}`;
-          for (const p of (adv ?? []) as any[]) {
-            if (remaining <= 0.004) break;
-            const amt = Number(p.amount ?? 0);
-            if (amt <= 0) continue;
-            if (amt <= remaining + 0.004) {
-              await supabase.from("payments").update({ invoice_id: inv.id, notes: note } as any).eq("id", p.id);
-              remaining = round2(remaining - amt);
-            } else {
-              // split: part of this advance settles the current bill, the rest stays on the order
-              await supabase.from("payments").update({ amount: round2(amt - remaining) }).eq("id", p.id);
-              await supabase.from("payments").insert({
-                order_id: order.id, invoice_id: inv.id, customer_id: order.customer_id,
-                amount: remaining, method: (p.method ?? (isOldMetal ? "old_gold" : "cash")) as any,
-                notes: note, created_by: user?.id, paid_at: p.paid_at,
-              } as any);
-              remaining = 0;
-            }
-          }
+          if (round2(want) <= 0.004) return;
+          const { error: aErr } = await supabase.rpc("apply_advances_to_invoice" as any, {
+            _invoice_id: inv.id, _amount: round2(want), _order_id: order.id, _old_metal: isOldMetal,
+          });
+          if (aErr) throw aErr;
         };
-        // Old-metal advances are already deducted through the old metal credit line,
-        // so they are only attached here so they can't be counted again later.
         await consumeAdvance(true, appliedOldMetalAdv);
         await consumeAdvance(false, advanceConsumed);
 
         await syncOrderStatus(order.id);
       } else if (advanceConsumed > 0.004) {
         // Draw on the customer's saved advance balance, oldest first; the rest stays saved.
-        let remaining = round2(advanceConsumed);
-        const { data: adv } = await supabase.from("payments")
-          .select("id, amount, method, paid_at").eq("customer_id", customerId)
-          .is("order_id", null).is("invoice_id", null).eq("reference", CUSTOMER_ADVANCE_REF).order("paid_at");
-        const note = `Advance applied to invoice ${invNumber}`;
-        for (const p of (adv ?? []) as any[]) {
-          if (remaining <= 0.004) break;
-          const amt = Number(p.amount ?? 0);
-          if (amt <= 0) continue;
-          if (amt <= remaining + 0.004) {
-            await supabase.from("payments").update({ invoice_id: inv.id, notes: note } as any).eq("id", p.id);
-            remaining = round2(remaining - amt);
-          } else {
-            await supabase.from("payments").update({ amount: round2(amt - remaining) }).eq("id", p.id);
-            await supabase.from("payments").insert({
-              invoice_id: inv.id, customer_id: customerId, amount: remaining, method: p.method as any,
-              reference: CUSTOMER_ADVANCE_REF, paid_at: p.paid_at, notes: note, created_by: user?.id,
-            } as any);
-            remaining = 0;
-          }
-        }
+        const { error: aErr } = await supabase.rpc("apply_advances_to_invoice" as any, {
+          _invoice_id: inv.id, _amount: round2(advanceConsumed), _order_id: null, _old_metal: false,
+        });
+        if (aErr) throw aErr;
       }
 
       // Money handed back because credits (old metal trade-in and/or order advance)
