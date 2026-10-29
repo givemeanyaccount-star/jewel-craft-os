@@ -29,6 +29,13 @@
       "when": 1793263422972,
       "tag": "0003_nepali_fiscal_books",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793263489722,
+      "tag": "0004_fiscal_book_detail_guards",
+      "breakpoints": true
     }
   ]
 }

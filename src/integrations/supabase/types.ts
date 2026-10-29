@@ -2264,6 +2264,7 @@ export type Database = {
         Args: { _pad?: number; _sale_date: string }
         Returns: string
       }
+      read_fiscal_books: { Args: { _year: number }; Returns: Json }
       record_customer_advance: {
         Args: {
           _amount: number
