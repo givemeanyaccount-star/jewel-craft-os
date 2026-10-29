@@ -682,7 +682,7 @@ function PosScreen({ reload }: { reload: () => void }) {
       }
 
 
-      const { data: invNumber, error: numErr } = await supabase.rpc("next_document_number", { p_prefix: "INV", p_pad: 5 });
+      const { data: invNumber, error: numErr } = await supabase.rpc("next_fiscal_sale_number", { _sale_date: saleDate, _pad: 5 });
       if (numErr) throw numErr;
       const status = paid >= tax.total ? "paid" : paid > 0 ? "partial" : "issued";
 

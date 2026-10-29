@@ -35,6 +35,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
       { to: "/invoices", label: "Invoices", icon: Receipt, permission: "invoice_view" },
       { to: "/returns", label: "Sales Returns", icon: Undo2, permission: "invoice_cancel_refund" },
       { to: "/reports/sales", label: "Sales Report", icon: BarChart3, permission: "report_view" },
+      { to: "/fiscal-years", label: "Fiscal Years", icon: ClipboardCheck, permission: "report_view" },
     ],
   },
   {
