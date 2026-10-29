@@ -88,7 +88,7 @@ export default function FiscalYears() {
       </div>
       <Table><TableHeader><TableRow><TableHead>Book</TableHead><TableHead className="text-right">Records</TableHead></TableRow></TableHeader><TableBody>
         {Object.entries(bookLabels).map(([key,label]) => <TableRow key={key}><TableCell>{label}</TableCell><TableCell className="text-right">{((archive.books[key] ?? []) as BookRow[]).length}</TableCell></TableRow>)}
-      </Table>
+      </TableBody></Table>
       {year && <Button asChild variant="outline" className="mt-5"><Link to={`/reports/sales?from=${year.starts_on}&to=${year.ends_on}`}><FileText className="mr-2 h-4 w-4" />View sales for this year</Link></Button>}
     </>}
   </AppLayout>;
