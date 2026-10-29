@@ -308,6 +308,39 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_years: {
+        Row: {
+          activated_at: string | null
+          bs_year: number
+          closed_at: string | null
+          closing_books: Json | null
+          ends_on: string
+          label: string
+          opening_books: Json | null
+          starts_on: string
+        }
+        Insert: {
+          activated_at?: string | null
+          bs_year: number
+          closed_at?: string | null
+          closing_books?: Json | null
+          ends_on: string
+          label: string
+          opening_books?: Json | null
+          starts_on: string
+        }
+        Update: {
+          activated_at?: string | null
+          bs_year?: number
+          closed_at?: string | null
+          closing_books?: Json | null
+          ends_on?: string
+          label?: string
+          opening_books?: Json | null
+          starts_on?: string
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           barcode: string | null
@@ -2204,6 +2237,10 @@ export type Database = {
         }
         Returns: number
       }
+      capture_fiscal_books: {
+        Args: { _end: string; _start: string }
+        Returns: Json
+      }
       correct_invoice_order_date: {
         Args: { _invoice_id: string; _new_date: string; _reason: string }
         Returns: undefined
@@ -2221,6 +2258,10 @@ export type Database = {
       next_category_sku: { Args: { _category_id: string }; Returns: string }
       next_document_number: {
         Args: { p_pad?: number; p_prefix: string }
+        Returns: string
+      }
+      next_fiscal_sale_number: {
+        Args: { _pad?: number; _sale_date: string }
         Returns: string
       }
       record_customer_advance: {
@@ -2241,6 +2282,7 @@ export type Database = {
         Args: { _payment_id: string; _reason: string }
         Returns: undefined
       }
+      rollover_fiscal_books: { Args: never; Returns: number }
       verify_cron_token: {
         Args: { _name: string; _token: string }
         Returns: boolean
