@@ -36,6 +36,13 @@
       "when": 1793263489722,
       "tag": "0004_fiscal_book_detail_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793263689765,
+      "tag": "0005_complete_fiscal_transaction_locks",
+      "breakpoints": true
     }
   ]
 }
