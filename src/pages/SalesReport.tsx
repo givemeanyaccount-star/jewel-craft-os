@@ -3,7 +3,7 @@ import { DateText } from "@/components/DateText";
 import { toADDate, toBSLong } from "@/lib/nepaliDate";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DateField } from "@/components/DateField";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,10 +53,11 @@ interface Row {
 
 export default function SalesReport() {
   const nav = useNavigate();
+  const [params] = useSearchParams();
   const [mode] = useDateMode();
   const { hasPermission } = usePermission();
-  const [from, setFrom] = useState(monthStartISO());
-  const [to, setTo] = useState(todayISO());
+  const [from, setFrom] = useState(params.get("from") ?? monthStartISO());
+  const [to, setTo] = useState(params.get("to") ?? todayISO());
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
   const [oFrom, setOFrom] = useState("");
@@ -70,8 +71,8 @@ export default function SalesReport() {
     const { data } = await supabase
       .from("invoices")
       .select("id, invoice_number, issued_at, status, total, round_off, order_date, old_gold_credit, customers(full_name), invoice_items(weight, wastage_input, wastage_type)")
-      .gte("issued_at", `${from}T00:00:00`)
-      .lte("issued_at", `${to}T23:59:59`)
+      .gte("issued_at", `${from}T00:00:00+05:45`)
+      .lte("issued_at", `${to}T23:59:59.999+05:45`)
       .order("issued_at", { ascending: false });
     setRows((data ?? []).map((inv: any) => {
       const items = inv.invoice_items ?? [];

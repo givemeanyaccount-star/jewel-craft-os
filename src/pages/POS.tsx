@@ -1,4 +1,5 @@
 import { toBSLong } from "@/lib/nepaliDate";
+import { nepalToday as todayISO } from "@/lib/fiscalYear";
 import { DraftBillPreview } from "@/components/PrintDocument";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateField } from "@/components/DateField";
@@ -46,7 +47,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { ItemDialog } from "@/pages/Inventory";
 import { OldGoldForm, OldGoldSaveResult } from "@/components/OldGoldForm";
 import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
-import { fetchRateOn, fetchLatestRate, todayISO, logOrderItemStatus, syncOrderStatus, recalcOrderItem, lineProgress } from "@/lib/orders";
+import { fetchRateOn, fetchLatestRate, logOrderItemStatus, syncOrderStatus, recalcOrderItem, lineProgress } from "@/lib/orders";
 
 
 const PAYMENT_METHODS = ["cash", "advance", "bank_transfer", "esewa", "khalti", "fonepay", "credit", "old_gold", "other"];
@@ -682,7 +683,7 @@ function PosScreen({ reload }: { reload: () => void }) {
       }
 
 
-      const { data: invNumber, error: numErr } = await supabase.rpc("next_document_number", { p_prefix: "INV", p_pad: 5 });
+      const { data: invNumber, error: numErr } = await supabase.rpc("next_fiscal_sale_number", { _sale_date: saleDate, _pad: 5 });
       if (numErr) throw numErr;
       const status = paid >= tax.total ? "paid" : paid > 0 ? "partial" : "issued";
 
@@ -701,7 +702,7 @@ function PosScreen({ reload }: { reload: () => void }) {
         order_id: order?.id ?? null,
         rate_basis: rateBasis,
         issued_at: canBackdate && issueDate && issueDate !== todayISO()
-          ? new Date(`${issueDate}T12:00:00`).toISOString()
+          ? new Date(`${issueDate}T12:00:00+05:45`).toISOString()
           : new Date().toISOString(),
       } as any).select().single();
       if (error) throw error;

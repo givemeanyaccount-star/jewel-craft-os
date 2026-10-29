@@ -11,3 +11,9 @@
 - [x] Go-live date setting
 - [x] Import stock items (file + received date by hand)
 - [x] Import past sales bills (file + by hand), legacy numbers, locked
+
+# Fiscal-year books
+- [x] Define Nepali fiscal years and automatic rollover without deleting history.
+- [x] Archive year-end books and carry opening stock, credits and advances forward.
+- [x] Restart sale bill numbers each fiscal year and protect closed-year records.
+- [x] Add fiscal-year controls; tested boundary simulation with rollback, calendar rules, archive download and yearly sales filters.
