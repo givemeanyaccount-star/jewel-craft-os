@@ -13,7 +13,7 @@
 - [x] Import past sales bills (file + by hand), legacy numbers, locked
 
 # Fiscal-year books
-- [ ] Define Nepali fiscal years and automatic rollover without deleting history.
-- [ ] Archive year-end books and carry opening stock, credits and advances forward.
-- [ ] Restart sale bill numbers each fiscal year and protect closed-year records.
-- [ ] Add fiscal-year controls and verify calendar boundaries, closing and numbering.
+- [x] Define Nepali fiscal years and automatic rollover without deleting history.
+- [x] Archive year-end books and carry opening stock, credits and advances forward.
+- [x] Restart sale bill numbers each fiscal year and protect closed-year records.
+- [x] Add fiscal-year controls; tested boundary simulation with rollback, calendar rules, archive download and yearly sales filters.
