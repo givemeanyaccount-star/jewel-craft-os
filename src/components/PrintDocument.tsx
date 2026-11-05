@@ -79,12 +79,19 @@ export async function printDocumentWhenReady(domId: string, title = "Document", 
 export function printDocument(domId: string, title = "Document", fileName?: string) {
   const el = document.getElementById(domId);
   if (!el) return;
+  // Drop photos that failed to load so they don't break the print/PDF.
+  const clone = el.cloneNode(true) as HTMLElement;
+  const live = Array.from(el.querySelectorAll("img"));
+  Array.from(clone.querySelectorAll("img")).forEach((im, i) => {
+    const src = live[i];
+    if (!im.getAttribute("src") || (src && src.complete && src.naturalWidth === 0)) im.remove();
+  });
   openPrintPreview({
     title,
     fileName: fileName ?? title,
     page: "a4-landscape",
     marginMm: 6,
-    html: el.innerHTML,
+    html: clone.innerHTML,
   });
 }
 
