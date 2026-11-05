@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ArrowLeft, Printer, Plus, Ban, Undo2 } from "lucide-react";
-import { PrintDocument, printDocument } from "@/components/PrintDocument";
+import { PrintDocument, printDocument, printDocumentWhenReady } from "@/components/PrintDocument";
 import { npr, reconcile, gramsToTola, ratePerTola } from "@/lib/format";
 import { paymentLedgerRows, paymentModeSummary } from "@/lib/paymentLedger";
 
@@ -122,7 +122,7 @@ export default function InvoiceDetail() {
     <AppLayout title={inv.invoice_number} actions={
       <>
         <Button size="sm" variant="outline" onClick={() => nav(-1)}><ArrowLeft className="mr-1 h-4 w-4" /> Back</Button>
-        <Button size="sm" variant="outline" onClick={() => printDocument(`invoice-print-${inv.id}`, `Invoice ${inv.invoice_number}`)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
+        <Button size="sm" variant="outline" onClick={() => printDocumentWhenReady(`invoice-print-${inv.id}`, `Invoice ${inv.invoice_number}`)}><Printer className="mr-1 h-4 w-4" /> Print</Button>
         {returnableInvoice && !inv.is_imported && hasPermission("invoice_cancel_refund") && (
           <Button size="sm" variant="outline" onClick={() => nav(`/returns?invoice=${inv.id}`)}>
             <Undo2 className="mr-1 h-4 w-4" /> Sales return

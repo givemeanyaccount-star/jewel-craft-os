@@ -11,7 +11,7 @@ import { npr } from "@/lib/format";
 import { toast } from "sonner";
 import { lineDisplay } from "@/pages/POS";
 import logoUrl from "@/assets/logo.png";
-import { PrintDocument, printDocument } from "@/components/PrintDocument";
+import { PrintDocument, printDocument, printDocumentWhenReady } from "@/components/PrintDocument";
 
 export default function QuotationDetail() {
   const { id } = useParams();
@@ -42,7 +42,7 @@ export default function QuotationDetail() {
         {q.status !== "expired" && (
           <Button size="sm" onClick={acceptAndSell} className="no-print"><FileCheck className="mr-1 h-4 w-4" /> Accept &amp; create sale</Button>
         )}
-        <Button size="sm" variant="outline" onClick={() => printDocument(`quote-print-${q.id}`, `Estimate ${q.quote_number}`)} className="no-print"><Printer className="mr-1 h-4 w-4" /> Print</Button>
+        <Button size="sm" variant="outline" onClick={() => printDocumentWhenReady(`quote-print-${q.id}`, `Estimate ${q.quote_number}`)} className="no-print"><Printer className="mr-1 h-4 w-4" /> Print</Button>
       </>
     }>
       <PrintDocument kind="estimate" doc={q} items={items} domId={`quote-print-${q.id}`} />

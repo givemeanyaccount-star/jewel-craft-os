@@ -52,15 +52,46 @@ export function docRowMath(r: any) {
 }
 
 /** Opens a print preview for the element with the given DOM id. */
+const DESC_INLINE_MAX = 60;
+
+/** Waits until the bill's item photos/descriptions are fetched and images loaded (max ~6s). */
+export async function waitForPrintReady(domId: string, timeoutMs = 6000) {
+  const start = Date.now();
+  const el = () => document.getElementById(domId);
+  while (Date.now() - start < timeoutMs) {
+    const flag = el()?.querySelector("[data-pd-ready]");
+    if (!flag || flag.getAttribute("data-pd-ready") === "1") break;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  const imgs = Array.from(el()?.querySelectorAll("img") ?? []);
+  const left = Math.max(500, timeoutMs - (Date.now() - start));
+  await Promise.race([
+    Promise.all(imgs.map((im) => (im.complete ? null : new Promise((r) => { im.addEventListener("load", r, { once: true }); im.addEventListener("error", r, { once: true }); })))),
+    new Promise((r) => setTimeout(r, left)),
+  ]);
+}
+
+export async function printDocumentWhenReady(domId: string, title = "Document", fileName?: string) {
+  await waitForPrintReady(domId);
+  printDocument(domId, title, fileName);
+}
+
 export function printDocument(domId: string, title = "Document", fileName?: string) {
   const el = document.getElementById(domId);
   if (!el) return;
+  // Drop photos that failed to load so they don't break the print/PDF.
+  const clone = el.cloneNode(true) as HTMLElement;
+  const live = Array.from(el.querySelectorAll("img"));
+  Array.from(clone.querySelectorAll("img")).forEach((im, i) => {
+    const src = live[i];
+    if (!im.getAttribute("src") || (src && src.complete && src.naturalWidth === 0)) im.remove();
+  });
   openPrintPreview({
     title,
     fileName: fileName ?? title,
     page: "a4-landscape",
     marginMm: 6,
-    html: el.innerHTML,
+    html: clone.innerHTML,
   });
 }
 
@@ -93,7 +124,8 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
   const profile = useCompanyProfile();
   const [logo, setLogo] = useState<string>(logoAsset);
   const [qr, setQr] = useState<string | null>(null);
-  const [thumbs, setThumbs] = useState<string[]>([]);
+  const [itemInfo, setItemInfo] = useState<Record<string, { photo?: string; description?: string }>>({});
+  const [infoReady, setInfoReady] = useState(false);
   const [tolaRate, setTolaRate] = useState<number | null>(null);
   const [fineRates, setFineRates] = useState<FineRates>({});
   const [tradeMetal, setTradeMetal] = useState<string>("gold");
@@ -109,17 +141,35 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
     })();
   }, [profile.logo_url, profile.qr_url]);
 
+  const itemKey = items.map((i) => i.inventory_item_id ?? "").join(",");
   useEffect(() => {
+    let alive = true;
     (async () => {
-      const ids = items.map((i) => i.inventory_item_id).filter(Boolean);
-      if (!ids.length) return setThumbs([]);
-      const { data } = await supabase.from("inventory_items").select("image_urls").in("id", ids);
-      const paths = (data ?? []).flatMap((r: any) => (r.image_urls ?? []).slice(0, 1)).slice(0, 4);
-      if (!paths.length) return setThumbs([]);
-      const map = await getSignedUrls("product-images", paths);
-      setThumbs(paths.map((p: string) => map[p]).filter(Boolean));
+      try {
+        const ids = [...new Set(items.map((i) => i.inventory_item_id).filter(Boolean))] as string[];
+        if (!ids.length) { if (alive) { setItemInfo({}); setInfoReady(true); } return; }
+        const { data } = await supabase.from("inventory_items").select("id, image_urls, description").in("id", ids);
+        const firstPath: Record<string, string> = {};
+        (data ?? []).forEach((r: any) => { const p = (r.image_urls ?? []).find(Boolean); if (p) firstPath[r.id] = p; });
+        const paths = Object.values(firstPath);
+        let map = await getSignedUrls("product-images", paths);
+        const missing = paths.filter((p) => !map[p]);
+        if (missing.length) map = { ...map, ...(await getSignedUrls("product-images", missing)) };
+        const info: Record<string, { photo?: string; description?: string }> = {};
+        (data ?? []).forEach((r: any) => {
+          const d = String(r.description ?? "").trim();
+          info[r.id] = { photo: firstPath[r.id] ? map[firstPath[r.id]] : undefined, description: d || undefined };
+        });
+        if (alive) setItemInfo(info);
+      } catch { if (alive) setItemInfo({}); }
+      finally { if (alive) setInfoReady(true); }
     })();
-  }, [items]);
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemKey]);
+  const descNotes = items
+    .map((r, i) => ({ sn: i + 1, d: r.inventory_item_id ? itemInfo[r.inventory_item_id]?.description : undefined }))
+    .filter((x) => x.d && x.d.length > DESC_INLINE_MAX);
 
   useEffect(() => {
     supabase.from("metal_rates").select("rate_per_gram, purity")
@@ -282,7 +332,25 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
                   <td style={{ ...cell, textAlign: "center" }}>{i + 1}</td>
                   <td style={cell}></td>
                   <td style={cell}>
-                    {r.description}{m.qty > 1 ? ` ×${m.qty}` : ""}
+                    {(() => {
+                      const info = r.inventory_item_id ? itemInfo[r.inventory_item_id] : undefined;
+                      const d = info?.description;
+                      return (
+                        <div style={{ display: "flex", gap: "5px", alignItems: "flex-start" }}>
+                          {info?.photo && (
+                            <img src={info.photo} alt="" style={{ width: "34px", height: "34px", objectFit: "cover", border: "1px solid #bbb", flexShrink: 0 }} />
+                          )}
+                          <div>
+                            {r.description}{m.qty > 1 ? ` ×${m.qty}` : ""}
+                            {d && (
+                              <div style={{ fontSize: "7.5px", color: "#666", fontStyle: "italic" }}>
+                                {d.length > DESC_INLINE_MAX ? `${d.slice(0, DESC_INLINE_MAX - 1)}… (see remarks)` : d}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td style={{ ...cell, textAlign: "center", textTransform: "capitalize" }}>
                     {r.metal ?? ""}<br />{r.purity ?? ""}
@@ -344,14 +412,13 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
         <div className="pd-keep pd-tail" style={{ display: "table", width: "100%", tableLayout: "fixed", fontSize: "10px" }}>
           <div style={{ display: "table-cell", verticalAlign: "top", padding: "6px 10px", borderRight: bd }}>
             <div><b>In Words:</b> {amountInWords(netTotal)}</div>
-            {thumbs.length > 0 && (
-              <div style={{ display: "flex", gap: "6px", margin: "8px 0 6px" }}>
-                {thumbs.map((src, i) => (
-                  <img key={i} src={src} alt="" style={{ width: "50px", height: "50px", objectFit: "cover", border: "1px solid #999" }} />
-                ))}
+            <div style={{ marginTop: "10px" }}><b>Remarks:</b> {doc.notes ?? ""}</div>
+            {descNotes.length > 0 && (
+              <div style={{ marginTop: "3px", fontSize: "8.5px", color: "#555" }}>
+                {descNotes.map((x) => <div key={x.sn}>SN {x.sn}: {x.d}</div>)}
               </div>
             )}
-            <div style={{ marginTop: "10px" }}><b>Remarks:</b> {doc.notes ?? ""}</div>
+            <span data-pd-ready={infoReady ? "1" : "0"} style={{ display: "none" }} />
           </div>
 
           {isInvoice && (
@@ -499,11 +566,14 @@ export function DraftBillPreview({ doc, items, payments = [], keptOnOrder = 0, o
 }) {
   const domId = "draft-bill-print";
   useEffect(() => {
-    const t = setTimeout(() => {
+    let cancelled = false;
+    (async () => {
+      await waitForPrintReady(domId);
+      if (cancelled) return;
       printDocument(domId, "Draft bill (not posted)", "Draft-bill");
       onDone();
-    }, 900);
-    return () => clearTimeout(t);
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return <PrintDocument kind="invoice" draft doc={doc} items={items} payments={payments} keptOnOrder={keptOnOrder} domId={domId} />;

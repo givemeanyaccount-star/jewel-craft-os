@@ -230,7 +230,9 @@ export function PrintPreviewHost() {
         imgs.map(async (im) => {
           if (im.src.startsWith("data:")) return;
           try {
-            const blob = await (await fetch(im.src)).blob();
+            const resp = await fetch(im.src);
+            if (!resp.ok) throw new Error(`image ${resp.status}`);
+            const blob = await resp.blob();
             im.src = await new Promise<string>((res, rej) => {
               const fr = new FileReader();
               fr.onload = () => res(String(fr.result));
@@ -239,7 +241,8 @@ export function PrintPreviewHost() {
             });
             await im.decode().catch(() => undefined);
           } catch {
-            /* keep the original src */
+            // An unreachable image would break the PDF capture — leave it out.
+            im.remove();
           }
         }),
       );
