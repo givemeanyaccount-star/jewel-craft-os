@@ -1,17 +1,30 @@
-# Nepali fiscal-year books
+# Fix bill printing errors, missing photos, and add item descriptions
 
-- Start each year on Shrawan 1 and end on the actual last day of Ashadh, calculated from the Nepali calendar.
-- Automatically close the prior year at Nepal midnight and open the next year without resetting or deleting the database.
-- Preserve a year-end archive of sales, receipts/payments, purchases, old-metal purchases, returns, customer advances, and outstanding order/repair/karigar records. Carry live stock, receivables and unused advances forward without duplicating them.
-- Restart sale bill numbers at 1 with a unique Nepali fiscal-year prefix; leave existing and imported numbers unchanged.
-- Add a Fiscal Years page with current/closed status, date ranges, opening/closing figures and downloadable Excel books.
-- Protect closed sale/purchase/receipt figures from edits; allow dated later-year payments on outstanding bills. Keep open orders and repairs usable across years.
-- Record rollover and archive creation in the Audit Log. Treat failures as pending closing, not successful backups.
+## 1. Find and fix the printing error
+The exact error message hasn't been captured yet, so the first step is to reproduce it: open a few posted bills (with and without photos, order bills, draft previews) and press Print and Download PDF while watching for errors.
+Likely spots to check and harden:
+- Saving as PDF fails when a photo can't be loaded (expired photo link or a blocked image) — skip bad images instead of failing, and show a clear message.
+- Printing starts before the bill has finished loading (photos, logo, rates) — wait until everything is ready, and disable the Print button until then.
+- Bills with missing values (no customer phone, no rate, empty items) — show "—" instead of breaking.
 
-## Scope and safety
+## 2. Photos missing on some bills
+Current behaviour found in the bill code:
+- Only the first 4 items' photos are shown; items 5+ never appear.
+- Items billed from an order (not linked to a stock item) never get a photo.
+- If a photo link fails, it silently disappears.
+- Photos can still be loading when the print window opens, so they are left out.
 
-These are the app's operational books, not a complete double-entry general ledger. The archive is not a full restorable database backup and excludes stored photos. Full database exports remain available through More → Database → Manage → Settings → Export data; storage files must be downloaded separately from More → Storage.
+Fix:
+- Show a small photo beside each item line (first photo of that item) instead of a separate strip limited to 4.
+- Look up photos for order-billed items through their order item / reference image.
+- Wait for all photos to load (with a short timeout) before opening print, and retry an expired link once.
 
-## Technical approach
+## 3. Item descriptions on the bill
+- If the stock item has a description, print it in small grey text under the item name on its line.
+- If it's long, shorten it on the line and print the full text in the Remarks area, numbered by SN.
+- Items with no description print as before.
 
-Use authoritative AD date boundaries converted from BS; transactional, idempotent database closing and immutable book snapshots; a daily Nepal-midnight job plus an on-write rollover safeguard; role-protected archive reads; tests for Shrawan boundaries and yearly numbering.
+## Technical details
+- `PrintDocument.tsx`: replace the `thumbs` effect (slice 0,4) with a per-item map `{inventory_item_id → {photo, description}}` from `inventory_items(image_urls, description)`, plus `order_items` reference images for rows with `order_item_id`; render inside the Item cell. Expose a `ready` flag; `DraftBillPreview` and Print buttons wait for it instead of a fixed 900ms.
+- `PrintPreview.tsx`: PDF path — drop images that fail to decode before `html2canvas`; keep `useCORS`; surface the real error.
+- Verify by printing a bill with 5+ items with photos, an order bill, and a bill with a description, via browser test.
