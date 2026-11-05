@@ -18,7 +18,8 @@ import { DateField } from "@/components/DateField";
 import { todayISO } from "@/lib/orders";
 import { usePermission } from "@/hooks/usePermission";
 import { computeNetWeight, computeFineWeight, npr, gms, gramsToTola } from "@/lib/format";
-import { uploadImage } from "@/lib/storage";
+import { uploadImage, getSignedUrls } from "@/lib/storage";
+import { Switch } from "@/components/ui/switch";
 import { QRScanButton } from "@/components/QRScanButton";
 import { ImageCaptureButton } from "@/components/ImageCapture";
 
@@ -150,6 +151,9 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
   const [form, setForm] = useState<any>({});
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [useLegacy, setUseLegacy] = useState(false);
+  const [existing, setExisting] = useState<string[]>([]);
+  const [existingUrls, setExistingUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (editing) setForm({ ...editing });
@@ -161,6 +165,11 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
     });
     setImageFiles([]);
     setPreviews([]);
+    setUseLegacy(!!editing?.legacy_code);
+    const paths = (editing as any)?.image_urls ?? [];
+    setExisting(paths);
+    setExistingUrls({});
+    if (open && paths.length) getSignedUrls("product-images", paths).then(setExistingUrls).catch(() => {});
   }, [editing, open]);
 
   function addFile(f: File) {
@@ -179,7 +188,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
     if (!form.name?.trim()) return toast.error("Name is required");
     setSaving(true);
     try {
-      let imagePaths = editing?.image_urls ?? [];
+      let imagePaths = [...existing];
       for (const f of imageFiles) {
         const path = await uploadImage("product-images", f, "items/");
         imagePaths = [...imagePaths, path];
@@ -204,7 +213,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
         status: form.status,
         image_urls: imagePaths,
         received_at: form.received_at ? `${String(form.received_at).slice(0, 10)}T12:00:00+05:45` : null,
-        legacy_code: form.legacy_code?.trim() || null,
+        legacy_code: useLegacy ? (form.legacy_code?.trim() || null) : null,
       };
 
       if (editing) {
@@ -298,8 +307,15 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
               onChange={(v) => setForm({ ...form, received_at: v || null })} />
           </div>
           <div>
-            <Label>Old software code (optional)</Label>
-            <Input value={form.legacy_code ?? ""} onChange={(e) => setForm({ ...form, legacy_code: e.target.value })} />
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <Switch checked={useLegacy} onCheckedChange={setUseLegacy} /> Use old record number
+            </label>
+            {useLegacy && (
+              <>
+                <Input className="mt-1" placeholder="Old record number" value={form.legacy_code ?? ""} onChange={(e) => setForm({ ...form, legacy_code: e.target.value })} />
+                <p className="text-[10px] text-muted-foreground mt-1">Printed on bills as "old no. / item no."</p>
+              </>
+            )}
           </div>
           <div>
             <Label>Stone value (रू)</Label>
@@ -348,6 +364,13 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
           <div className="md:col-span-2">
             <Label>Photos</Label>
             <div className="mt-1 flex flex-wrap items-center gap-2">
+              {existing.map((path) => (
+                <div key={path} className="relative h-16 w-16 overflow-hidden rounded border bg-muted">
+                  {existingUrls[path] && <img src={existingUrls[path]} alt="" className="h-full w-full object-cover" />}
+                  <button type="button" onClick={() => setExisting((a) => a.filter((x) => x !== path))}
+                    className="absolute right-0 top-0 rounded-bl bg-destructive px-1 text-[10px] text-destructive-foreground">×</button>
+                </div>
+              ))}
               {previews.map((p, i) => (
                 <div key={i} className="relative h-16 w-16 overflow-hidden rounded border">
                   <img src={p} alt="" className="h-full w-full object-cover" />
@@ -355,7 +378,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
                     className="absolute right-0 top-0 rounded-bl bg-destructive px-1 text-[10px] text-destructive-foreground">×</button>
                 </div>
               ))}
-              <ImageCaptureButton onCapture={addFile} label={previews.length ? "Add another" : "Take / upload photo"} title="Add Product Photo" />
+              <ImageCaptureButton onCapture={addFile} label={previews.length || existing.length ? "Add another" : "Take / upload photo"} title="Add Product Photo" />
             </div>
           </div>
         </div>

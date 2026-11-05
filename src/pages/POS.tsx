@@ -443,7 +443,7 @@ function PosScreen({ reload }: { reload: () => void }) {
     if (!rate) toast.warning(`No ${item.metal} ${item.purity} rate set — enter rate on the line or update Metal Rates.`);
     const row: CartRow = {
       inventory_item_id: item.id,
-      description: `${item.name} (${item.sku})`,
+      description: `${item.name} (${item.legacy_code ? `${item.legacy_code} / ${item.sku}` : item.sku})`,
       metal: item.metal, purity: item.purity,
       gross_weight: Number(item.gross_weight ?? item.net_weight ?? 0),
       stone_weight: Number(item.stone_weight ?? 0),
@@ -1736,7 +1736,7 @@ function PosScreen({ reload }: { reload: () => void }) {
           if (data) {
             setCart((c) => c.map((r, i) => i === editItem.row ? recompute({
               ...r,
-              description: `${data.name} (${data.sku})`,
+              description: `${data.name} (${data.legacy_code ? `${data.legacy_code} / ${data.sku}` : data.sku})`,
               metal: data.metal, purity: data.purity,
               gross_weight: Number(data.gross_weight ?? data.net_weight ?? 0),
               stone_weight: Number(data.stone_weight ?? 0),
