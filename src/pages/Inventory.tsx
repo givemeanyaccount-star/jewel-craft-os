@@ -18,7 +18,8 @@ import { DateField } from "@/components/DateField";
 import { todayISO } from "@/lib/orders";
 import { usePermission } from "@/hooks/usePermission";
 import { computeNetWeight, computeFineWeight, npr, gms, gramsToTola } from "@/lib/format";
-import { uploadImage } from "@/lib/storage";
+import { uploadImage, getSignedUrls } from "@/lib/storage";
+import { Switch } from "@/components/ui/switch";
 import { QRScanButton } from "@/components/QRScanButton";
 import { ImageCaptureButton } from "@/components/ImageCapture";
 
