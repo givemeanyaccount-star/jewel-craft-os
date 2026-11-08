@@ -8,6 +8,7 @@ import { reconcile, gramsToTola, ratePerTola, isAdvanceRow } from "@/lib/format"
 
 import logoAsset from "@/assets/logo.png";
 import { openPrintPreview } from "@/components/PrintPreview";
+import { recordPrintDiagnostic } from "@/lib/printDiagnostics";
 
 
 export const TOLA_IN_GRAMS = 11.664;
@@ -81,13 +82,18 @@ export function printDocument(domId: string, title = "Document", fileName?: stri
   if (!el) return;
   // Drop photos that failed to load so they don't break the print/PDF.
   const clone = el.cloneNode(true) as HTMLElement;
+  const diagnosticBill = el.dataset.printBill;
   const live = Array.from(el.querySelectorAll("img"));
   Array.from(clone.querySelectorAll("img")).forEach((im, i) => {
     const src = live[i];
-    if (!im.getAttribute("src") || (src && src.complete && src.naturalWidth === 0)) im.remove();
+    if (!im.getAttribute("src") || (src && src.complete && src.naturalWidth === 0)) {
+      if (diagnosticBill) recordPrintDiagnostic(diagnosticBill, "image", `${im.alt || "Bill image"}: failed before preview`);
+      im.remove();
+    }
   });
   openPrintPreview({
     title,
+    diagnosticBill,
     fileName: fileName ?? title,
     page: "a4-landscape",
     marginMm: 6,
@@ -144,24 +150,30 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
   const itemKey = items.map((i) => i.inventory_item_id ?? "").join(",");
   useEffect(() => {
     let alive = true;
+    setInfoReady(false);
     (async () => {
       try {
         const ids = [...new Set(items.map((i) => i.inventory_item_id).filter(Boolean))] as string[];
         if (!ids.length) { if (alive) { setItemInfo({}); setInfoReady(true); } return; }
-        const { data } = await supabase.from("inventory_items").select("id, image_urls, description").in("id", ids);
+        const { data, error } = await supabase.from("inventory_items").select("id, image_urls, description").in("id", ids);
+        if (error) throw error;
         const firstPath: Record<string, string> = {};
         (data ?? []).forEach((r: any) => { const p = (r.image_urls ?? []).find(Boolean); if (p) firstPath[r.id] = p; });
         const paths = Object.values(firstPath);
         let map = await getSignedUrls("product-images", paths);
         const missing = paths.filter((p) => !map[p]);
         if (missing.length) map = { ...map, ...(await getSignedUrls("product-images", missing)) };
+        missing.filter((p) => !map[p]).forEach((p) => {
+          const index = items.findIndex((r) => firstPath[r.inventory_item_id] === p);
+          recordPrintDiagnostic(doc.invoice_number ?? domId, "image", `Item ${index + 1}: photo address unavailable`);
+        });
         const info: Record<string, { photo?: string; description?: string }> = {};
         (data ?? []).forEach((r: any) => {
           const d = String(r.description ?? "").trim();
           info[r.id] = { photo: firstPath[r.id] ? map[firstPath[r.id]] : undefined, description: d || undefined };
         });
         if (alive) setItemInfo(info);
-      } catch { if (alive) setItemInfo({}); }
+      } catch { if (alive) { setItemInfo({}); recordPrintDiagnostic(doc.invoice_number ?? domId, "image", "Could not retrieve item photos and descriptions"); } }
       finally { if (alive) setInfoReady(true); }
     })();
     return () => { alive = false; };
@@ -238,7 +250,7 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
   );
 
   return (
-    <div id={domId} style={{ display: "none" }}>
+    <div id={domId} data-print-bill={isInvoice ? doc.invoice_number ?? domId : undefined} style={{ display: "none" }}>
       <div style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "#000", border: "1.5px solid #000", position: "relative" }}>
         {draft && (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 5 }}>
@@ -337,9 +349,6 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
                       const d = info?.description;
                       return (
                         <div style={{ display: "flex", gap: "5px", alignItems: "flex-start" }}>
-                          {info?.photo && (
-                            <img src={info.photo} alt="" style={{ width: "34px", height: "34px", objectFit: "cover", border: "1px solid #bbb", flexShrink: 0 }} />
-                          )}
                           <div>
                             {r.description}{m.qty > 1 ? ` ×${m.qty}` : ""}
                             {d && (
@@ -412,7 +421,16 @@ export function PrintDocument({ kind, doc, items, payments = [], keptOnOrder = 0
         <div className="pd-keep pd-tail" style={{ display: "table", width: "100%", tableLayout: "fixed", fontSize: "10px" }}>
           <div style={{ display: "table-cell", verticalAlign: "top", padding: "6px 10px", borderRight: bd }}>
             <div><b>In Words:</b> {amountInWords(netTotal)}</div>
-            <div style={{ marginTop: "10px" }}><b>Remarks:</b> {doc.notes ?? ""}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "5px" }}>
+              {items.map((r, i) => {
+                const photo = itemInfo[r.inventory_item_id]?.photo;
+                return photo ? <div key={r.id ?? i} className="pd-keep" style={{ width: "96px" }}>
+                  <img src={photo} alt={`Item ${i + 1} photo`} onError={() => recordPrintDiagnostic(doc.invoice_number ?? domId, "image", `Item ${i + 1}: photo failed to load`)} style={{ width: "96px", height: "88px", objectFit: "contain" }} />
+                  <div style={{ fontSize: "8px", textAlign: "center" }}>SN {i + 1}</div>
+                </div> : null;
+              })}
+            </div>
+            {(doc.notes || descNotes.length > 0) && <div style={{ marginTop: "4px", fontSize: "8.5px" }}><b>Remarks:</b> {doc.notes ?? ""}</div>}
             {descNotes.length > 0 && (
               <div style={{ marginTop: "3px", fontSize: "8.5px", color: "#555" }}>
                 {descNotes.map((x) => <div key={x.sn}>SN {x.sn}: {x.d}</div>)}

@@ -1,4 +1,5 @@
 # Date entry redesign
+- [x] Add bill-specific print diagnostics and enlarge photos within the remarks area; verified real bill preview and simulated image/print failures.
 - [x] Replace inline BS selectors with a compact accessible calendar popup.
 - [x] Separate advance dates from payment amount controls.
 - [x] Add calendar regression tests and verify live phone/desktop flows.

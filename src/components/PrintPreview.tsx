@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, Loader2, Printer, X } from "lucide-react";
+import { Download, Loader2, Printer, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { PRINT_DIAGNOSTICS_EVENT, readPrintDiagnostics, recordPrintDiagnostic } from "@/lib/printDiagnostics";
 
 export type PageSize = "a4" | "a4-landscape" | "tag";
 
 export type PrintJob = {
+  diagnosticBill?: string;
   /** Window / document title used by the browser print dialog. */
   title: string;
   /** Body HTML to render inside the preview document. */
@@ -176,14 +178,41 @@ export function PrintPreviewHost() {
   const [job, setJob] = useState<PrintJob | null>(null);
   const [setup, setSetup] = useState<Setup>({ paper: "a4", orientation: "portrait", margin: 10 });
   const [busy, setBusy] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [, refreshDiagnostics] = useState(0);
   const [boxWidth, setBoxWidth] = useState(0);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    listener = (j) => { setSetup(defaultSetup(j)); setJob(j); };
+    listener = (j) => { setSetup(defaultSetup(j)); setShowDiagnostics(false); setJob(j); };
     return () => { listener = null; };
   }, []);
+
+  useEffect(() => {
+    const refresh = () => refreshDiagnostics((n) => n + 1);
+    window.addEventListener(PRINT_DIAGNOSTICS_EVENT, refresh);
+    return () => window.removeEventListener(PRINT_DIAGNOSTICS_EVENT, refresh);
+  }, []);
+
+  const report = useCallback((kind: "image" | "print" | "pdf", detail: string) => {
+    if (job?.diagnosticBill) recordPrintDiagnostic(job.diagnosticBill, kind, detail);
+  }, [job]);
+
+  const observeFrame = useCallback(() => {
+    const win = frameRef.current?.contentWindow;
+    const doc = frameRef.current?.contentDocument;
+    if (!win || !doc) return;
+    Array.from(doc.images).forEach((im) => {
+      const failed = () => report("image", `${im.alt || "Bill image"}: failed in print preview`);
+      if (im.complete && im.naturalWidth === 0) failed();
+      else im.addEventListener("error", failed, { once: true });
+    });
+    win.addEventListener("error", (event) => {
+      if (event instanceof ErrorEvent) report("print", "Browser reported an error in the print document");
+    });
+    win.addEventListener("unhandledrejection", () => report("print", "Browser reported an unhandled error in the print document"));
+  }, [report]);
 
 
   useEffect(() => {
@@ -204,12 +233,23 @@ export function PrintPreviewHost() {
   const frameWidth = Math.max(pageWidthPx + 24, 320);
   const scale = boxWidth && frameWidth > boxWidth ? boxWidth / frameWidth : 1;
 
-  const doPrint = useCallback(() => {
+  const doPrint = useCallback(async () => {
     const win = frameRef.current?.contentWindow;
-    if (!win) return;
-    win.focus();
-    win.print();
-  }, []);
+    if (!win) { report("print", "Print document was not ready"); return; }
+    try {
+      await Promise.race([
+        Promise.all(Array.from(win.document.images).map((im) => im.decode().catch(() => {
+          report("image", `${im.alt || "Bill image"}: could not load before printing`);
+        }))),
+        new Promise((resolve) => setTimeout(resolve, 6000)),
+      ]);
+      win.focus();
+      win.print();
+    } catch {
+      report("print", "Browser could not open the print dialog");
+      toast({ title: "Could not open printing", description: "See Print diagnostics for this bill.", variant: "destructive" });
+    }
+  }, [report]);
 
   const doDownload = useCallback(async () => {
     const doc = frameRef.current?.contentDocument;
@@ -241,6 +281,7 @@ export function PrintPreviewHost() {
             });
             await im.decode().catch(() => undefined);
           } catch {
+            report("image", `${im.alt || "Bill image"}: could not load for PDF`);
             // An unreachable image would break the PDF capture — leave it out.
             im.remove();
           }
@@ -283,18 +324,20 @@ export function PrintPreviewHost() {
       }
       pdf.save(`${slug(job.fileName ?? job.title)}.pdf`);
     } catch (e: any) {
+      report("pdf", "PDF creation failed");
       toast({ title: "Could not create PDF", description: e?.message ?? "Please try again.", variant: "destructive" });
     } finally {
       setBusy(false);
     }
-  }, [job, setup]);
+  }, [job, setup, report]);
 
   const custom = setup.paper === "custom";
+  const diagnostics = job?.diagnosticBill ? readPrintDiagnostics(job.diagnosticBill) : [];
 
   return (
     <Dialog open={!!job} onOpenChange={(o) => !o && setJob(null)}>
       <DialogContent className="flex h-[92vh] max-w-5xl flex-col gap-3 p-4">
-        <DialogHeader className="flex-row items-center justify-between space-y-0 pr-8">
+        <DialogHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 pr-8">
           <DialogTitle className="text-base">Print preview — {job?.title}</DialogTitle>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setJob(null)}>
@@ -352,11 +395,27 @@ export function PrintPreviewHost() {
             </Button>
           )}
         </div>
+        {job?.diagnosticBill && <div>
+          <Button size="sm" variant="outline" onClick={() => setShowDiagnostics((s) => !s)} aria-expanded={showDiagnostics}>
+            <AlertTriangle className="mr-2 h-4 w-4" /> Print diagnostics ({diagnostics.length})
+          </Button>
+          {showDiagnostics && <section aria-label="Print diagnostics" className="mt-2 max-h-44 overflow-auto border p-3 text-xs">
+            <p className="font-medium">{job.diagnosticBill}</p>
+            <p className="mb-2 text-muted-foreground">Saved on this browser. Printer faults and cancelled print dialogs cannot be detected.</p>
+            {diagnostics.length === 0 ? <p>No printing failures recorded.</p> : <ul className="space-y-2">
+              {diagnostics.slice().reverse().map((entry, i) => <li key={i} className="border-t pt-2">
+                <span className="text-muted-foreground">{new Date(entry.time).toLocaleString()} · {entry.kind.toUpperCase()}</span>
+                <p>{entry.detail}</p>
+              </li>)}
+            </ul>}
+          </section>}
+        </div>}
         <div ref={boxRef} className="min-h-0 flex-1 overflow-auto rounded border bg-muted/40">
 
           {job && (
             <iframe
               ref={frameRef}
+              onLoad={observeFrame}
               title="Print preview"
               className="bg-white"
               style={{
