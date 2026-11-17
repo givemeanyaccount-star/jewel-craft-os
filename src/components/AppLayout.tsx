@@ -46,6 +46,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
       { to: "/repairs", label: "Repairs", icon: Wrench, permission: "repair_manage" },
       { to: "/repairs/karigars", label: "Karigars", icon: Hammer, permission: "repair_manage" },
       { to: "/inventory", label: "Inventory", icon: Package, permission: "inventory_view" },
+      { to: "/reports/stock", label: "Stock & Metal Report", icon: BarChart3, permission: "report_view" },
     ],
   },
   {

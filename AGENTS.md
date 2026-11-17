@@ -4,3 +4,4 @@
 - Shop reset runs only through the shop-reset edge function (admin + fresh password check) calling service-role-only reset_shop_data(); past bills enter only via import_past_invoice() and are locked by a trigger, so history cannot be altered from the client.
 - Fiscal books close transactionally through rollover_fiscal_books with BS-derived AD boundaries and immutable operational snapshots; retain live balances rather than duplicate them, since this app has no general ledger.
 - New POS sales use next_fiscal_sale_number with the sale date; retain legacy numbering for other document types and existing records to avoid changing historical references.
+- Live stock reports page through inventory under existing RLS and aggregate stored weights by category, metal and purity; this avoids truncated totals and preserves recorded fine weights.

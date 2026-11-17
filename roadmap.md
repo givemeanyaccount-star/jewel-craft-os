@@ -18,3 +18,7 @@
 - [x] Archive year-end books and carry opening stock, credits and advances forward.
 - [x] Restart sale bill numbers each fiscal year and protect closed-year records.
 - [x] Add fiscal-year controls; tested boundary simulation with rollback, calendar rules, archive download and yearly sales filters.
+
+# Live stock report
+- [x] Add category and purity balances, stock filters, gram/tola display and export.
+- [x] Test weight totals and verify the signed-in report on desktop and mobile (207 live items, CSV download, no page overflow or runtime errors; seven tests passed).
