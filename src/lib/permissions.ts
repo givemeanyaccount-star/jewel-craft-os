@@ -25,7 +25,8 @@ export type AppPermission =
   | "order_view"
   | "order_manage"
   | "order_bill"
-  | "invoice_order_date_correct";
+  | "invoice_order_date_correct"
+  | "inventory_adjust_approve";
 
 export const ALL_PERMISSIONS: AppPermission[] = [
   "view_dashboard",
@@ -50,6 +51,7 @@ export const ALL_PERMISSIONS: AppPermission[] = [
   "order_manage",
   "order_bill",
   "invoice_order_date_correct",
+  "inventory_adjust_approve",
 ];
 
 export const ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {

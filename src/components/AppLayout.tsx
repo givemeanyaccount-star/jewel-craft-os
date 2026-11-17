@@ -3,7 +3,8 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Users, FileText, Receipt,
   Settings, ClipboardCheck, FileUp, LogOut, Menu, ShieldCheck, TrendingUp,
-  Wrench, Truck, ShoppingCart, Home, Undo2, ClipboardList, Hammer, Factory, Layers, BarChart3
+  Wrench, Truck, ShoppingCart, Home, Undo2, ClipboardList, Hammer, Factory, Layers, BarChart3,
+  Scale,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
       { to: "/repairs", label: "Repairs", icon: Wrench, permission: "repair_manage" },
       { to: "/repairs/karigars", label: "Karigars", icon: Hammer, permission: "repair_manage" },
       { to: "/inventory", label: "Inventory", icon: Package, permission: "inventory_view" },
+      { to: "/inventory-adjustments", label: "Weight Adjustments", icon: Scale, permission: "inventory_view" },
       { to: "/reports/stock", label: "Stock & Metal Report", icon: BarChart3, permission: "report_view" },
     ],
   },

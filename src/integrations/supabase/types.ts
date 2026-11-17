@@ -446,6 +446,86 @@ export type Database = {
           },
         ]
       }
+      inventory_weight_adjustments: {
+        Row: {
+          id: string
+          inventory_item_id: string
+          new_fine_weight: number
+          new_gross_weight: number
+          new_net_weight: number
+          new_stone_weight: number
+          old_fine_weight: number
+          old_gross_weight: number
+          old_net_weight: number
+          old_stone_weight: number
+          reason: string
+          reason_type: string
+          requested_at: string
+          requested_by: string | null
+          requested_by_email: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewed_by_email: string | null
+          sku: string
+          status: string
+        }
+        Insert: {
+          id?: string
+          inventory_item_id: string
+          new_fine_weight: number
+          new_gross_weight: number
+          new_net_weight: number
+          new_stone_weight: number
+          old_fine_weight: number
+          old_gross_weight: number
+          old_net_weight: number
+          old_stone_weight: number
+          reason: string
+          reason_type?: string
+          requested_at?: string
+          requested_by?: string | null
+          requested_by_email?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_by_email?: string | null
+          sku: string
+          status?: string
+        }
+        Update: {
+          id?: string
+          inventory_item_id?: string
+          new_fine_weight?: number
+          new_gross_weight?: number
+          new_net_weight?: number
+          new_stone_weight?: number
+          old_fine_weight?: number
+          old_gross_weight?: number
+          old_net_weight?: number
+          old_stone_weight?: number
+          reason?: string
+          reason_type?: string
+          requested_at?: string
+          requested_by?: string | null
+          requested_by_email?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_by_email?: string | null
+          sku?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_weight_adjustments_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           created_at: string
@@ -2275,6 +2355,17 @@ export type Database = {
         }
         Returns: string
       }
+      request_inventory_weight_adjustment: {
+        Args: {
+          _fine: number
+          _gross: number
+          _item_id: string
+          _reason: string
+          _reason_type: string
+          _stone: number
+        }
+        Returns: string
+      }
       reset_shop_data: {
         Args: { _actor: string; _actor_email: string }
         Returns: Json
@@ -2283,7 +2374,15 @@ export type Database = {
         Args: { _payment_id: string; _reason: string }
         Returns: undefined
       }
+      review_inventory_weight_adjustment: {
+        Args: { _approve: boolean; _id: string; _note: string }
+        Returns: undefined
+      }
       rollover_fiscal_books: { Args: never; Returns: number }
+      user_has_permission: {
+        Args: { _perm: string; _uid: string }
+        Returns: boolean
+      }
       verify_cron_token: {
         Args: { _name: string; _token: string }
         Returns: boolean

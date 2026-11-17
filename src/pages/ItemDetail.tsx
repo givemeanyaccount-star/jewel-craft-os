@@ -11,6 +11,8 @@ import { getSignedUrls } from "@/lib/storage";
 import { Printer, ArrowLeft } from "lucide-react";
 import { openPrintPreview } from "@/components/PrintPreview";
 import { escapeHtml } from "@/lib/html";
+import { usePermission } from "@/hooks/usePermission";
+import { WeightAdjustmentDialog } from "@/components/inventory/WeightAdjustmentDialog";
 
 
 export default function ItemDetail() {
@@ -19,6 +21,7 @@ export default function ItemDetail() {
   const [item, setItem] = useState<any>(null);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const qrRef = useRef<HTMLCanvasElement>(null);
+  const { hasPermission } = usePermission();
 
   useEffect(() => {
     if (!id) return;
@@ -116,6 +119,9 @@ export default function ItemDetail() {
             <canvas ref={qrRef} className="rounded border" />
             <div className="text-center text-xs text-muted-foreground">{item.qr_code}</div>
             <Button onClick={printTag} className="w-full"><Printer className="mr-1 h-4 w-4" /> Print Tag</Button>
+            {hasPermission("inventory_manage") && ["in_stock", "reserved"].includes(item.status) && (
+              <WeightAdjustmentDialog item={item} onDone={() => nav("/inventory-adjustments")} />
+            )}
           </CardContent>
         </Card>
       </div>
