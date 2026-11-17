@@ -5,4 +5,4 @@
 - Fiscal books close transactionally through rollover_fiscal_books with BS-derived AD boundaries and immutable operational snapshots; retain live balances rather than duplicate them, since this app has no general ledger.
 - New POS sales use next_fiscal_sale_number with the sale date; retain legacy numbering for other document types and existing records to avoid changing historical references.
 - Live stock reports page through inventory under existing RLS and aggregate stored weights by category, metal and purity; this avoids truncated totals and preserves recorded fine weights.
-- Stock weight changes after intake go through request_/review_inventory_weight_adjustment RPCs (old/new weights, reason, approver ≠ requester except admin, audit_logs); keeps a reviewable trail.
+- Stock weights, metal and purity are locked by trg_inventory_weight_guard after intake; only review_inventory_weight_adjustment (approved request, approver ≠ requester except admin, audit_logs) changes them, keeping a reviewable trail.

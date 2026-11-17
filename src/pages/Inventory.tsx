@@ -217,6 +217,8 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
       };
 
       if (editing) {
+        // Weights, metal and purity change only via approved weight adjustments.
+        for (const k of ["metal", "purity", "gross_weight", "stone_weight", "net_weight", "fine_weight"]) delete payload[k];
         const { error } = await supabase.from("inventory_items").update(payload).eq("id", editing.id);
         if (error) throw error;
         toast.success("Item updated");
@@ -270,26 +272,33 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
           </div>
           <div>
             <Label>Metal</Label>
-            <Select value={form.metal} onValueChange={(v) => setForm({ ...form, metal: v })}>
+            <Select disabled={!!editing} value={form.metal} onValueChange={(v) => setForm({ ...form, metal: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{METALS.map((m) => <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
             <Label>Purity</Label>
-            <Select value={form.purity} onValueChange={(v) => setForm({ ...form, purity: v })}>
+            <Select disabled={!!editing} value={form.purity} onValueChange={(v) => setForm({ ...form, purity: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{PURITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
             <Label>Gross weight</Label>
-            <UnitNumberField value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} />
+            {editing ? <Input readOnly value={Number(form.gross_weight ?? 0).toFixed(3)} className="bg-muted" />
+              : <UnitNumberField value={form.gross_weight ?? 0} onChange={(v) => setForm({ ...form, gross_weight: v })} />}
           </div>
           <div>
             <Label>Stone weight</Label>
-            <UnitNumberField value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} />
+            {editing ? <Input readOnly value={Number(form.stone_weight ?? 0).toFixed(3)} className="bg-muted" />
+              : <UnitNumberField value={form.stone_weight ?? 0} onChange={(v) => setForm({ ...form, stone_weight: v })} />}
           </div>
+          {editing && (
+            <p className="md:col-span-2 rounded bg-muted/50 p-2 text-xs text-muted-foreground">
+              Metal, purity and weights are locked. To change them, open the item and use “Adjust weight” — a manager must approve it.
+            </p>
+          )}
           <div>
             <Label>Net (auto)</Label>
             <Input readOnly value={netWeight.toFixed(3)} className="bg-muted" />
