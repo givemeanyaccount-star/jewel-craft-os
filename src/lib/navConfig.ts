@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Package, Users, FileText, Receipt, Settings, ClipboardCheck, FileUp, ShieldCheck,
-  TrendingUp, Wrench, Truck, ShoppingCart, Undo2, ClipboardList, Hammer, Factory, Layers, BarChart3, Scale,
+  TrendingUp, Wrench, Truck, ShoppingCart, Undo2, ClipboardList, Hammer, Factory, Layers, BarChart3, Scale, WalletCards,
 } from "lucide-react";
 import type { AppPermission } from "@/lib/permissions";
 
@@ -11,6 +11,8 @@ export interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   permission?: AppPermission;
+  /** Also allow users with any of these permissions (for shared counter/report screens). */
+  anyOf?: AppPermission[];
   badge?: BadgeKey;
 }
 export interface NavSection { label: string; items: NavItem[]; collapsedByDefault?: boolean }
@@ -38,6 +40,7 @@ export const NAV_SECTIONS: NavSection[] = [
     { to: "/rates", label: "Metal Rates", icon: TrendingUp, permission: "metal_rate_manage" },
   ] },
   { label: "Reports", items: [
+    { to: "/reports/day-close", label: "Day Close", icon: WalletCards, permission: "report_view", anyOf: ["pos_create_sale"] },
     { to: "/reports/sales", label: "Sales Report", icon: BarChart3, permission: "report_view" },
     { to: "/reports/stock", label: "Stock & Metal Report", icon: BarChart3, permission: "report_view" },
     { to: "/fiscal-years", label: "Fiscal Years", icon: ClipboardCheck, permission: "report_view" },
@@ -56,7 +59,7 @@ export const NAV_SECTIONS: NavSection[] = [
 /** Sections with only the links this user may open; empty sections drop out. */
 export function visibleSections(has: (p: AppPermission) => boolean, sections: NavSection[] = NAV_SECTIONS) {
   return sections
-    .map((s) => ({ ...s, items: s.items.filter((n) => !n.permission || has(n.permission)) }))
+    .map((s) => ({ ...s, items: s.items.filter((n) => !n.permission || has(n.permission) || n.anyOf?.some(has)) }))
     .filter((s) => s.items.length > 0);
 }
 

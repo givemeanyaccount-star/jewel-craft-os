@@ -22,3 +22,8 @@
 # Live stock report
 - [x] Add category and purity balances, stock filters, gram/tola display and export.
 - [x] Test weight totals and verify the signed-in report on desktop and mobile (207 live items, CSV download, no page overflow or runtime errors; seven tests passed).
+
+# Day close
+- [x] Add a live daily cash, wallet, bank and held-advance reconciliation screen.
+- [x] Add counted/statement inputs, differences, print/CSV export and payment details.
+- [x] Test totals and verify desktop/mobile flows with signed-in data (161 tests; real 19 Nov cash and advance totals; saved actuals, CSV and phone layout verified).

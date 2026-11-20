@@ -21,6 +21,7 @@ import QuotationDetail from "./pages/QuotationDetail";
 import POS from "./pages/POS";
 import PosCounter from "./pages/PosCounter";
 import SalesReport from "./pages/SalesReport";
+import DayClose from "./pages/DayClose";
 import StockReport from "./pages/StockReport";
 import WeightAdjustments from "./pages/WeightAdjustments";
 import FiscalYears from "./pages/FiscalYears";
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="/pos" element={<ProtectedRoute roles={[...SALES]}><POS /></ProtectedRoute>} />
             <Route path="/counter" element={<ProtectedRoute roles={[...SALES]}><PosCounter /></ProtectedRoute>} />
             <Route path="/reports/sales" element={<ProtectedRoute roles={["admin", "manager", "accountant"]}><SalesReport /></ProtectedRoute>} />
+            <Route path="/reports/day-close" element={<ProtectedRoute roles={["admin", "manager", "sales", "accountant"]}><DayClose /></ProtectedRoute>} />
             <Route path="/inventory-adjustments" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><WeightAdjustments /></ProtectedRoute>} />
             <Route path="/reports/stock" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><StockReport /></ProtectedRoute>} />
             <Route path="/fiscal-years" element={<ProtectedRoute roles={["admin", "manager", "accountant"]}><FiscalYears /></ProtectedRoute>} />
