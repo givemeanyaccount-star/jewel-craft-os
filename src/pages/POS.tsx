@@ -22,6 +22,8 @@ import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
 import { UnitNumberField, useWeightUnit } from "@/components/ui/unit-number-field";
 import { LineChargeFields } from "@/components/LineChargeFields";
+import { Kbd } from "@/components/ui/kbd";
+import { usePosShortcuts } from "@/hooks/usePosShortcuts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -134,6 +136,7 @@ function PosScreen({ reload }: { reload: () => void }) {
   // ---- Unsaved bill recovery -------------------------------------------------
   // The bill is mirrored into a local draft on every change, so going back,
   // reloading or hopping to inventory and returning keeps everything typed.
+  const searchRef = useRef<HTMLInputElement>(null);
   const initialDraft = useRef(loadPosDraft()).current;
   const restorable = draftHasContent(initialDraft);
   const incomingSource = orderIdFromState
@@ -1055,6 +1058,12 @@ function PosScreen({ reload }: { reload: () => void }) {
 
 
 
+  usePosShortcuts({
+    search: () => { const el = searchRef.current; if (el) { el.focus(); el.select(); } },
+    hold: () => { if (dirty && !saving) setHoldOpen(true); },
+    checkout: () => { if (!saving) checkout(); },
+  });
+
   return (
     <AppLayout title="New Sale (POS)" actions={
       <div className="flex gap-2">
@@ -1160,92 +1169,14 @@ function PosScreen({ reload }: { reload: () => void }) {
       </AlertDialog>
 
 
-      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-4 pb-20 lg:h-[calc(100vh-8.5rem)] lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] lg:pb-0">
 
-        <div className="min-w-0 space-y-4 lg:col-span-2">
-          <Card>
-            <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
-            <CardContent>
-              {/* Same searchable picker as the rest of the app — a flat list of every
-                  customer is unusable once the book grows. */}
-              <CustomerSelector label="" value={pickedCustomer}
-                onChange={(c) => { setPickedCustomer(c); setCustomerId(c?.id ?? null); if (c) void loadCustomers(); }} />
-              {!customerId && <p className="mt-1.5 text-xs text-destructive">Every sale must be linked to a customer.</p>}
-              {/* Optional on any sale: setting an order date lets the bill be priced
-                  at that day's metal rate instead of today's. */}
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <div>
-                  <Label className="text-xs">Order date (optional)</Label>
-                  <DateField showToggle value={orderDate} max={saleDate}
-                    aria-invalid={orderDateInvalid}
-                    onChange={(v) => changeOrderDate(v)} />
-                  {orderDateInvalid ? (
-                    <p className="mt-1 text-xs text-destructive">
-                      Order date cannot be after the sale date ({saleDate}).
-                    </p>
-                  ) : order && orderDate && orderDate === order.order_date ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      From order {order.order_no} — set when the order was booked.
-                    </p>
-                  ) : orderDate ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Entered manually — bill can be priced at this date's rate.
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Left blank — bill is priced at today's rate.
-                    </p>
-                  )}
-                </div>
-                {orderDate && (
-                  <div>
-                    <Label className="text-xs">Rate basis</Label>
-                    <Select value={rateBasis} onValueChange={(v) => applyRateBasis(v as any)}>
-                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="order">Rate of order date</SelectItem>
-                        <SelectItem value="current">Today's rate</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {rateNotes.length > 0 && (
-                      <div className="mt-1 space-y-0.5 text-[11px]">
-                        {rateNotes.map((n) => (
-                          <p key={n.key} className={n.warn ? "text-destructive" : "text-muted-foreground"}>{n.text}</p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              {canBackdate ? (
-                <div className="mt-3 sm:w-1/2">
-                  <Label className="text-xs">Invoice date</Label>
-                  <DateField value={issueDate}
-                    onChange={(v) => setIssueDate(v)} />
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">Invoice date {issueDate} · priced at today's rate.</p>
-              )}
-              {order && (
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Billing custom order <strong>{order.order_no}</strong>
-                  {advanceOldMetal > 0 && <> · old metal advance <strong>{npr(advanceOldMetal)}</strong> — {npr(appliedOldMetalAdv)} credited here</>}
-                  {advance > 0 && <> · cash advance <strong>{npr(advance)}</strong> — {npr(advanceConsumed)} used here</>}
-                  {(advanceKept > 0 || oldMetalKept > 0) && <> · {npr(round2(advanceKept + oldMetalKept))} kept for the remaining pieces</>}
-                </p>
-              )}
-              {!order && (
-                <Button variant="outline" size="sm" className="mt-2" onClick={() => setOrderPickerOpen(true)}>
-                  <ClipboardList className="mr-1 h-4 w-4" /> Bill a custom order
-                </Button>
-              )}
-              {quotationNumber && (
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Converting quotation <strong>{quotationNumber}</strong> — it will be removed once this sale is completed.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        <div className="min-w-0 space-y-4 lg:overflow-y-auto lg:pr-1">
+          <div className="hidden flex-wrap gap-3 rounded-md border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground lg:flex">
+            <span><Kbd className="ml-0">F2</Kbd> Search / scan</span>
+            <span><Kbd className="ml-0">F4</Kbd> Hold bill</span>
+            <span><Kbd className="ml-0">F8</Kbd> Complete sale</span>
+          </div>
 
 
           <Card>
@@ -1291,7 +1222,7 @@ function PosScreen({ reload }: { reload: () => void }) {
                 </Select>
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input className="pl-8" placeholder="Scan QR or search name / SKU..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                  <Input ref={searchRef} className="pl-8" placeholder="Scan QR or search name / SKU... (F2)" value={search} onChange={(e) => setSearch(e.target.value)} />
                 </div>
                 <QRScanButton onScan={handleScan} />
                 {canManageInventory && (
@@ -1411,6 +1342,90 @@ function PosScreen({ reload }: { reload: () => void }) {
           </Card>
         </div>
 
+        <div className="min-w-0 space-y-4 lg:overflow-y-auto lg:pr-1">
+          <Card>
+            <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
+            <CardContent>
+              {/* Same searchable picker as the rest of the app — a flat list of every
+                  customer is unusable once the book grows. */}
+              <CustomerSelector label="" value={pickedCustomer}
+                onChange={(c) => { setPickedCustomer(c); setCustomerId(c?.id ?? null); if (c) void loadCustomers(); }} />
+              {!customerId && <p className="mt-1.5 text-xs text-destructive">Every sale must be linked to a customer.</p>}
+              {/* Optional on any sale: setting an order date lets the bill be priced
+                  at that day's metal rate instead of today's. */}
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div>
+                  <Label className="text-xs">Order date (optional)</Label>
+                  <DateField showToggle value={orderDate} max={saleDate}
+                    aria-invalid={orderDateInvalid}
+                    onChange={(v) => changeOrderDate(v)} />
+                  {orderDateInvalid ? (
+                    <p className="mt-1 text-xs text-destructive">
+                      Order date cannot be after the sale date ({saleDate}).
+                    </p>
+                  ) : order && orderDate && orderDate === order.order_date ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      From order {order.order_no} — set when the order was booked.
+                    </p>
+                  ) : orderDate ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Entered manually — bill can be priced at this date's rate.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Left blank — bill is priced at today's rate.
+                    </p>
+                  )}
+                </div>
+                {orderDate && (
+                  <div>
+                    <Label className="text-xs">Rate basis</Label>
+                    <Select value={rateBasis} onValueChange={(v) => applyRateBasis(v as any)}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="order">Rate of order date</SelectItem>
+                        <SelectItem value="current">Today's rate</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {rateNotes.length > 0 && (
+                      <div className="mt-1 space-y-0.5 text-[11px]">
+                        {rateNotes.map((n) => (
+                          <p key={n.key} className={n.warn ? "text-destructive" : "text-muted-foreground"}>{n.text}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {canBackdate ? (
+                <div className="mt-3 sm:w-1/2">
+                  <Label className="text-xs">Invoice date</Label>
+                  <DateField value={issueDate}
+                    onChange={(v) => setIssueDate(v)} />
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">Invoice date {issueDate} · priced at today's rate.</p>
+              )}
+              {order && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Billing custom order <strong>{order.order_no}</strong>
+                  {advanceOldMetal > 0 && <> · old metal advance <strong>{npr(advanceOldMetal)}</strong> — {npr(appliedOldMetalAdv)} credited here</>}
+                  {advance > 0 && <> · cash advance <strong>{npr(advance)}</strong> — {npr(advanceConsumed)} used here</>}
+                  {(advanceKept > 0 || oldMetalKept > 0) && <> · {npr(round2(advanceKept + oldMetalKept))} kept for the remaining pieces</>}
+                </p>
+              )}
+              {!order && (
+                <Button variant="outline" size="sm" className="mt-2" onClick={() => setOrderPickerOpen(true)}>
+                  <ClipboardList className="mr-1 h-4 w-4" /> Bill a custom order
+                </Button>
+              )}
+              {quotationNumber && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Converting quotation <strong>{quotationNumber}</strong> — it will be removed once this sale is completed.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         <Card className="h-fit min-w-0">
           <CardHeader><CardTitle className="flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Summary</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -1643,7 +1658,7 @@ function PosScreen({ reload }: { reload: () => void }) {
                 <Eye className="mr-1 h-4 w-4" /> {previewing ? "Preparing…" : "Preview bill"}
               </Button>
               <Button variant="outline" onClick={() => setHoldOpen(true)} disabled={!dirty || saving}>
-                <PauseCircle className="mr-1 h-4 w-4" /> Hold bill
+                <PauseCircle className="mr-1 h-4 w-4" /> Hold bill<Kbd>F4</Kbd>
               </Button>
             </div>
             <Button className="w-full" onClick={() => checkout()} disabled={saving}>
@@ -1651,7 +1666,7 @@ function PosScreen({ reload }: { reload: () => void }) {
                 : !customerId ? "Select a customer to complete sale"
                 : cart.length === 0 ? "Add items to complete sale"
                 : orderDateInvalid ? "Fix order date to complete sale"
-                : "Complete Sale"}
+                : <>Complete Sale<Kbd className="border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground">F8</Kbd></>}
             </Button>
             <Dialog open={rateConfirmOpen} onOpenChange={setRateConfirmOpen}>
               <DialogContent className="max-w-lg">
@@ -1704,6 +1719,12 @@ function PosScreen({ reload }: { reload: () => void }) {
             </Dialog>
           </CardContent>
         </Card>
+        </div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 border-t bg-card/95 px-4 py-2 backdrop-blur lg:hidden">
+        <div className="text-sm"><div className="text-xs text-muted-foreground">Net payable</div><strong>{npr(netPayable)}</strong></div>
+        <Button onClick={() => checkout()} disabled={saving}>{saving ? "Processing..." : "Complete Sale"}</Button>
       </div>
 
       <NewCustomerDialog open={newCustOpen} onOpenChange={setNewCustOpen}
