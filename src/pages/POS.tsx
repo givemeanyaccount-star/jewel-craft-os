@@ -1169,10 +1169,10 @@ function PosScreen({ reload }: { reload: () => void }) {
       </AlertDialog>
 
 
-      <div className="grid min-w-0 grid-cols-1 gap-4 pb-20 lg:h-[calc(100vh-10.5rem)] xl:h-[calc(100vh-8.5rem)] lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] lg:pb-0">
+      <div className="grid min-w-0 grid-cols-1 gap-4 pb-36 lg:h-[calc(100vh-10.5rem)] xl:h-[calc(100vh-8.5rem)] lg:grid-cols-[minmax(0,62fr)_minmax(0,38fr)] xl:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] lg:pb-0">
 
-        <div className="min-w-0 space-y-4 lg:overflow-y-auto lg:pr-1">
-          <div className="hidden flex-wrap gap-3 rounded-md border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground lg:flex">
+        <div id="pos-items" className="min-w-0 scroll-mt-28 space-y-4 lg:overflow-y-auto lg:pr-1">
+          <div className="hidden flex-wrap gap-3 rounded-md border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground [@media(hover:hover)]:lg:flex">
             <span><Kbd className="ml-0">F2</Kbd> Search / scan</span>
             <span><Kbd className="ml-0">F4</Kbd> Hold bill</span>
             <span><Kbd className="ml-0">F8</Kbd> Complete sale</span>
@@ -1342,7 +1342,7 @@ function PosScreen({ reload }: { reload: () => void }) {
           </Card>
         </div>
 
-        <div className="min-w-0 space-y-4 lg:overflow-y-auto lg:pr-1">
+        <div id="pos-payment" className="min-w-0 scroll-mt-28 space-y-4 lg:overflow-y-auto lg:pr-1">
           <Card>
             <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
             <CardContent>
@@ -1722,9 +1722,17 @@ function PosScreen({ reload }: { reload: () => void }) {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 border-t bg-card/95 px-4 py-2 backdrop-blur lg:hidden">
-        <div className="text-sm"><div className="text-xs text-muted-foreground">Net payable</div><strong>{npr(netPayable)}</strong></div>
-        <Button onClick={() => checkout()} disabled={saving}>{saving ? "Processing..." : "Complete Sale"}</Button>
+      <div className="fixed inset-x-0 bottom-0 z-20 space-y-2 border-t bg-card/95 px-3 py-2 backdrop-blur lg:hidden">
+        <div className="grid grid-cols-2 gap-1 text-xs">
+          <Button size="sm" variant="ghost" className="h-8" onClick={() => document.getElementById("pos-items")?.scrollIntoView({ behavior: "smooth" })}>Items ({cart.length})</Button>
+          <Button size="sm" variant="ghost" className="h-8" onClick={() => document.getElementById("pos-payment")?.scrollIntoView({ behavior: "smooth" })}>Customer & payment</Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1 text-sm"><div className="text-xs text-muted-foreground">Net payable</div><strong className="truncate">{npr(netPayable)}</strong></div>
+          <Button size="icon" variant="outline" className="h-11 w-11" aria-label="Preview bill" onClick={() => setPreviewing(true)} disabled={cart.length === 0 || previewing}><Eye className="h-4 w-4" /></Button>
+          <Button size="icon" variant="outline" className="h-11 w-11" aria-label="Hold bill" onClick={() => setHoldOpen(true)} disabled={!dirty || saving}><PauseCircle className="h-4 w-4" /></Button>
+          <Button className="h-11" onClick={() => checkout()} disabled={saving}>{saving ? "Processing..." : "Complete Sale"}</Button>
+        </div>
       </div>
 
       <NewCustomerDialog open={newCustOpen} onOpenChange={setNewCustOpen}

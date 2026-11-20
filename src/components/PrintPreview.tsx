@@ -336,9 +336,9 @@ export function PrintPreviewHost() {
 
   return (
     <Dialog open={!!job} onOpenChange={(o) => !o && setJob(null)}>
-      <DialogContent className="flex h-[92vh] max-w-5xl flex-col gap-3 p-4">
+      <DialogContent className="flex h-[100dvh] max-w-full flex-col gap-2 p-2 sm:h-[92vh] sm:max-w-5xl sm:gap-3 sm:p-4">
         <DialogHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 pr-8">
-          <DialogTitle className="text-base">Print preview — {job?.title}</DialogTitle>
+          <DialogTitle className="w-full truncate text-sm sm:w-auto sm:text-base">Print preview — {job?.title}</DialogTitle>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => setJob(null)}>
               <X className="mr-1 h-4 w-4" /> Close

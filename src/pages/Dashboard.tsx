@@ -23,6 +23,9 @@ import { pendingQuotationStats, sweepExpiredQuotations, PendingQuotationStats } 
 import { orderDashboardStats, OrderDashboardStats } from "@/lib/orders";
 import { DailyRateDialog, todayIsoDate } from "@/components/DailyRateDialog";
 import { AlertCircle } from "lucide-react";
+import { AttentionList, TodayStrip } from "@/components/dashboard/AttentionList";
+import { useNavBadges } from "@/hooks/useNavBadges";
+import { npr } from "@/lib/format";
 
 interface Stats {
   itemsSoldToday: number;
@@ -40,6 +43,7 @@ function dayKey(d: Date) {
 export default function Dashboard() {
   const { roles, rolesError } = useAuth();
   const { hasPermission } = usePermission();
+  const badges = useNavBadges();
   const [stats, setStats] = useState<Stats | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [repairCounts, setRepairCounts] = useState<Record<string, number>>({});
@@ -199,6 +203,7 @@ export default function Dashboard() {
   }
 
   const gold24 = rates["gold:24K"];
+  const rateDate = gold24?.history?.[gold24.history.length - 1]?.date;
   const gold22 = rates["gold:22K"];
   const silver = rates["silver:999"] ?? rates["silver:925"];
 
@@ -233,6 +238,24 @@ export default function Dashboard() {
           </div>
           <QuickActions />
         </div>
+
+        <TodayStrip cells={[
+          { label: "Sales today", value: npr(stats?.salesToday ?? 0), to: "/reports/sales" },
+          { label: "Items sold", value: String(stats?.itemsSoldToday ?? 0), to: "/invoices" },
+          { label: "Pending credit", value: npr(stats?.pendingBalance ?? 0), to: "/credit" },
+          { label: "Day close", value: "Open", to: "/reports/day-close" },
+        ]} />
+
+        <AttentionList items={[
+          { label: "Today's rate not set", count: gold24 && rateDate !== todayIsoDate() ? 1 : 0, to: "/rates", tone: "warn" },
+          { label: "Held bills", count: badges.held ?? 0, to: "/counter" },
+          { label: "Orders due", count: badges.ordersDue ?? 0, to: "/orders", tone: "warn" },
+          { label: "Orders ready to bill", count: orderStats?.readyToBill ?? 0, to: "/orders" },
+          { label: "Repairs due", count: badges.repairsDue ?? 0, to: "/repairs", tone: "warn" },
+          { label: "Weight adjustments pending", count: badges.adjustments ?? 0, to: "/inventory-adjustments" },
+          { label: "Old metal without ID", count: hasPermission("old_gold_purchase") ? missingIdCount : 0, to: "/invoices/old-gold", tone: "warn" },
+          { label: "Quotations expiring soon", count: quoteStats.expiringSoon, to: "/quotations" },
+        ]} />
 
         {/* Rates + trend side by side */}
         <div className="grid gap-4 xl:grid-cols-12">
