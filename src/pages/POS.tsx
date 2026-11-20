@@ -1202,14 +1202,18 @@ function PosScreen({ reload }: { reload: () => void }) {
             </CardHeader>
             <CardContent>
               {todayRates.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-2 rounded-md border bg-muted/40 p-2 text-xs">
-                  <span className="font-medium">Today's rate:</span>
+                <div
+                  className="mb-2 flex items-center gap-x-3 overflow-x-auto whitespace-nowrap text-[11px] leading-5 text-muted-foreground"
+                  aria-label="Today's metal rates per gram"
+                  title={todayRates[0]?.source ? `Rate source: ${todayRates[0].source}` : undefined}
+                >
+                  <span className="shrink-0 font-medium">Today / g</span>
                   {todayRates.map((r, i) => (
-                    <span key={i} className="rounded bg-background px-2 py-0.5">
-                      <span className="capitalize">{r.metal}</span> {r.purity}: <strong>{npr(r.rate_per_gram)}</strong>/g
+                    <span key={i} className="shrink-0">
+                      <span className="capitalize">{r.metal}</span> {r.purity}{" "}
+                      <span className="font-medium tabular-nums text-foreground">{npr(r.rate_per_gram)}</span>
                     </span>
                   ))}
-                  {todayRates[0]?.source && <span className="text-muted-foreground">· src: {todayRates[0].source}</span>}
                 </div>
               )}
               <div className="flex flex-col gap-2 sm:flex-row">
