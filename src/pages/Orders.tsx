@@ -16,7 +16,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Trash2, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
-import { npr, computeNetWeight, round2 } from "@/lib/format";
+import { npr, computeNetWeight, round2, gramsToTola } from "@/lib/format";
+import { StatStrip } from "@/components/StatStrip";
+import { orderTotals } from "@/lib/listTotals";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermission } from "@/hooks/usePermission";
 import { CustomerSelector, PickedCustomer } from "@/components/CustomerSelector";
@@ -44,7 +46,7 @@ export default function Orders() {
   async function load() {
     const { data, error } = await supabase
       .from("orders")
-      .select("*, customers(full_name, phone), order_items(id, description, status, estimated_amount)")
+      .select("*, customers(full_name, phone), order_items(id, description, status, estimated_amount, expected_net_weight, quantity)")
       .order("created_at", { ascending: false });
     if (error) toast.error(error.message);
     setList(data ?? []);
@@ -59,6 +61,7 @@ export default function Orders() {
       return `${o.order_no} ${o.customers?.full_name ?? ""} ${o.customers?.phone ?? ""}`.toLowerCase().includes(s);
     });
   }, [list, statusFilter, search]);
+  const totals = useMemo(() => orderTotals(filtered), [filtered]);
 
   return (
     <AppLayout
@@ -80,6 +83,13 @@ export default function Orders() {
               </SelectContent>
             </Select>
           </div>
+
+          <StatStrip items={[
+            { label: "Orders", value: String(totals.count) },
+            { label: "Est. value", value: npr(totals.value) },
+            { label: "Advance held", value: npr(totals.advance) },
+            { label: "Expected weight", value: `${totals.weight.toFixed(3)} g`, sub: `${gramsToTola(totals.weight).toFixed(3)} tola` },
+          ]} />
 
           <Table>
             <TableHeader><TableRow>

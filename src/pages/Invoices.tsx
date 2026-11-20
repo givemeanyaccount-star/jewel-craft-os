@@ -10,7 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { npr } from "@/lib/format";
+import { npr, gramsToTola } from "@/lib/format";
+import { StatStrip } from "@/components/StatStrip";
+import { invoiceTotals } from "@/lib/listTotals";
+const wt = (g: number) => `${g.toFixed(3)} g · ${gramsToTola(g).toFixed(3)} tola`;
+
 import { Search, Plus } from "lucide-react";
 import { usePermission } from "@/hooks/usePermission";
 
@@ -41,7 +45,7 @@ export default function Invoices() {
   useEffect(() => { load(); }, []);
   async function load() {
     const { data } = await supabase.from("invoices")
-      .select("*, customers(full_name, phone)")
+      .select("*, customers(full_name, phone), invoice_items(weight, quantity)")
       .order("issued_at", { ascending: false }).limit(300);
     setInvoices(data ?? []);
   }
@@ -54,6 +58,7 @@ export default function Invoices() {
       return [i.invoice_number, i.customers?.full_name ?? "", i.customers?.phone ?? ""].some((f) => f.toLowerCase().includes(ql));
     });
   }, [invoices, q, status]);
+  const totals = useMemo(() => invoiceTotals(filtered), [filtered]);
 
   return (
     <AppLayout title="Invoices" actions={
@@ -73,6 +78,12 @@ export default function Invoices() {
           <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
         </Select>
       </div>
+      <StatStrip items={[
+        { label: "Bills", value: String(totals.count), sub: invoices.length >= 300 ? "latest 300 loaded" : undefined },
+        { label: "Value", value: npr(totals.value), sub: "excl. cancelled" },
+        { label: "Balance due", value: npr(totals.balance) },
+        { label: "Weight sold", value: `${totals.weight.toFixed(3)} g`, sub: `${gramsToTola(totals.weight).toFixed(3)} tola` },
+      ]} />
       <Card><CardContent className="p-0">
         <Table>
           <TableHeader><TableRow>

@@ -18,6 +18,8 @@ import { DateField } from "@/components/DateField";
 import { todayISO } from "@/lib/orders";
 import { usePermission } from "@/hooks/usePermission";
 import { computeNetWeight, computeFineWeight, npr, gms, gramsToTola } from "@/lib/format";
+import { StatStrip } from "@/components/StatStrip";
+import { inventoryTotals } from "@/lib/listTotals";
 import { uploadImage, getSignedUrls } from "@/lib/storage";
 import { Switch } from "@/components/ui/switch";
 import { QRScanButton } from "@/components/QRScanButton";
@@ -50,6 +52,18 @@ export default function Inventory() {
   const [filterStatus, setFilterStatus] = useState<string>("in_stock");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
+  const [pureRates, setPureRates] = useState<{ gold?: number; silver?: number }>({});
+  useEffect(() => {
+    void supabase.from("metal_rates").select("metal, purity, rate_per_gram").in("purity", ["24K", "999"])
+      .order("effective_date", { ascending: false }).limit(10).then(({ data }) => {
+        const out: { gold?: number; silver?: number } = {};
+        for (const r of data ?? []) {
+          if (r.metal === "gold" && r.purity === "24K" && out.gold == null) out.gold = Number(r.rate_per_gram);
+          if (r.metal === "silver" && r.purity === "999" && out.silver == null) out.silver = Number(r.rate_per_gram);
+        }
+        setPureRates(out);
+      });
+  }, []);
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -72,6 +86,7 @@ export default function Inventory() {
       return [it.sku, it.name, it.description ?? "", it.qr_code ?? "", it.legacy_code ?? "", it.barcode ?? ""].some((f) => f.toLowerCase().includes(ql));
     });
   }, [items, q, filterCat, filterStatus]);
+  const totals = useMemo(() => inventoryTotals(filtered, pureRates), [filtered, pureRates]);
 
   return (
     <AppLayout title="Inventory" actions={canWrite && (
@@ -98,6 +113,13 @@ export default function Inventory() {
           </SelectContent>
         </Select>
       </div>
+
+      <StatStrip items={[
+        { label: "Items", value: String(totals.count), sub: items.length >= 500 ? "latest 500 loaded" : undefined },
+        { label: "Est. value", value: npr(totals.value), sub: "fine wt × today's pure rate + stones" },
+        { label: "Net weight", value: `${totals.weight.toFixed(3)} g`, sub: `${gramsToTola(totals.weight).toFixed(3)} tola` },
+        { label: "Fine weight", value: `${totals.fine.toFixed(3)} g`, sub: `${gramsToTola(totals.fine).toFixed(3)} tola` },
+      ]} />
 
       {filtered.length === 0 ? (
         <Card><CardContent className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
