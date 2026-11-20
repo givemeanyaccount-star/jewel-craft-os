@@ -1,3 +1,4 @@
+import { PendingAdjustmentsNotice } from "@/components/inventory/PendingAdjustmentsNotice";
 import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -219,6 +220,8 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        <PendingAdjustmentsNotice />
 
         {/* Header */}
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

@@ -17,7 +17,7 @@ type Year = { bs_year: number; label: string; starts_on: string; ends_on: string
 type BookRow = Record<string, unknown>;
 type Books = Record<string, unknown> & { balances?: Record<string, BookRow[]> };
 type Archive = { label: string; closed_at: string | null; opening: Books | null; books: Books };
-const bookLabels: Record<string, string> = { sales: "Sales", sale_items: "Sale items", receipts: "Receipts", purchases: "Purchases", purchase_items: "Purchase items", old_metal: "Old metal", returns: "Returns", return_items: "Return items", advance_history: "Advance history", karigar_charges: "Karigar charges", karigar_payments: "Karigar payments" };
+const bookLabels: Record<string, string> = { sales: "Sales", sale_items: "Sale items", receipts: "Receipts", purchases: "Purchases", purchase_items: "Purchase items", old_metal: "Old metal", returns: "Returns", return_items: "Return items", advance_history: "Advance history", karigar_charges: "Karigar charges", karigar_payments: "Karigar payments", weight_adjustments: "Weight adjustments", weight_adjustment_totals: "Weight adj totals" };
 const balanceLabels: Record<string, string> = { stock: "Stock", receivables: "Receivables", unused_advances: "Unused advances", open_orders: "Open orders", open_order_items: "Order work in progress", open_repairs: "Repair work in progress", supplier_purchases_unpaid: "Unpaid supplier purchases", karigar_balances: "Karigar balances" };
 
 export default function FiscalYears() {

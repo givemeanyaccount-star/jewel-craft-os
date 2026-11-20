@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.user_has_permission(uuid, text) TO service_role;

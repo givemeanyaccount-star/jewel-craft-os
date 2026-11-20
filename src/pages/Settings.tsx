@@ -30,6 +30,7 @@ export default function Settings() {
         <TaxationCard />
         <CategoriesEditor />
         <SimpleList table="locations" title="Showcase Locations" />
+        {(hasRole("admin") || hasRole("manager")) && <WeightToleranceCard />}
         {hasRole("admin") && <ShopResetCard />}
       </div>
 
@@ -252,6 +253,34 @@ function SimpleList({ table, title }: { table: "categories" | "locations"; title
             ))}
           </TableBody>
         </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WeightToleranceCard() {
+  const [value, setValue] = useState<number>(0);
+  const [saved, setSaved] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { supabase.from("app_settings").select("weight_tolerance_grams").limit(1).maybeSingle()
+    .then(({ data }) => { const v = Number(data?.weight_tolerance_grams ?? 0); setValue(v); setSaved(v); }); }, []);
+  async function save() {
+    setSaving(true);
+    const { error } = await supabase.rpc("set_weight_tolerance", { _grams: value });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setSaved(value); toast.success("Tolerance saved");
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Weight Adjustment Tolerance</CardTitle>
+        <p className="text-xs text-muted-foreground">Net-weight changes up to this many grams per item apply immediately. Larger changes are flagged and need manager approval. Only managers and admins can change this; every change is audited.</p>
+      </CardHeader>
+      <CardContent className="flex items-end gap-2">
+        <div className="flex-1"><Label>Tolerance (grams per item)</Label>
+          <Input type="number" step="0.001" min={0} value={value} onChange={(e) => setValue(Number(e.target.value))} /></div>
+        <Button onClick={save} disabled={saving || saved === value || value < 0}><Save className="mr-1 h-4 w-4" /> Save</Button>
       </CardContent>
     </Card>
   );

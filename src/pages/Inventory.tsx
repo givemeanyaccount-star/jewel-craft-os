@@ -22,6 +22,7 @@ import { uploadImage, getSignedUrls } from "@/lib/storage";
 import { Switch } from "@/components/ui/switch";
 import { QRScanButton } from "@/components/QRScanButton";
 import { ImageCaptureButton } from "@/components/ImageCapture";
+import { WeightAdjustmentDialog } from "@/components/inventory/WeightAdjustmentDialog";
 
 interface Category { id: string; name: string; }
 interface Location_ { id: string; name: string; }
@@ -126,6 +127,9 @@ export default function Inventory() {
                   <Button size="sm" variant="outline" asChild className="flex-1"><Link to={`/inventory/${it.id}`}><QrCode className="mr-1 h-3.5 w-3.5" /> Tag</Link></Button>
                   {canWrite && (
                     <Button size="sm" variant="ghost" onClick={() => { setEditing(it); setOpen(true); }}>Edit</Button>
+                  )}
+                  {canWrite && ["in_stock", "reserved"].includes(it.status) && (
+                    <WeightAdjustmentDialog item={it} onDone={load} trigger={<Button size="sm" variant="ghost">Adjust wt</Button>} />
                   )}
                 </div>
               </CardContent>
@@ -296,8 +300,13 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
           </div>
           {editing && (
             <p className="md:col-span-2 rounded bg-muted/50 p-2 text-xs text-muted-foreground">
-              Metal, purity and weights are locked. To change them, open the item and use “Adjust weight” — a manager must approve it.
+              Metal, purity and weights are locked. Use “Adjust weight” — changes within tolerance apply at once, larger ones need manager approval.
             </p>
+          )}
+          {editing && ["in_stock", "reserved"].includes(editing.status) && (
+            <div className="md:col-span-2 md:max-w-xs">
+              <WeightAdjustmentDialog item={editing} onDone={() => { onOpenChange(false); onSaved(); }} />
+            </div>
           )}
           <div>
             <Label>Net (auto)</Label>

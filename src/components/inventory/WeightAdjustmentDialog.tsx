@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 import { Scale } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,17 +10,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ADJUSTMENT_REASONS, adjustmentPreview } from "@/lib/weightAdjustment";
+import { ADJUSTMENT_REASONS, adjustmentPreview, isWithinTolerance } from "@/lib/weightAdjustment";
 import { gmsWithTola } from "@/lib/format";
 
-export function WeightAdjustmentDialog({ item, onDone }: { item: any; onDone?: () => void }) {
+export function WeightAdjustmentDialog({ item, onDone, trigger }: { item: any; onDone?: () => void; trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const tol = useQuery({ queryKey: ["weight-tolerance"], enabled: open, queryFn: async () => {
+    const { data } = await supabase.from("app_settings").select("weight_tolerance_grams").limit(1).maybeSingle();
+    return Number(data?.weight_tolerance_grams ?? 0);
+  } });
   const [gross, setGross] = useState(String(item.gross_weight));
   const [stone, setStone] = useState(String(item.stone_weight));
   const [reasonType, setReasonType] = useState("reweigh");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const p = adjustmentPreview(item, Number(gross), Number(stone), item.purity);
+  const within = tol.data !== undefined && isWithinTolerance(item.net_weight, p.net, tol.data);
   const ok = p.valid && p.changed && reason.trim().length >= 3;
 
   async function submit() {
@@ -28,13 +35,13 @@ export function WeightAdjustmentDialog({ item, onDone }: { item: any; onDone?: (
     });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Adjustment sent for approval");
+    toast.success(within ? "Within tolerance — stock weight updated" : "Above tolerance — flagged for manager approval");
     setOpen(false); setReason(""); onDone?.();
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button variant="outline" className="w-full"><Scale className="mr-1 h-4 w-4" /> Adjust weight</Button></DialogTrigger>
+      <DialogTrigger asChild>{trigger ?? <Button variant="outline" className="w-full"><Scale className="mr-1 h-4 w-4" /> Adjust weight</Button>}</DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>Request weight adjustment · {item.sku}</DialogTitle></DialogHeader>
         <div className="grid gap-3">
@@ -56,9 +63,14 @@ export function WeightAdjustmentDialog({ item, onDone }: { item: any; onDone?: (
             </Select>
           </div>
           <div><Label>Details (required)</Label><Textarea value={reason} maxLength={500} onChange={e => setReason(e.target.value)} placeholder="e.g. Re-weighed on counter scale after polishing" /></div>
-          <p className="text-xs text-muted-foreground">Stock weights change only after a manager approves.</p>
+          {p.valid && p.changed && tol.data !== undefined && (
+            <div className="flex items-center gap-2 text-xs">
+              <Badge variant={within ? "secondary" : "destructive"}>{within ? "Within tolerance" : "Will be flagged"}</Badge>
+              <span className="text-muted-foreground">Tolerance ±{tol.data.toFixed(3)} g net. {within ? "Applies immediately and is recorded." : "A manager must approve before stock changes."}</span>
+            </div>
+          )}
         </div>
-        <DialogFooter><Button disabled={!ok || busy} onClick={submit}>{busy ? "Sending…" : "Send for approval"}</Button></DialogFooter>
+        <DialogFooter><Button disabled={!ok || busy} onClick={submit}>{busy ? "Saving…" : within ? "Apply adjustment" : "Send for approval"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

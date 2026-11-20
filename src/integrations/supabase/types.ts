@@ -26,6 +26,7 @@ export type Database = {
           updated_at: string
           vat_enabled: boolean
           vat_rate: number
+          weight_tolerance_grams: number
         }
         Insert: {
           allow_custom_purity?: boolean
@@ -38,6 +39,7 @@ export type Database = {
           updated_at?: string
           vat_enabled?: boolean
           vat_rate?: number
+          weight_tolerance_grams?: number
         }
         Update: {
           allow_custom_purity?: boolean
@@ -50,6 +52,7 @@ export type Database = {
           updated_at?: string
           vat_enabled?: boolean
           vat_rate?: number
+          weight_tolerance_grams?: number
         }
         Relationships: []
       }
@@ -448,6 +451,10 @@ export type Database = {
       }
       inventory_weight_adjustments: {
         Row: {
+          ai_reviewed_at: string | null
+          ai_risk_level: string | null
+          ai_summary: Json | null
+          auto_applied: boolean
           id: string
           inventory_item_id: string
           new_fine_weight: number
@@ -469,8 +476,14 @@ export type Database = {
           reviewed_by_email: string | null
           sku: string
           status: string
+          tolerance_grams: number | null
+          within_tolerance: boolean
         }
         Insert: {
+          ai_reviewed_at?: string | null
+          ai_risk_level?: string | null
+          ai_summary?: Json | null
+          auto_applied?: boolean
           id?: string
           inventory_item_id: string
           new_fine_weight: number
@@ -492,8 +505,14 @@ export type Database = {
           reviewed_by_email?: string | null
           sku: string
           status?: string
+          tolerance_grams?: number | null
+          within_tolerance?: boolean
         }
         Update: {
+          ai_reviewed_at?: string | null
+          ai_risk_level?: string | null
+          ai_summary?: Json | null
+          auto_applied?: boolean
           id?: string
           inventory_item_id?: string
           new_fine_weight?: number
@@ -515,6 +534,8 @@ export type Database = {
           reviewed_by_email?: string | null
           sku?: string
           status?: string
+          tolerance_grams?: number | null
+          within_tolerance?: boolean
         }
         Relationships: [
           {
@@ -2321,6 +2342,10 @@ export type Database = {
         Args: { _end: string; _start: string }
         Returns: Json
       }
+      capture_fiscal_books_core: {
+        Args: { _end: string; _start: string }
+        Returns: Json
+      }
       correct_invoice_order_date: {
         Args: { _invoice_id: string; _new_date: string; _reason: string }
         Returns: undefined
@@ -2379,6 +2404,7 @@ export type Database = {
         Returns: undefined
       }
       rollover_fiscal_books: { Args: never; Returns: number }
+      set_weight_tolerance: { Args: { _grams: number }; Returns: undefined }
       user_has_permission: {
         Args: { _perm: string; _uid: string }
         Returns: boolean

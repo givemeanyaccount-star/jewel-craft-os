@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePermission } from "@/hooks/usePermission";
+import { WeightAdjustmentDialog } from "@/components/inventory/WeightAdjustmentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { filterStock, loadAllStock, stockBalances, stockTotals, stockWeight, type StockItem } from "@/lib/stockReport";
 
@@ -118,7 +119,8 @@ export default function StockReport() {
       </TableRow></TableHeader>
       <TableBody>
         {report.isLoading || filtered.length === 0 ? <TableRow><TableCell colSpan={11} className="py-10 text-center text-muted-foreground">{report.isLoading ? "Loading stock…" : "No live stock matches these filters."}</TableCell></TableRow> : view === "items" ? filtered.map(item => <TableRow key={item.id}>
-          <TableCell className="min-w-40">{hasPermission("inventory_view") ? <Link className="font-medium hover:underline" to={`/inventory/${item.id}`}>{item.name}</Link> : item.name}<div className="text-xs text-muted-foreground">{item.sku}{item.legacy_code && ` · ${item.legacy_code}`}</div></TableCell>
+          <TableCell className="min-w-40">{hasPermission("inventory_view") ? <Link className="font-medium hover:underline" to={`/inventory/${item.id}`}>{item.name}</Link> : item.name}<div className="text-xs text-muted-foreground">{item.sku}{item.legacy_code && ` · ${item.legacy_code}`}</div>
+            {hasPermission("inventory_manage") && <WeightAdjustmentDialog item={item} onDone={() => report.refetch()} trigger={<Button size="sm" variant="link" className="h-auto p-0 text-xs">Adjust wt</Button>} />}</TableCell>
           <TableCell>{categoryName(item.category_id)}</TableCell><TableCell className="capitalize">{item.metal}</TableCell><TableCell>{item.purity}</TableCell><TableCell>{locationName(item.location_id)}</TableCell><TableCell>{item.status === "reserved" ? "Reserved" : "Available"}</TableCell>
           {[item.gross_weight, item.stone_weight, item.net_weight, item.fine_weight].map((value, index) => <TableCell key={index} className="text-right tabular-nums">{weight(value)}</TableCell>)}
         </TableRow>) : balances.map(row => <TableRow key={row.key}>

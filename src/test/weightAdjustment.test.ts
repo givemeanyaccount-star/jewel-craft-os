@@ -15,3 +15,15 @@ describe("weight adjustment", () => {
     expect(canReview({ canApprove: true, isAdmin: false, userId: "m", requestedBy: "u", status: "approved" })).toBe(false);
   });
 });
+
+import { isWithinTolerance, canSetTolerance } from "@/lib/weightAdjustment";
+describe("tolerance", () => {
+  it("exactly at the limit is within", () => expect(isWithinTolerance(9, 8.95, 0.05)).toBe(true));
+  it("0.001 g over is flagged", () => expect(isWithinTolerance(9, 8.949, 0.05)).toBe(false));
+  it("gains count too", () => expect(isWithinTolerance(9, 9.051, 0.05)).toBe(false));
+  it("only managers and admins set it", () => {
+    expect(canSetTolerance(["manager"])).toBe(true);
+    expect(canSetTolerance(["admin"])).toBe(true);
+    expect(canSetTolerance(["sales", "accountant"])).toBe(false);
+  });
+});

@@ -160,6 +160,30 @@ function PosScreen({ reload }: { reload: () => void }) {
 
   const [cart, setCart] = useState<CartRow[]>(d.cart ?? []);
   const [discount, setDiscount] = useState(d.discount ?? 0);
+  // Held/restored bills may carry weights from before an approved weight adjustment: refresh and tell the user.
+  const cartItemKey = cart.map((r) => r.inventory_item_id).filter(Boolean).sort().join(",");
+  useEffect(() => {
+    const ids = cartItemKey ? cartItemKey.split(",") : [];
+    if (!ids.length) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("inventory_items").select("id, sku, gross_weight, stone_weight, net_weight").in("id", ids);
+      if (cancelled || !data) return;
+      const byId = new Map(data.map((x) => [x.id, x]));
+      const changed: string[] = [];
+      setCart((rows) => rows.map((r) => {
+        const cur = r.inventory_item_id ? byId.get(r.inventory_item_id) : undefined;
+        if (!cur) return r;
+        const same = Math.round(Number(cur.gross_weight) * 1000) === Math.round(r.gross_weight * 1000)
+          && Math.round(Number(cur.stone_weight) * 1000) === Math.round(r.stone_weight * 1000);
+        if (same) return r;
+        changed.push(`${cur.sku}: ${r.weight.toFixed(3)} → ${Number(cur.net_weight).toFixed(3)} g`);
+        return recompute({ ...r, gross_weight: Number(cur.gross_weight), stone_weight: Number(cur.stone_weight), weight: Number(cur.net_weight) });
+      }));
+      setTimeout(() => { if (changed.length) toast.warning(`Item weight changed since this bill was prepared (approved adjustment): ${changed.join("; ")}`, { duration: 10000 }); }, 0);
+    })();
+    return () => { cancelled = true; };
+  }, [cartItemKey]);
   // Signed sub-rupee adjustment that lands the bill exactly on an entered target amount.
   const [roundOff, setRoundOff] = useState(d.roundOff ?? 0);
   const [oldGoldCredit, setOldGoldCredit] = useState(d.oldGoldCredit ?? 0);

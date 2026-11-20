@@ -28,3 +28,14 @@ export function canReview(opts: { canApprove: boolean; isAdmin: boolean; userId?
   if (opts.status !== "pending" || !opts.canApprove) return false;
   return opts.isAdmin || !opts.userId || opts.userId !== opts.requestedBy;
 }
+
+/** A change is within tolerance when |new net − old net| ≤ tolerance (grams, compared to 0.001 g). */
+export function isWithinTolerance(oldNet: number, newNet: number, toleranceGrams: number) {
+  const diff = Math.abs(Math.round(newNet * 1000) - Math.round(Number(oldNet) * 1000));
+  return diff <= Math.round(Number(toleranceGrams || 0) * 1000);
+}
+
+/** Only managers and admins may change the tolerance. */
+export function canSetTolerance(roles: string[]) {
+  return roles.includes("admin") || roles.includes("manager");
+}

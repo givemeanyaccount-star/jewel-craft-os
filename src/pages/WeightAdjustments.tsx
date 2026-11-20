@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Sparkles } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,19 @@ export default function WeightAdjustments() {
   const [review, setReview] = useState<{ row: any; approve: boolean } | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState<string | null>(null);
+
+  async function runAi(id: string) {
+    setAiBusy(id);
+    const { data, error } = await supabase.functions.invoke("weight-adjustment-review", { body: { adjustment_id: id } });
+    setAiBusy(null);
+    if (error || (data as any)?.error) {
+      let msg = (data as any)?.error;
+      try { msg = msg ?? (await (error as any)?.context?.json())?.error; } catch { /* ignore */ }
+      return toast.error(msg ?? "AI review failed");
+    }
+    qc.invalidateQueries({ queryKey: ["weight-adjustments"] });
+  }
   const qc = useQueryClient();
   const list = useQuery({
     queryKey: ["weight-adjustments", status], enabled: hasPermission("inventory_view"),
@@ -51,7 +65,7 @@ export default function WeightAdjustments() {
   const reasonLabel = (v: string) => ADJUSTMENT_REASONS.find(r => r.value === v)?.label ?? v;
   return (
     <AppLayout title="Weight Adjustments">
-      <p className="mb-3 text-sm text-muted-foreground">Request changes from an item's page using “Adjust weight”. Weights change only after approval; every step is in the audit log.</p>
+      <p className="mb-3 text-sm text-muted-foreground">Request changes from an item's page using “Adjust weight”. Changes within tolerance apply at once; larger ones are flagged for approval. Every step is in the audit log.</p>
       <Tabs value={status} onValueChange={setStatus} className="mb-3">
         <TabsList><TabsTrigger value="pending">Pending</TabsTrigger><TabsTrigger value="approved">Approved</TabsTrigger><TabsTrigger value="rejected">Rejected</TabsTrigger><TabsTrigger value="all">All</TabsTrigger></TabsList>
       </Tabs>
@@ -61,7 +75,11 @@ export default function WeightAdjustments() {
             <Card key={r.id}><CardContent className="grid gap-2 p-4 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Link to={`/inventory/${r.inventory_item_id}`} className="font-medium hover:underline">{r.sku} · {r.inventory_items?.name}</Link>
-                <Badge variant={statusVariant[r.status as keyof typeof statusVariant]} className="capitalize">{r.status}</Badge>
+                <div className="flex flex-wrap gap-1">
+                  {r.auto_applied ? <Badge variant="secondary">Within tolerance · auto-applied</Badge>
+                    : r.within_tolerance === false && <Badge variant="destructive">Flagged · above ±{Number(r.tolerance_grams ?? 0).toFixed(3)} g</Badge>}
+                  <Badge variant={statusVariant[r.status as keyof typeof statusVariant]} className="capitalize">{r.status}</Badge>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
                 <span>Gross: {fmt(r.old_gross_weight)} → <b>{fmt(r.new_gross_weight)}</b></span>
@@ -72,6 +90,22 @@ export default function WeightAdjustments() {
               <div><span className="text-muted-foreground">{reasonLabel(r.reason_type)}:</span> {r.reason}</div>
               <div className="text-xs text-muted-foreground">Requested by {r.requested_by_email ?? "—"} on {new Date(r.requested_at).toLocaleString()}
                 {r.reviewed_at && <> · {r.status} by {r.reviewed_by_email ?? "—"} on {new Date(r.reviewed_at).toLocaleString()}{r.review_note ? ` — “${r.review_note}”` : ""}</>}</div>
+              {r.ai_summary && (
+                <div className="rounded-md border bg-muted/40 p-3">
+                  <div className="mb-1 flex items-center gap-2 font-medium"><Sparkles className="h-4 w-4" /> AI risk:
+                    <Badge variant={r.ai_risk_level === "high" ? "destructive" : r.ai_risk_level === "medium" ? "secondary" : "outline"} className="capitalize">{r.ai_risk_level}</Badge>
+                    <span className="text-xs font-normal text-muted-foreground">suggests {r.ai_summary.recommendation}</span>
+                  </div>
+                  <p>{r.ai_summary.summary}</p>
+                  {r.ai_summary.inconsistencies?.length > 0 && <ul className="mt-1 list-disc pl-5 text-xs">{r.ai_summary.inconsistencies.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>}
+                  <p className="mt-1 text-[10px] text-muted-foreground">AI advice only — the decision is yours.</p>
+                </div>
+              )}
+              {r.status === "pending" && canApprove && (
+                <Button size="sm" variant="outline" className="w-fit" disabled={aiBusy === r.id} onClick={() => runAi(r.id)}>
+                  <Sparkles className="mr-1 h-4 w-4" /> {aiBusy === r.id ? "Reviewing…" : r.ai_summary ? "Re-run AI review" : "Review with AI"}
+                </Button>
+              )}
               {canReview({ canApprove, isAdmin, userId, requestedBy: r.requested_by, status: r.status }) && (
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => setReview({ row: r, approve: true })}>Approve</Button>
@@ -86,8 +120,8 @@ export default function WeightAdjustments() {
       <Dialog open={!!review} onOpenChange={(o) => !o && setReview(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{review?.approve ? "Approve" : "Reject"} adjustment · {review?.row.sku}</DialogTitle></DialogHeader>
-          <Textarea value={note} maxLength={500} onChange={e => setNote(e.target.value)} placeholder={review?.approve ? "Note (optional)" : "Why is this rejected? (required)"} />
-          <DialogFooter><Button disabled={busy || (!review?.approve && note.trim().length < 3)} onClick={submitReview}>{busy ? "Saving…" : "Confirm"}</Button></DialogFooter>
+          <Textarea value={note} maxLength={500} onChange={e => setNote(e.target.value)} placeholder={review?.approve ? (review.row.within_tolerance ? "Note (optional)" : "Approval note (required for flagged changes)") : "Why is this rejected? (required)"} />
+          <DialogFooter><Button disabled={busy || ((!review?.approve || !review?.row.within_tolerance) && note.trim().length < 3)} onClick={submitReview}>{busy ? "Saving…" : "Confirm"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </AppLayout>
