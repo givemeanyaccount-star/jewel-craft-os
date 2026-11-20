@@ -15,6 +15,7 @@ import Inventory from "./pages/Inventory";
 import ItemDetail from "./pages/ItemDetail";
 import ScanQR from "./pages/ScanQR";
 import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
 import Quotations from "./pages/Quotations";
 import QuotationDetail from "./pages/QuotationDetail";
 import POS from "./pages/POS";
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/inventory/:id" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><ItemDetail /></ProtectedRoute>} />
             <Route path="/scan" element={<ProtectedRoute roles={[...SALES]}><ScanQR /></ProtectedRoute>} />
             <Route path="/customers" element={<ProtectedRoute roles={[...SALES]}><Customers /></ProtectedRoute>} />
+            <Route path="/customers/:id" element={<ProtectedRoute roles={[...SALES]}><CustomerDetail /></ProtectedRoute>} />
             <Route path="/quotations" element={<ProtectedRoute roles={[...SALES]}><Quotations /></ProtectedRoute>} />
             <Route path="/quotations/:id" element={<ProtectedRoute roles={[...SALES]}><QuotationDetail /></ProtectedRoute>} />
             <Route path="/pos" element={<ProtectedRoute roles={[...SALES]}><POS /></ProtectedRoute>} />

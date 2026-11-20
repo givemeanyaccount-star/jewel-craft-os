@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Search, User, Wallet } from "lucide-react";
+import { Pencil, Plus, Search, User, Wallet } from "lucide-react";
 import { AdvanceDialog } from "@/components/AdvanceDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { npr, round2, CUSTOMER_ADVANCE_REF } from "@/lib/format";
@@ -12,6 +13,7 @@ import { CustomerDialog } from "@/components/CustomerDialog";
 
 export default function Customers() {
   const { hasRole, user } = useAuth();
+  const nav = useNavigate();
   const canWrite = hasRole("admin") || hasRole("manager") || hasRole("sales");
   const [customers, setCustomers] = useState<any[]>([]);
   const [q, setQ] = useState("");
@@ -57,9 +59,20 @@ export default function Customers() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((c) => (
-            <Card key={c.id} className="transition hover:shadow-md cursor-pointer" onClick={() => canWrite && (setEditing(c), setOpen(true))}>
+            <Card key={c.id} className="cursor-pointer transition hover:shadow-md" role="link" tabIndex={0}
+              aria-label={`View ${c.full_name}`}
+              onClick={() => nav(`/customers/${c.id}`)}
+              onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); nav(`/customers/${c.id}`); } }}>
               <CardContent className="p-4">
-                <div className="font-medium">{c.full_name}</div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-medium">{c.full_name}</div>
+                  {canWrite && (
+                    <Button size="icon" variant="ghost" className="-mr-2 -mt-2 h-7 w-7" aria-label={`Edit ${c.full_name}`}
+                      onClick={(e) => { e.stopPropagation(); setEditing(c); setOpen(true); }}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground">{c.phone || "—"} · {c.city || ""}</div>
                 {c.email && <div className="text-xs text-muted-foreground truncate">{c.email}</div>}
                 <div className="mt-2 flex justify-between text-xs">

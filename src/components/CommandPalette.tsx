@@ -38,7 +38,7 @@ export function CommandPalette() {
       ]);
       setHits({
         Invoices: (inv?.data ?? []).map((r) => ({ id: r.id, label: r.invoice_number, sub: `NPR ${Number(r.total).toLocaleString("en-IN")}`, to: `/invoices/${r.id}` })),
-        Customers: (cus?.data ?? []).map((r) => ({ id: r.id, label: r.full_name, sub: r.phone ?? "", to: "/customers" })),
+        Customers: (cus?.data ?? []).map((r) => ({ id: r.id, label: r.full_name, sub: r.phone ?? "", to: `/customers/${r.id}` })),
         Items: (itm?.data ?? []).map((r) => ({ id: r.id, label: r.name, sub: r.legacy_code ? `${r.legacy_code} (${r.sku})` : r.sku, to: `/inventory/${r.id}` })),
         Orders: (ord?.data ?? []).map((r) => ({ id: r.id, label: r.order_no, sub: r.status, to: `/orders/${r.id}` })),
       });
