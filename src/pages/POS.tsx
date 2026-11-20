@@ -1169,7 +1169,7 @@ function PosScreen({ reload }: { reload: () => void }) {
       </AlertDialog>
 
 
-      <div className="grid min-w-0 grid-cols-1 gap-4 pb-20 lg:h-[calc(100vh-8.5rem)] lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] lg:pb-0">
+      <div className="grid min-w-0 grid-cols-1 gap-4 pb-20 lg:h-[calc(100vh-10.5rem)] xl:h-[calc(100vh-8.5rem)] lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] lg:pb-0">
 
         <div className="min-w-0 space-y-4 lg:overflow-y-auto lg:pr-1">
           <div className="hidden flex-wrap gap-3 rounded-md border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground lg:flex">

@@ -8,3 +8,4 @@
 - Stock weights, metal and purity are locked by trg_inventory_weight_guard after intake; only review_inventory_weight_adjustment (approved request, approver ≠ requester except admin, audit_logs) changes them, keeping a reviewable trail.
 - Weight adjustments within app_settings.weight_tolerance_grams auto-apply; larger ones stay pending for approval. AI risk review runs only in the weight-adjustment-review edge function (server-loaded facts, advisory, saved on the request); applied adjustments are included in capture_fiscal_books.
 - POS uses a docked two-column layout on wide screens with F2 search, F4 hold, F8 checkout via usePosShortcuts (paused while dialogs are open); keeps checkout always visible.
+- Navigation lives in src/lib/navConfig.ts (sections, permissions, badge keys); AppLayout renders sidebar, phone bottom bar, rate strip, Ctrl+K search and New menu from it so every entry point stays permission-filtered.
