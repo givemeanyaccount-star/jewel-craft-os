@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
 import { UnitNumberField, useWeightUnit } from "@/components/ui/unit-number-field";
 import { LineChargeFields } from "@/components/LineChargeFields";
+import { SaleItemEditor } from "@/components/pos/SaleItemEditor";
 import { Kbd } from "@/components/ui/kbd";
 import { usePosShortcuts } from "@/hooks/usePosShortcuts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -162,7 +163,7 @@ function PosScreen({ reload }: { reload: () => void }) {
   const [weightUnit, setWeightUnit] = useWeightUnit();
 
   const [cart, setCart] = useState<CartRow[]>(d.cart ?? []);
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [mobileEditRow, setMobileEditRow] = useState<number | null>(null);
   const [discount, setDiscount] = useState(d.discount ?? 0);
   // Held/restored bills may carry weights from before an approved weight adjustment: refresh and tell the user.
   const cartItemKey = cart.map((r) => r.inventory_item_id).filter(Boolean).sort().join(",");
@@ -1253,15 +1254,15 @@ function PosScreen({ reload }: { reload: () => void }) {
               )}
 
               <div className="mt-3 space-y-2 md:hidden">
+                {cart.length > 0 && <p className="text-xs text-muted-foreground">Tap Edit to change description, price, weights or charges.</p>}
                 {cart.length === 0 ? <p className="py-4 text-center text-sm text-muted-foreground">Cart is empty</p>
                   : cart.map((r, i) => {
                     const d = lineDisplay(r);
                     const noRate = r.rate <= 0;
-                    const open = expandedRow === i || noRate;
                     return (
                       <div key={i} className={`rounded-md border px-2.5 py-2 ${noRate ? "border-destructive" : ""}`}>
-                        <div className="flex items-start gap-2">
-                          <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setExpandedRow(open ? null : i)}>
+                        <div className="flex items-start gap-1">
+                          <button type="button" className="min-w-0 flex-1 py-1 text-left" onClick={() => setMobileEditRow(i)}>
                             <div className="flex items-baseline justify-between gap-2">
                               <span className="truncate text-sm font-medium">{r.description}</span>
                               <span className="shrink-0 text-sm font-semibold tabular-nums">{npr(r.line_total)}</span>
@@ -1271,43 +1272,11 @@ function PosScreen({ reload }: { reload: () => void }) {
                               {d.stoneAmt > 0 ? ` · St ${npr(d.stoneAmt)}` : ""}{d.qty > 1 ? ` · ×${d.qty}` : ""}
                             </div>
                           </button>
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setExpandedRow(open ? null : i)}>{open ? "Done" : "Edit"}</Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Remove item" onClick={() => { removeRow(i); setExpandedRow(null); }}><Trash2 className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="outline" className="h-9 px-3 text-xs" onClick={() => setMobileEditRow(i)} aria-label={`Edit ${r.description}`}>
+                            {noRate ? "Set rate" : "Edit"}
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label="Remove item" onClick={() => { removeRow(i); setMobileEditRow(null); }}><Trash2 className="h-4 w-4" /></Button>
                         </div>
-                        {open && (
-                          <div className="mt-2 space-y-2 border-t pt-2 text-[11px]">
-                            <div className="grid grid-cols-2 items-end gap-x-3 gap-y-2">
-                              <div className="space-y-0.5"><div className="text-muted-foreground">Gross wt</div>
-                                <UnitNumberField inputClassName="h-8 text-right" hideToggle value={d.grossWt}
-                                  onChange={(v) => updateRow(i, { gross_weight: v, weight: computeNetWeight(v, Number(r.stone_weight || 0)) })} /></div>
-                              <div className="space-y-0.5"><div className="text-muted-foreground">Stone wt</div>
-                                <UnitNumberField inputClassName="h-8 text-right" hideToggle value={d.stoneWt}
-                                  onChange={(v) => updateRow(i, { stone_weight: v, weight: computeNetWeight(Number(r.gross_weight || 0), v) })} /></div>
-                              <div className="space-y-0.5"><div className={noRate ? "text-destructive" : "text-muted-foreground"}>Rate/{weightUnit === "tola" ? "tola" : "g"}</div>
-                                <UnitNumberField mode="rate" hideToggle inputClassName={`h-8 text-right ${noRate ? "border-destructive" : ""}`}
-                                  value={r.rate} onChange={(v) => updateRow(i, { rate: v, rate_manual: true, rate_missing: false })} /></div>
-                              <div className="space-y-0.5"><div className="text-muted-foreground">Stone value</div>
-                                <NumberField className="h-8 text-right" value={r.stone_value} onChange={(v) => updateRow(i, { stone_value: v })} /></div>
-                              <LineChargeFields
-                                wastageInput={Number(r.wastage_input ?? 0)} wastageType={r.wastage_type ?? "percentage"}
-                                makingInput={Number(r.making_input ?? 0)} makingType={r.making_type ?? "per_gram"}
-                                onChange={(patch) => updateRow(i, patch as Partial<CartRow>)} />
-                              <div className="space-y-0.5"><div className="text-muted-foreground">Qty</div>
-                                <NumberField decimals={0} className="h-8 text-right" value={d.qty}
-                                  onChange={(v) => updateRow(i, { quantity: Math.max(1, Number(v) || 1) })} /></div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-x-3 gap-y-1 border-t pt-2">
-                              <Detail label="Total wt" value={gmsWithTola(d.totalWt)} />
-                              <Detail label="Gold amt" value={npr(d.goldAmt)} />
-                              <Detail label="Making amt" value={npr(d.making)} />
-                            </div>
-                            {r.raw_item && canManageInventory && (
-                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditItem({ row: i, item: r.raw_item })}>
-                                <Pencil className="mr-1 h-3.5 w-3.5" /> Edit item details
-                              </Button>
-                            )}
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -1841,6 +1810,15 @@ function PosScreen({ reload }: { reload: () => void }) {
       </Dialog>
       <OrderPickerDialog open={orderPickerOpen} onOpenChange={setOrderPickerOpen} customerId={customerId}
         onPick={(id) => { setOrderPickerOpen(false); void loadOrder(id); }} />
+      <SaleItemEditor
+        open={mobileEditRow !== null}
+        row={mobileEditRow !== null ? cart[mobileEditRow] ?? null : null}
+        onOpenChange={(open) => { if (!open) setMobileEditRow(null); }}
+        onSave={(row) => {
+          if (mobileEditRow !== null) updateRow(mobileEditRow, row);
+          setMobileEditRow(null);
+        }}
+      />
       <ItemDialog open={newItemOpen} onOpenChange={setNewItemOpen}
         editing={null} cats={categories as any} locs={locations as any}
         onSaved={(created) => {
