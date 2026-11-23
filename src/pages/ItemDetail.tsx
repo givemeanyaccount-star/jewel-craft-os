@@ -12,6 +12,7 @@ import { Printer, ArrowLeft } from "lucide-react";
 import { openPrintPreview } from "@/components/PrintPreview";
 import { escapeHtml } from "@/lib/html";
 import { usePermission } from "@/hooks/usePermission";
+import { TagPrintDialog } from "@/components/inventory/TagPrintDialog";
 import { WeightAdjustmentDialog } from "@/components/inventory/WeightAdjustmentDialog";
 
 
@@ -45,40 +46,6 @@ export default function ItemDetail() {
   }, [item]);
 
   if (!item) return <AppLayout title="Item"><p className="text-muted-foreground">Loading...</p></AppLayout>;
-
-  function printTag() {
-    const canvas = qrRef.current; if (!canvas) return;
-    const dataUrl = canvas.toDataURL("image/png");
-    const logo = `${window.location.origin}/logo.png`;
-    const priceLine = `${item.metal.toUpperCase()} · ${item.purity} · ${Number(item.net_weight).toFixed(3)}g net`;
-    openPrintPreview({
-      title: `Tag ${item.sku}`,
-      fileName: `Tag-${item.sku}`,
-      page: "tag",
-      hidePageNumbers: true,
-      css: `
-        body { font-family: 'Helvetica Neue', system-ui, sans-serif; color: #111; }
-        .tag { padding: 3mm; border: 0.4mm solid #111; border-radius: 2mm; text-align: center; }
-        .brand { display:flex; align-items:center; justify-content:center; gap:2mm; border-bottom: 0.2mm solid #ddd; padding-bottom:2mm; }
-        .brand img { width: 8mm; height: 8mm; object-fit: contain; }
-        .brand span { font-size: 8pt; letter-spacing: 0.15em; font-weight: 600; }
-        .name { font-size: 9pt; font-weight: 600; margin: 2mm 0 0.5mm; line-height: 1.2; }
-        .meta { font-size: 7pt; color: #555; margin: 0 0 2mm; }
-        .qr { margin: 1mm auto; }
-        .sku { font-family: 'Courier New', monospace; font-size: 8pt; letter-spacing: 0.05em; margin-top: 1mm; }
-        .foot { font-size: 6pt; color: #888; margin-top: 1mm; letter-spacing: 0.1em; text-transform: uppercase; }
-      `,
-      html: `<div class="tag">
-        <div class="brand"><img src="${escapeHtml(logo)}"/><span>JEWELMASTER</span></div>
-        <div class="name">${escapeHtml(item.name)}</div>
-        <div class="meta">${escapeHtml(priceLine)}</div>
-        <img class="qr" src="${escapeHtml(dataUrl)}" width="120" />
-        <div class="sku">${escapeHtml(item.sku)}</div>
-        <div class="foot">Scan · Verify · Trust</div>
-      </div>`,
-    });
-  }
-
 
   return (
     <AppLayout title={item.name} actions={
@@ -118,7 +85,7 @@ export default function ItemDetail() {
           <CardContent className="flex flex-col items-center gap-3">
             <canvas ref={qrRef} className="rounded border" />
             <div className="text-center text-xs text-muted-foreground">{item.qr_code}</div>
-            <Button onClick={printTag} className="w-full"><Printer className="mr-1 h-4 w-4" /> Print Tag</Button>
+            <TagPrintDialog items={[item]} />
             {hasPermission("inventory_manage") && ["in_stock", "reserved"].includes(item.status) && (
               <WeightAdjustmentDialog item={item} onDone={() => nav("/inventory-adjustments")} />
             )}

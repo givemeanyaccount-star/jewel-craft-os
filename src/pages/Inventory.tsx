@@ -18,6 +18,8 @@ import { DateField } from "@/components/DateField";
 import { todayISO } from "@/lib/orders";
 import { usePermission } from "@/hooks/usePermission";
 import { computeNetWeight, computeFineWeight, npr, gms, gramsToTola } from "@/lib/format";
+import { TagPrintDialog } from "@/components/inventory/TagPrintDialog";
+import { Printer } from "lucide-react";
 import { StatStrip } from "@/components/StatStrip";
 import { inventoryTotals } from "@/lib/listTotals";
 import { uploadImage, getSignedUrls } from "@/lib/storage";
@@ -112,6 +114,9 @@ export default function Inventory() {
             {STATUSES.map((s) => <SelectItem key={s} value={s}>{s.replace("_", " ")}</SelectItem>)}
           </SelectContent>
         </Select>
+        {filtered.length > 0 && filtered.length <= 200 && (
+          <TagPrintDialog items={filtered as any} trigger={<Button variant="outline" size="sm"><Printer className="mr-1 h-4 w-4" /> Print {filtered.length} tags</Button>} />
+        )}
       </div>
 
       <StatStrip items={[
