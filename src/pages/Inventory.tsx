@@ -174,8 +174,12 @@ export default function Inventory() {
         onSaved={(created) => {
           setOpen(false); load();
           if (!created) return;
-          if (localStorage.getItem(PRINT_AFTER_KEY) !== "0") setTagItem(created);
-          else toast("Print tag for " + created.sku + "?", { action: { label: "Print", onClick: () => setTagItem(created) }, duration: 10000 });
+          if (localStorage.getItem(PRINT_AFTER_KEY) === "1") setTagItem(created);
+          else toast(`Item created (${created.sku})`, {
+            description: "Print a tag for this item now?",
+            action: { label: "Print tag", onClick: () => setTagItem(created) },
+            duration: 12000,
+          });
         }}
       />
       {tagItem && (
@@ -227,7 +231,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
     setPreviews((a) => a.filter((_, idx) => idx !== i));
   }
 
-  const [printAfter, setPrintAfter] = useState(() => localStorage.getItem(PRINT_AFTER_KEY) !== "0");
+  const [printAfter, setPrintAfter] = useState(() => localStorage.getItem(PRINT_AFTER_KEY) === "1");
   const netWeight = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
   const fineWeight = computeFineWeight(netWeight, form.purity || "");
 
@@ -447,7 +451,12 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
           {!editing ? (
             <label className="flex items-center gap-2 text-sm">
               <Switch checked={printAfter} onCheckedChange={(v) => { setPrintAfter(v); localStorage.setItem(PRINT_AFTER_KEY, v ? "1" : "0"); }} />
-              Print tag after saving
+              <span>
+                Print tag after saving
+                <span className="block text-xs text-muted-foreground">
+                  {printAfter ? "Opens the print window automatically" : "Off — you can print from the prompt after saving"}
+                </span>
+              </span>
             </label>
           ) : <span />}
           <div className="flex gap-2">
