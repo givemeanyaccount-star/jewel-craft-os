@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { openPrintPreview } from "@/components/PrintPreview";
 import { cn } from "@/lib/utils";
 import {
-  DEFAULT_PREFIX, DEFAULT_TAG, expandCopies, totalCopies, TAG_FIELD_LABELS, TAG_MM, fieldStyle, fieldText, loadTagTemplate, renderTags, saveTagTemplate,
-  type TagField, type TagFieldStyle, type TagItem, type TagTemplate,
+  DEFAULT_PREFIX, DEFAULT_TAG, expandCopies, totalCopies, TAG_FIELD_LABELS, TAG_STOCKS, tagGeom, fieldStyle, fieldText, loadTagTemplate, renderTags, saveTagTemplate,
+  type TagField, type TagFieldStyle, type TagStock, type TagItem, type TagTemplate,
 } from "@/lib/tagTemplate";
 
 type Props = {
@@ -63,6 +63,8 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
   };
   const setStyle = (f: TagField, s: TagFieldStyle) => update({ styles: { ...t.styles, [f]: { ...t.styles?.[f], ...s } } });
 
+  const g = tagGeom(t);
+  const zoneName = (side: Side) => g.zones[side === "left" ? 0 : 1];
   const sample = items[0] ?? { sku: "SAMPLE-001", metal: "gold", purity: "22K", net_weight: 4.25, gross_weight: 4.5 };
   const qr = qrs[sample.sku];
 
@@ -72,7 +74,7 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
     openPrintPreview({
       title: list.length === 1 ? `Tag ${items[0].sku}` : `${list.length} tags`,
       fileName: items.length === 1 ? `Tag-${items[0].sku}` : `Tags-${items.length}`,
-      pageMm: { width: TAG_MM.width, height: TAG_MM.height }, marginMm: 0, hidePageNumbers: true, html, css,
+      pageMm: { width: g.width, height: g.height }, marginMm: 0, hidePageNumbers: true, html, css,
     });
     setOpen(false);
     onPrinted?.();
@@ -83,7 +85,7 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
     return (
       <div
         className={cn("flex h-full items-center gap-[5px] overflow-hidden px-[6px] py-[4px] outline-dashed outline-1 outline-transparent", drag && "outline-primary/50")}
-        style={{ width: TAG_MM.flap * SCALE }}
+        style={{ width: g.zoneW * SCALE, height: g.zoneH * SCALE }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); if (drag) { place(drag, side); setSel({ kind: "field", f: drag }); } setDrag(null); }}
         onClick={(e) => { if (e.target === e.currentTarget) { setAddTo(side); setSel(null); } }}
@@ -124,27 +126,37 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSel(null); }}>
       {trigger !== null && <DialogTrigger asChild>{trigger ?? <Button className="w-full"><Printer className="mr-1 h-4 w-4" /> Print tag</Button>}</DialogTrigger>}
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
-        <DialogHeader><DialogTitle>Design & print tag · DYMO 30373{items.length > 1 ? ` · ${items.length} items` : ""}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Design & print tag · {g.label}{items.length > 1 ? ` · ${items.length} items` : ""}</DialogTitle></DialogHeader>
+
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-medium">Tag type</span>
+          <Select value={t.stock} onValueChange={(v) => update({ stock: v as TagStock })}>
+            <SelectTrigger className="h-8 w-60"><SelectValue /></SelectTrigger>
+            <SelectContent>{(Object.keys(TAG_STOCKS) as TagStock[]).map((k) => <SelectItem key={k} value={k}>{TAG_STOCKS[k].label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
 
         {/* Editable tag */}
         <div className="overflow-x-auto rounded-md border bg-muted/40 p-4">
-          <div className="mx-auto flex bg-background text-foreground shadow-sm" style={{ width: TAG_MM.width * SCALE, height: TAG_MM.height * SCALE, color: "#000", background: "#fff" }}>
+          <div className={cn("mx-auto flex bg-background text-foreground shadow-sm", g.vertical && "flex-col")} style={{ width: g.width * SCALE, height: g.height * SCALE, color: "#000", background: "#fff" }}>
             <Flap side="left" />
-            <div className="h-full border-x border-dashed border-muted-foreground/40" style={{ width: (TAG_MM.width - TAG_MM.flap * 2) * SCALE }} />
+            {g.vertical
+              ? <div className="w-full border-t border-dashed border-muted-foreground/40" />
+              : <div className="h-full border-x border-dashed border-muted-foreground/40" style={{ width: g.gap * SCALE }} />}
             <Flap side="right" />
           </div>
-          <p className="mt-2 text-center text-xs text-muted-foreground">Tap a detail on the tag to edit it · drag to reorder or move between flaps · tap empty flap space to choose where new details go</p>
+          <p className="mt-2 text-center text-xs text-muted-foreground">Tap a detail on the tag to edit it · drag to reorder or move between halves · tap empty space to choose where new details go</p>
         </div>
 
         {/* Selected item editor */}
         {selField && selSide && (
           <div className="space-y-3 rounded-md border p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium">{TAG_FIELD_LABELS[selField]} <span className="text-muted-foreground">· {selSide === "left" ? "Front" : "Back"} flap</span></p>
+              <p className="text-sm font-medium">{TAG_FIELD_LABELS[selField]} <span className="text-muted-foreground">· {zoneName(selSide)}</span></p>
               <div className="flex gap-1">
                 <Button size="icon" variant="outline" aria-label="Move up" onClick={() => move(selField, -1)}><ArrowUp className="h-4 w-4" /></Button>
                 <Button size="icon" variant="outline" aria-label="Move down" onClick={() => move(selField, 1)}><ArrowDown className="h-4 w-4" /></Button>
-                <Button size="sm" variant="outline" onClick={() => place(selField, selSide === "left" ? "right" : "left")}><ArrowLeftRight className="mr-1 h-4 w-4" /> Other flap</Button>
+                <Button size="sm" variant="outline" onClick={() => place(selField, selSide === "left" ? "right" : "left")}><ArrowLeftRight className="mr-1 h-4 w-4" /> {g.vertical ? "Other half" : "Other flap"}</Button>
                 <Button size="sm" variant="outline" className="text-destructive" onClick={() => remove(selField)}><Trash2 className="mr-1 h-4 w-4" /> Remove</Button>
               </div>
             </div>
@@ -169,9 +181,9 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
         )}
         {sel?.kind === "qr" && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
-            <p className="text-sm font-medium">QR code <span className="text-muted-foreground">· {t.qrSide === "left" ? "Front" : "Back"} flap</span></p>
+            <p className="text-sm font-medium">QR code <span className="text-muted-foreground">· {zoneName(t.qrSide)}</span></p>
             <div className="flex gap-1">
-              <Button size="sm" variant="outline" onClick={() => update({ qrSide: t.qrSide === "left" ? "right" : "left" })}><ArrowLeftRight className="mr-1 h-4 w-4" /> Other flap</Button>
+              <Button size="sm" variant="outline" onClick={() => update({ qrSide: t.qrSide === "left" ? "right" : "left" })}><ArrowLeftRight className="mr-1 h-4 w-4" /> {g.vertical ? "Other half" : "Other flap"}</Button>
               <Button size="sm" variant="outline" className="text-destructive" onClick={() => { update({ showQr: false }); setSel(null); }}><Trash2 className="mr-1 h-4 w-4" /> Remove</Button>
             </div>
           </div>
@@ -183,7 +195,7 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
             <span className="font-medium">Add to</span>
             <Select value={addTo} onValueChange={(v) => setAddTo(v as Side)}>
               <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="left">Front</SelectItem><SelectItem value="right">Back</SelectItem></SelectContent>
+              <SelectContent><SelectItem value="left">{g.zones[0]}</SelectItem><SelectItem value="right">{g.zones[1]}</SelectItem></SelectContent>
             </Select>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -211,9 +223,9 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
           <div><Label className="text-xs">Shift down (mm)</Label><Input className="h-8" type="number" step="0.5" value={t.offsetYmm} onChange={(e) => update({ offsetYmm: Number(e.target.value) || 0 })} /></div>
         </div>
 
-        <p className="text-xs text-muted-foreground">In the print window choose your DYMO printer, paper “30373 Barbell”, scale 100%, no margins. Your design is remembered on this device.</p>
+        <p className="text-xs text-muted-foreground">In the print window choose your DYMO printer, paper “{g.paper}”, scale 100%, no margins. Your design is remembered on this device.</p>
         <div className="flex justify-between gap-2">
-          <Button variant="ghost" onClick={() => { saveTagTemplate(DEFAULT_TAG); setT(DEFAULT_TAG); setSel(null); }}><RotateCcw className="mr-1 h-4 w-4" /> Reset to default</Button>
+          <Button variant="ghost" onClick={() => { const d = { ...DEFAULT_TAG, stock: t.stock }; saveTagTemplate(d); setT(d); setSel(null); }}><RotateCcw className="mr-1 h-4 w-4" /> Reset to default</Button>
           <Button onClick={print} disabled={!items.length}><Printer className="mr-1 h-4 w-4" /> {items.length ? `Print ${totalCopies(items, copies)} tag${totalCopies(items, copies) > 1 ? "s" : ""}` : "Design saved"}</Button>
         </div>
       </DialogContent>

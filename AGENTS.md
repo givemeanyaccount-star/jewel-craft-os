@@ -11,3 +11,4 @@
 - Navigation lives in src/lib/navConfig.ts (sections, permissions, badge keys); AppLayout renders sidebar, phone bottom bar, rate strip, Ctrl+K search and New menu from it so every entry point stays permission-filtered.
 
 - Tag printing lives at /tags (Stock nav) using TagPrintDialog; prints are logged to inventory_tag_prints when sent, so "not yet printed" filtering works even though physical output can't be confirmed.
+- Tag label sizes live in TAG_STOCKS (tagTemplate.ts); the template stores the chosen stock and reuses the same two field zones, so layouts work on every label type.

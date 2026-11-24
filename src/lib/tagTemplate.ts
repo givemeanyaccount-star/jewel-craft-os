@@ -5,7 +5,10 @@ import { gramsToTola } from "@/lib/format";
 export type TagField = "sku" | "name" | "metal" | "net" | "gross" | "stone" | "wastage" | "making" | "legacy" | "shop" | "custom";
 export type TagFieldStyle = { prefix?: string; sizePt?: number; bold?: boolean };
 export type TagUnit = "g" | "tola" | "both";
+/** Label stock. rattail = DYMO/HL-30373 rat-tail price tag (default); barbell = 54×11 mm two-flap tag. */
+export type TagStock = "rattail" | "barbell";
 export type TagTemplate = {
+  stock: TagStock;
   left: TagField[];
   right: TagField[];
   showQr: boolean;
@@ -26,11 +29,17 @@ export const TAG_FIELD_LABELS: Record<TagField, string> = {
   stone: "Stone weight", wastage: "Wastage", making: "Making charge", legacy: "Old record no.", shop: "Shop name", custom: "Custom text",
 };
 
-/** DYMO 30373: 54 × 11 mm, two ~19 mm printable flaps around a 16 mm loop. */
-export const TAG_MM = { width: 54, height: 11, flap: 19 };
+export const TAG_STOCKS: Record<TagStock, { label: string; width: number; height: number; zoneW: number; zoneH: number; gap: number; vertical: boolean; zones: [string, string]; paper: string }> = {
+  /** 15/16" × 7/8" head (≈24 × 22 mm); tail is unprinted. Split into top and bottom halves. */
+  rattail: { label: "Rat-tail 30373 (24 × 22 mm)", width: 24, height: 22, zoneW: 24, zoneH: 11, gap: 0, vertical: true, zones: ["Top", "Bottom"], paper: "30373 Price Tag (rat tail)" },
+  /** 54 × 11 mm, two ~19 mm printable flaps around a 16 mm loop. */
+  barbell: { label: "Barbell (54 × 11 mm)", width: 54, height: 11, zoneW: 19, zoneH: 11, gap: 16, vertical: false, zones: ["Front", "Back"], paper: "Barbell jewellery (54 × 11 mm)" },
+};
+export const tagGeom = (t: Pick<TagTemplate, "stock">) => TAG_STOCKS[t.stock] ?? TAG_STOCKS.rattail;
 
 export const DEFAULT_TAG: TagTemplate = {
-  left: ["metal", "legacy"], right: ["sku", "net", "gross", "stone"],
+  stock: "rattail",
+  left: ["sku", "metal", "legacy"], right: ["net", "gross", "stone"],
   showQr: true, qrSide: "left", unit: "g", fontPt: 5.5, shopName: "", customText: "", styles: {}, offsetXmm: 0, offsetYmm: 0,
 };
 
@@ -96,15 +105,15 @@ export function renderTags(items: { item: TagItem; qr?: string }[], t: TagTempla
     <div class="loop"></div>
     ${flapHtml(t.right, item, t, t.showQr && t.qrSide === "right" ? qr : undefined)}
   </div>`).join("");
-  const loop = TAG_MM.width - TAG_MM.flap * 2;
+  const g = tagGeom(t);
   const css = `
-    @page { size: ${TAG_MM.width}mm ${TAG_MM.height}mm; margin: 0; }
+    @page { size: ${g.width}mm ${g.height}mm; margin: 0; }
     html, body { margin: 0; padding: 0; }
     body { font-family: Arial, Helvetica, sans-serif; color: #000; }
-    .tag { width: ${TAG_MM.width}mm; height: ${TAG_MM.height}mm; display: flex; overflow: hidden; box-sizing: border-box;
+    .tag { width: ${g.width}mm; height: ${g.height}mm; display: flex; flex-direction: ${g.vertical ? "column" : "row"}; overflow: hidden; box-sizing: border-box;
       transform: translate(${t.offsetXmm}mm, ${t.offsetYmm}mm); }
-    .flap { width: ${TAG_MM.flap}mm; height: ${TAG_MM.height}mm; display: flex; align-items: center; gap: 0.6mm; padding: 0.5mm 0.8mm; box-sizing: border-box; overflow: hidden; }
-    .loop { width: ${loop}mm; }
+    .flap { width: ${g.zoneW}mm; height: ${g.zoneH}mm; display: flex; align-items: center; gap: 0.6mm; padding: 0.5mm 0.8mm; box-sizing: border-box; overflow: hidden; }
+    .loop { width: ${g.vertical ? 0 : g.gap}mm; flex: none; }
     .qr { width: 9mm; height: 9mm; flex: none; image-rendering: pixelated; }
     .txt { min-width: 0; line-height: 1.12; font-size: ${t.fontPt}pt; font-weight: 700; }
     .l { white-space: nowrap; overflow: hidden; text-overflow: clip; }
