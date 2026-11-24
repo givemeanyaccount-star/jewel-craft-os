@@ -1,7 +1,7 @@
 # Tag Printing section
 
 ## What you will get
-1. **New "Tags" menu section** (sidebar, phone menu, Ctrl+K search) with:
+1. **Tag entries under the Stock menu, right below Inventory** (sidebar, phone menu, Ctrl+K search):
    - **Print Tags** – the main tag printing screen.
    - **Tag Designer** – opens the existing tag designer to edit the default layout without picking items first.
 2. **Print Tags screen** (`/tags`)
@@ -17,7 +17,7 @@
 4. **Quick links**: Inventory's "Print tags" button and item page "Print tag" stay, and also link to the Tags screen with the same filters.
 
 ## Technical details
-- `navConfig.ts`: new "Tags" section (permission `inventory_view`), icon `Tag`.
+- `navConfig.ts`: add "Print Tags" and "Tag Designer" items in the Stock section directly after Inventory (permission `inventory_view`), icon `Tag`.
 - New `src/pages/TagPrinting.tsx`, route `/tags`; paged queries on `inventory` under existing RLS, filters in URL query params so links/back work.
 - "Printed" tracking: small table `inventory_tag_prints` (item, user, copies, printed_at) with RLS + grants; recorded when print is triggered (browser cannot confirm the physical print).
 - `TagPrintDialog`: accept per-item copies and an optional `onPrinted` callback; designer-only mode for the Tag Designer entry.
