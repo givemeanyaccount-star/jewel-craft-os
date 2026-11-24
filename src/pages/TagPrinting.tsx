@@ -37,7 +37,7 @@ export default function TagPrinting() {
     const all: any[] = [];
     for (let from = 0; ; from += 1000) {
       const { data } = await supabase.from("inventory_items")
-        .select("id, sku, name, metal, purity, gross_weight, net_weight, stone_weight, category_id, status, qr_code, legacy_code, barcode, created_at, description")
+        .select("id, sku, name, metal, purity, gross_weight, net_weight, stone_weight, stone_value, category_id, categories(name), status, qr_code, legacy_code, barcode, created_at, description")
         .order("created_at", { ascending: false }).range(from, from + 999);
       all.push(...(data ?? []));
       if (!data || data.length < 1000) break;

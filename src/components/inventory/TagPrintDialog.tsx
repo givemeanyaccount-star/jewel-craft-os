@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { Printer, RotateCcw, ArrowUp, ArrowDown, ArrowLeftRight, Trash2, Plus, QrCode } from "lucide-react";
+import { Printer, RotateCcw, Save, Image as ImageIcon, ArrowUp, ArrowDown, ArrowLeftRight, Trash2, Plus, QrCode } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { openPrintPreview } from "@/components/PrintPreview";
 import { cn } from "@/lib/utils";
 import {
-  DEFAULT_PREFIX, DEFAULT_TAG, expandCopies, totalCopies, TAG_FIELD_LABELS, TAG_STOCKS, tagGeom, fieldStyle, fieldText, loadTagTemplate, renderTags, saveTagTemplate,
+  DEFAULT_PREFIX, DEFAULT_TAG, expandCopies, totalCopies, TAG_FIELD_LABELS, TAG_STOCKS, tagGeom, fieldStyle, fieldText, loadTagDefault, loadTagTemplate, renderTags, saveTagDefault, saveTagTemplate,
   type TagField, type TagFieldStyle, type TagStock, type TagItem, type TagTemplate,
 } from "@/lib/tagTemplate";
 
@@ -22,7 +24,7 @@ type Props = {
   open?: boolean; onOpenChange?: (o: boolean) => void;
 };
 type Side = "left" | "right";
-type Sel = { kind: "field"; f: TagField } | { kind: "qr" } | null;
+type Sel = { kind: "field"; f: TagField } | { kind: "qr" } | { kind: "logo" } | null;
 const ALL = Object.keys(TAG_FIELD_LABELS) as TagField[];
 const SCALE = 8; // screen px per mm in the editor
 const ptPx = (pt: number) => pt * 0.3528 * SCALE;
@@ -31,7 +33,7 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
   const [openState, setOpenState] = useState(false);
   const open = openProp ?? openState;
   const setOpen = (o: boolean) => { setOpenState(o); onOpenChange?.(o); };
-  const [t, setT] = useState<TagTemplate>(loadTagTemplate);
+  const [t, setT] = useState<TagTemplate>(() => loadTagTemplate());
   const [qrs, setQrs] = useState<Record<string, string>>({});
   const [sel, setSel] = useState<Sel>(null);
   const [addTo, setAddTo] = useState<Side>("right");
@@ -64,6 +66,18 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
   const setStyle = (f: TagField, s: TagFieldStyle) => update({ styles: { ...t.styles, [f]: { ...t.styles?.[f], ...s } } });
 
   const g = tagGeom(t);
+  const switchStock = (stock: TagStock) => { const n = loadTagTemplate(stock); saveTagTemplate(n); setT(n); setSel(null); };
+  const uploadLogo = (file?: File) => {
+    if (!file) return;
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 200 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const ctx = c.getContext("2d")!; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+      update({ logo: c.toDataURL("image/png"), showLogo: true, logoSide: addTo }); setSel({ kind: "logo" }); URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
   const zoneName = (side: Side) => g.zones[side === "left" ? 0 : 1];
   const sample = items[0] ?? { sku: "SAMPLE-001", metal: "gold", purity: "22K", net_weight: 4.25, gross_weight: 4.5 };
   const qr = qrs[sample.sku];
@@ -82,6 +96,7 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
 
   const Flap = ({ side }: { side: Side }) => {
     const showQr = t.showQr && t.qrSide === side;
+    const showLogo = t.showLogo && !!t.logo && t.logoSide === side;
     return (
       <div
         className={cn("flex h-full items-center gap-[5px] overflow-hidden px-[6px] py-[4px] outline-dashed outline-1 outline-transparent", drag && "outline-primary/50")}
@@ -90,10 +105,17 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
         onDrop={(e) => { e.preventDefault(); if (drag) { place(drag, side); setSel({ kind: "field", f: drag }); } setDrag(null); }}
         onClick={(e) => { if (e.target === e.currentTarget) { setAddTo(side); setSel(null); } }}
       >
+        {showLogo && (
+          <button type="button" aria-label="Logo" onClick={() => setSel({ kind: "logo" })}
+            className={cn("flex-none rounded-sm ring-offset-1", sel?.kind === "logo" && "ring-2 ring-primary")}
+            style={{ width: t.logoMm * SCALE, height: t.logoMm * SCALE }}>
+            <img src={t.logo} alt="" className="h-full w-full object-contain" />
+          </button>
+        )}
         {showQr && (
           <button type="button" aria-label="QR code" onClick={() => setSel({ kind: "qr" })}
             className={cn("flex-none rounded-sm ring-offset-1", sel?.kind === "qr" && "ring-2 ring-primary")}
-            style={{ width: 9 * SCALE, height: 9 * SCALE }}>
+            style={{ width: t.qrMm * SCALE, height: t.qrMm * SCALE }}>
             {qr ? <img src={qr} alt="" className="h-full w-full [image-rendering:pixelated]" /> : <QrCode className="h-full w-full" />}
           </button>
         )}
@@ -130,7 +152,7 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
 
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium">Tag type</span>
-          <Select value={t.stock} onValueChange={(v) => update({ stock: v as TagStock })}>
+          <Select value={t.stock} onValueChange={(v) => switchStock(v as TagStock)}>
             <SelectTrigger className="h-8 w-60"><SelectValue /></SelectTrigger>
             <SelectContent>{(Object.keys(TAG_STOCKS) as TagStock[]).map((k) => <SelectItem key={k} value={k}>{TAG_STOCKS[k].label}</SelectItem>)}</SelectContent>
           </Select>
@@ -170,8 +192,8 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
               <div><Label className="text-xs">Label before value</Label>
                 <Input className="h-8" placeholder="none" value={t.styles?.[selField]?.prefix ?? DEFAULT_PREFIX[selField] ?? ""} onChange={(e) => setStyle(selField, { prefix: e.target.value })} />
               </div>
-              <div><Label className="text-xs">Size (pt)</Label>
-                <Input className="h-8" type="number" step="0.5" min={3} max={12} value={fieldStyle(selField, t).sizePt} onChange={(e) => setStyle(selField, { sizePt: Number(e.target.value) || undefined })} />
+              <div><Label className="text-xs">Size · {t.styles?.[selField]?.sizePt ?? t.fontPt} pt</Label>
+                <Slider className="mt-3" min={3} max={12} step={0.5} value={[t.styles?.[selField]?.sizePt ?? t.fontPt]} onValueChange={([v]) => setStyle(selField, { sizePt: v })} />
               </div>
               {selField === "custom" && <div className="sm:col-span-3"><Label className="text-xs">Custom text</Label><Input className="h-8" value={t.customText} onChange={(e) => update({ customText: e.target.value })} /></div>}
               {selField === "shop" && <div className="sm:col-span-3"><Label className="text-xs">Shop name</Label><Input className="h-8" value={t.shopName} onChange={(e) => update({ shopName: e.target.value })} /></div>}
@@ -179,9 +201,21 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
             </div>
           </div>
         )}
+        {sel?.kind === "logo" && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+            <p className="text-sm font-medium">Logo <span className="text-muted-foreground">· {zoneName(t.logoSide)}</span></p>
+            <div className="w-40"><Label className="text-xs">Size · {t.logoMm} mm</Label><Slider className="mt-2" min={3} max={11} step={0.5} value={[t.logoMm]} onValueChange={([v]) => update({ logoMm: v })} /></div>
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" asChild><label className="cursor-pointer"><ImageIcon className="mr-1 h-4 w-4" /> Change<input type="file" accept="image/*" className="hidden" onChange={(e) => uploadLogo(e.target.files?.[0])} /></label></Button>
+              <Button size="sm" variant="outline" onClick={() => update({ logoSide: t.logoSide === "left" ? "right" : "left" })}><ArrowLeftRight className="mr-1 h-4 w-4" /> {g.vertical ? "Other half" : "Other flap"}</Button>
+              <Button size="sm" variant="outline" className="text-destructive" onClick={() => { update({ showLogo: false }); setSel(null); }}><Trash2 className="mr-1 h-4 w-4" /> Remove</Button>
+            </div>
+          </div>
+        )}
         {sel?.kind === "qr" && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
             <p className="text-sm font-medium">QR code <span className="text-muted-foreground">· {zoneName(t.qrSide)}</span></p>
+            <div className="w-40"><Label className="text-xs">Size · {t.qrMm} mm</Label><Slider className="mt-2" min={6} max={11} step={0.5} value={[t.qrMm]} onValueChange={([v]) => update({ qrMm: v })} /></div>
             <div className="flex gap-1">
               <Button size="sm" variant="outline" onClick={() => update({ qrSide: t.qrSide === "left" ? "right" : "left" })}><ArrowLeftRight className="mr-1 h-4 w-4" /> {g.vertical ? "Other half" : "Other flap"}</Button>
               <Button size="sm" variant="outline" className="text-destructive" onClick={() => { update({ showQr: false }); setSel(null); }}><Trash2 className="mr-1 h-4 w-4" /> Remove</Button>
@@ -200,6 +234,9 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
           </div>
           <div className="flex flex-wrap gap-1.5">
             {!t.showQr && <Button size="sm" variant="secondary" onClick={() => { update({ showQr: true, qrSide: addTo }); setSel({ kind: "qr" }); }}><Plus className="mr-1 h-3 w-3" /> QR code</Button>}
+            {!(t.showLogo && t.logo) && (t.logo
+              ? <Button size="sm" variant="secondary" onClick={() => { update({ showLogo: true, logoSide: addTo }); setSel({ kind: "logo" }); }}><Plus className="mr-1 h-3 w-3" /> Logo</Button>
+              : <Button size="sm" variant="secondary" asChild><label className="cursor-pointer"><Plus className="mr-1 h-3 w-3" /> Logo<input type="file" accept="image/*" className="hidden" onChange={(e) => uploadLogo(e.target.files?.[0])} /></label></Button>)}
             {hidden.map((f) => (
               <Button key={f} size="sm" variant="secondary" draggable onDragStart={() => setDrag(f)} onDragEnd={() => setDrag(null)}
                 onClick={() => { place(f, addTo); setSel({ kind: "field", f }); }}>
@@ -219,13 +256,17 @@ export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openPr
             </Select>
           </div>
           <div><Label className="text-xs">Default text size (pt)</Label><Input className="h-8" type="number" step="0.5" min={4} max={9} value={t.fontPt} onChange={(e) => update({ fontPt: Number(e.target.value) || DEFAULT_TAG.fontPt })} /></div>
+          <div className="sm:col-span-4"><Label className="text-xs">Scale all text · {Math.round((t.scale || 1) * 100)}%</Label><Slider className="mt-2" min={0.7} max={1.5} step={0.05} value={[t.scale || 1]} onValueChange={([v]) => update({ scale: v })} /></div>
           <div><Label className="text-xs">Shift right (mm)</Label><Input className="h-8" type="number" step="0.5" value={t.offsetXmm} onChange={(e) => update({ offsetXmm: Number(e.target.value) || 0 })} /></div>
           <div><Label className="text-xs">Shift down (mm)</Label><Input className="h-8" type="number" step="0.5" value={t.offsetYmm} onChange={(e) => update({ offsetYmm: Number(e.target.value) || 0 })} /></div>
         </div>
 
         <p className="text-xs text-muted-foreground">In the print window choose your DYMO printer, paper “{g.paper}”, scale 100%, no margins. Your design is remembered on this device.</p>
         <div className="flex justify-between gap-2">
-          <Button variant="ghost" onClick={() => { const d = { ...DEFAULT_TAG, stock: t.stock }; saveTagTemplate(d); setT(d); setSel(null); }}><RotateCcw className="mr-1 h-4 w-4" /> Reset to default</Button>
+          <div className="flex flex-wrap gap-1">
+            <Button variant="ghost" onClick={() => { const d = loadTagDefault(t.stock); saveTagTemplate(d); setT(d); setSel(null); }}><RotateCcw className="mr-1 h-4 w-4" /> Reset to default</Button>
+            <Button variant="outline" onClick={() => { saveTagDefault(t); toast.success(`Saved as default for ${g.label}`); }}><Save className="mr-1 h-4 w-4" /> Save as default</Button>
+          </div>
           <Button onClick={print} disabled={!items.length}><Printer className="mr-1 h-4 w-4" /> {items.length ? `Print ${totalCopies(items, copies)} tag${totalCopies(items, copies) > 1 ? "s" : ""}` : "Design saved"}</Button>
         </div>
       </DialogContent>

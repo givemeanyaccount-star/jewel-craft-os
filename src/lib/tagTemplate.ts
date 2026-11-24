@@ -1,8 +1,8 @@
 import { escapeHtml } from "@/lib/html";
-import { gramsToTola } from "@/lib/format";
+import { gramsToTola, npr } from "@/lib/format";
 
 /** Fields that can be placed on either flap of a DYMO 30373 barbell tag. */
-export type TagField = "sku" | "name" | "metal" | "net" | "gross" | "stone" | "wastage" | "making" | "legacy" | "shop" | "custom";
+export type TagField = "sku" | "name" | "metal" | "net" | "gross" | "stone" | "wastage" | "making" | "legacy" | "shop" | "custom" | "stoneValue" | "purity" | "category";
 export type TagFieldStyle = { prefix?: string; sizePt?: number; bold?: boolean };
 export type TagUnit = "g" | "tola" | "both";
 /** Label stock. rattail = DYMO/HL-30373 rat-tail price tag (default); barbell = 54×11 mm two-flap tag. */
@@ -22,11 +22,21 @@ export type TagTemplate = {
   /** Nudge in mm for printers that feed slightly off. */
   offsetXmm: number;
   offsetYmm: number;
+  /** QR and logo edge length in mm. */
+  qrMm: number;
+  logoMm: number;
+  /** Multiplies every text size (1 = 100%). */
+  scale: number;
+  showLogo: boolean;
+  logoSide: "left" | "right";
+  /** Small data URL, stored on this device. */
+  logo: string;
 };
 
 export const TAG_FIELD_LABELS: Record<TagField, string> = {
   sku: "Item code", name: "Item name", metal: "Metal & purity", net: "Net weight", gross: "Gross weight",
   stone: "Stone weight", wastage: "Wastage", making: "Making charge", legacy: "Old record no.", shop: "Shop name", custom: "Custom text",
+  stoneValue: "Stone price", purity: "Purity", category: "Category",
 };
 
 export const TAG_STOCKS: Record<TagStock, { label: string; width: number; height: number; zoneW: number; zoneH: number; gap: number; vertical: boolean; zones: [string, string]; paper: string }> = {
@@ -39,20 +49,37 @@ export const tagGeom = (t: Pick<TagTemplate, "stock">) => TAG_STOCKS[t.stock] ??
 
 export const DEFAULT_TAG: TagTemplate = {
   stock: "rattail",
-  left: ["sku", "metal", "legacy"], right: ["net", "gross", "stone"],
+  left: ["sku", "purity"], right: ["gross", "net", "stoneValue"],
   showQr: true, qrSide: "left", unit: "g", fontPt: 5.5, shopName: "", customText: "", styles: {}, offsetXmm: 0, offsetYmm: 0,
+  qrMm: 9, logoMm: 6, scale: 1, showLogo: false, logoSide: "left", logo: "",
 };
+/** Built-in starting layout for each tag type. */
+export const builtinTag = (stock: TagStock): TagTemplate => ({ ...DEFAULT_TAG, stock, styles: {} });
 
-const KEY = "jm.tagTemplate.v1";
-export function loadTagTemplate(): TagTemplate {
-  try { const raw = localStorage.getItem(KEY); return raw ? { ...DEFAULT_TAG, styles: {}, ...JSON.parse(raw) } : DEFAULT_TAG; } catch { return DEFAULT_TAG; }
+const STOCK_KEY = "jm.tagStock";
+const workKey = (s: TagStock) => `jm.tagTemplate.v2.${s}`;
+const defKey = (s: TagStock) => `jm.tagDefault.${s}`;
+const read = (k: string): Partial<TagTemplate> | null => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch { return null; } };
+/** The user's saved default for this tag type, else the built-in layout. */
+export function loadTagDefault(stock: TagStock): TagTemplate {
+  return { ...builtinTag(stock), ...(read(defKey(stock)) ?? {}), stock };
 }
-export function saveTagTemplate(t: TagTemplate) { localStorage.setItem(KEY, JSON.stringify(t)); }
+export function saveTagDefault(t: TagTemplate) { localStorage.setItem(defKey(t.stock), JSON.stringify(t)); }
+/** Working design for a tag type (falls back to its default). */
+export function loadTagTemplate(stock?: TagStock): TagTemplate {
+  const s: TagStock = stock ?? ((localStorage.getItem(STOCK_KEY) as TagStock) || "rattail");
+  const work = read(workKey(s));
+  return work ? { ...builtinTag(s), ...work, stock: s } : loadTagDefault(s);
+}
+export function saveTagTemplate(t: TagTemplate) {
+  localStorage.setItem(workKey(t.stock), JSON.stringify(t)); localStorage.setItem(STOCK_KEY, t.stock);
+}
 
 export type TagItem = {
   sku: string; name?: string | null; metal?: string | null; purity?: string | null; legacy_code?: string | null;
   net_weight?: number | null; gross_weight?: number | null; stone_weight?: number | null;
   wastage_value?: number | null; wastage_type?: string | null; making_charge?: number | null; making_charge_type?: string | null;
+  stone_value?: number | null; category?: string | null; categories?: { name?: string | null } | null;
 };
 
 export function formatWeight(g: number, unit: TagUnit) {
@@ -62,7 +89,7 @@ export function formatWeight(g: number, unit: TagUnit) {
   return `${g.toFixed(3)}g`;
 }
 
-export const DEFAULT_PREFIX: Partial<Record<TagField, string>> = { net: "N", gross: "G", stone: "S", wastage: "W", making: "M" };
+export const DEFAULT_PREFIX: Partial<Record<TagField, string>> = { net: "N", gross: "G", stone: "S", stoneValue: "St Rs", wastage: "W", making: "M" };
 
 function fieldValue(f: TagField, it: TagItem, t: TagTemplate): string | null {
   const w = (v: number | null | undefined) => formatWeight(Number(v ?? 0), t.unit);
@@ -78,6 +105,9 @@ function fieldValue(f: TagField, it: TagItem, t: TagTemplate): string | null {
     case "legacy": return it.legacy_code || null;
     case "shop": return t.shopName || null;
     case "custom": return t.customText || null;
+    case "stoneValue": return Number(it.stone_value ?? 0) > 0 ? npr(Number(it.stone_value), { withSymbol: false }) : null;
+    case "purity": return it.purity || null;
+    case "category": return it.category || it.categories?.name || null;
   }
 }
 
@@ -90,20 +120,20 @@ export function fieldText(f: TagField, it: TagItem, t: TagTemplate): string | nu
 
 export function fieldStyle(f: TagField, t: TagTemplate) {
   const s = t.styles?.[f] ?? {};
-  return { sizePt: s.sizePt ?? t.fontPt, bold: s.bold ?? true };
+  return { sizePt: +((s.sizePt ?? t.fontPt) * (t.scale || 1)).toFixed(2), bold: s.bold ?? true };
 }
 
-function flapHtml(fields: TagField[], it: TagItem, t: TagTemplate, qr?: string) {
+function flapHtml(fields: TagField[], it: TagItem, t: TagTemplate, qr?: string, logo?: string) {
   const lines = fields.map((f) => { const txt = fieldText(f, it, t); if (!txt) return ""; const st = fieldStyle(f, t); return `<div class="l" style="font-size:${st.sizePt}pt;font-weight:${st.bold ? 700 : 400}">${escapeHtml(txt)}</div>`; }).join("");
-  return `<div class="flap">${qr ? `<img class="qr" src="${qr}"/>` : ""}<div class="txt">${lines}</div></div>`;
+  return `<div class="flap">${logo ? `<img class="logo" src="${logo}"/>` : ""}${qr ? `<img class="qr" src="${qr}"/>` : ""}<div class="txt">${lines}</div></div>`;
 }
 
 /** One page per tag, sized exactly to the 30373 label. */
 export function renderTags(items: { item: TagItem; qr?: string }[], t: TagTemplate) {
   const html = items.map(({ item, qr }, i) => `<div class="tag${i ? " pd-break-before" : ""}">
-    ${flapHtml(t.left, item, t, t.showQr && t.qrSide === "left" ? qr : undefined)}
+    ${flapHtml(t.left, item, t, t.showQr && t.qrSide === "left" ? qr : undefined, t.showLogo && t.logo && t.logoSide === "left" ? t.logo : undefined)}
     <div class="loop"></div>
-    ${flapHtml(t.right, item, t, t.showQr && t.qrSide === "right" ? qr : undefined)}
+    ${flapHtml(t.right, item, t, t.showQr && t.qrSide === "right" ? qr : undefined, t.showLogo && t.logo && t.logoSide === "right" ? t.logo : undefined)}
   </div>`).join("");
   const g = tagGeom(t);
   const css = `
@@ -114,8 +144,9 @@ export function renderTags(items: { item: TagItem; qr?: string }[], t: TagTempla
       transform: translate(${t.offsetXmm}mm, ${t.offsetYmm}mm); }
     .flap { width: ${g.zoneW}mm; height: ${g.zoneH}mm; display: flex; align-items: center; gap: 0.6mm; padding: 0.5mm 0.8mm; box-sizing: border-box; overflow: hidden; }
     .loop { width: ${g.vertical ? 0 : g.gap}mm; flex: none; }
-    .qr { width: 9mm; height: 9mm; flex: none; image-rendering: pixelated; }
-    .txt { min-width: 0; line-height: 1.12; font-size: ${t.fontPt}pt; font-weight: 700; }
+    .logo { width: ${t.logoMm || 6}mm; height: ${t.logoMm || 6}mm; flex: none; object-fit: contain; }
+    .qr { width: ${t.qrMm || 9}mm; height: ${t.qrMm || 9}mm; flex: none; image-rendering: pixelated; }
+    .txt { min-width: 0; line-height: 1.12; font-size: ${t.fontPt * (t.scale || 1)}pt; font-weight: 700; }
     .l { white-space: nowrap; overflow: hidden; text-overflow: clip; }
   `;
   return { html, css };
