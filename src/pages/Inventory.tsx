@@ -39,6 +39,7 @@ interface Item {
   received_at?: string | null; legacy_code?: string | null; barcode?: string | null;
 }
 
+const PRINT_AFTER_KEY = "jm.tag.printAfterSave";
 const METALS = ["gold", "silver", "diamond", "other"];
 const PURITIES = ["24K", "22K", "18K", "14K", "999", "925"];
 const STATUSES = ["in_stock", "reserved", "sold", "returned", "melted", "transferred"];
@@ -54,6 +55,7 @@ export default function Inventory() {
   const [filterStatus, setFilterStatus] = useState<string>("in_stock");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
+  const [tagItem, setTagItem] = useState<Item | null>(null);
   const [pureRates, setPureRates] = useState<{ gold?: number; silver?: number }>({});
   useEffect(() => {
     void supabase.from("metal_rates").select("metal, purity, rate_per_gram").in("purity", ["24K", "999"])
@@ -117,6 +119,7 @@ export default function Inventory() {
         {filtered.length > 0 && filtered.length <= 200 && (
           <TagPrintDialog items={filtered as any} trigger={<Button variant="outline" size="sm"><Printer className="mr-1 h-4 w-4" /> Print {filtered.length} tags</Button>} />
         )}
+          <Button asChild variant="ghost" size="sm"><Link to={`/tags${filterCat !== "all" ? `?cat=${filterCat}` : ""}`}>Choose tags…</Link></Button>
       </div>
 
       <StatStrip items={[
@@ -168,8 +171,20 @@ export default function Inventory() {
       <ItemDialog
         open={open} onOpenChange={setOpen}
         editing={editing} cats={cats} locs={locs}
-        onSaved={() => { setOpen(false); load(); }}
+        onSaved={(created) => {
+          setOpen(false); load();
+          if (!created) return;
+          if (localStorage.getItem(PRINT_AFTER_KEY) !== "0") setTagItem(created);
+          else toast("Print tag for " + created.sku + "?", { action: { label: "Print", onClick: () => setTagItem(created) }, duration: 10000 });
+        }}
       />
+      {tagItem && (
+        <TagPrintDialog items={[tagItem as any]} trigger={null} open onOpenChange={(o) => { if (!o) setTagItem(null); }}
+          onPrinted={async () => {
+            const { data: u } = await supabase.auth.getUser();
+            if (u.user) await supabase.from("inventory_tag_prints").insert({ item_id: tagItem.id, copies: 1, printed_by: u.user.id });
+          }} />
+      )}
     </AppLayout>
   );
 }
@@ -212,6 +227,7 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
     setPreviews((a) => a.filter((_, idx) => idx !== i));
   }
 
+  const [printAfter, setPrintAfter] = useState(() => localStorage.getItem(PRINT_AFTER_KEY) !== "0");
   const netWeight = computeNetWeight(Number(form.gross_weight || 0), Number(form.stone_weight || 0));
   const fineWeight = computeFineWeight(netWeight, form.purity || "");
 
@@ -427,9 +443,17 @@ export function ItemDialog({ open, onOpenChange, editing, cats, locs, onSaved }:
             </div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+        <DialogFooter className="items-center gap-2 sm:justify-between">
+          {!editing ? (
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={printAfter} onCheckedChange={(v) => { setPrintAfter(v); localStorage.setItem(PRINT_AFTER_KEY, v ? "1" : "0"); }} />
+              Print tag after saving
+            </label>
+          ) : <span />}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

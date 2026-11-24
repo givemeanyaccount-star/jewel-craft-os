@@ -71,6 +71,13 @@
       "when": 1795144310069,
       "tag": "0009_grant_permission_check_service",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795503608706,
+      "tag": "0010_inventory_tag_prints",
+      "breakpoints": true
     }
   ]
 }

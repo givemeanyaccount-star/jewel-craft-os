@@ -10,19 +10,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { openPrintPreview } from "@/components/PrintPreview";
 import { cn } from "@/lib/utils";
 import {
-  DEFAULT_PREFIX, DEFAULT_TAG, TAG_FIELD_LABELS, TAG_MM, fieldStyle, fieldText, loadTagTemplate, renderTags, saveTagTemplate,
+  DEFAULT_PREFIX, DEFAULT_TAG, expandCopies, totalCopies, TAG_FIELD_LABELS, TAG_MM, fieldStyle, fieldText, loadTagTemplate, renderTags, saveTagTemplate,
   type TagField, type TagFieldStyle, type TagItem, type TagTemplate,
 } from "@/lib/tagTemplate";
 
-type Props = { items: (TagItem & { qr_code?: string | null })[]; trigger?: React.ReactNode };
+type Props = {
+  items: (TagItem & { qr_code?: string | null; id?: string })[]; trigger?: React.ReactNode | null;
+  /** Copies per SKU (default 1). */
+  copies?: Record<string, number>;
+  onPrinted?: () => void;
+  open?: boolean; onOpenChange?: (o: boolean) => void;
+};
 type Side = "left" | "right";
 type Sel = { kind: "field"; f: TagField } | { kind: "qr" } | null;
 const ALL = Object.keys(TAG_FIELD_LABELS) as TagField[];
 const SCALE = 8; // screen px per mm in the editor
 const ptPx = (pt: number) => pt * 0.3528 * SCALE;
 
-export function TagPrintDialog({ items, trigger }: Props) {
-  const [open, setOpen] = useState(false);
+export function TagPrintDialog({ items, trigger, copies, onPrinted, open: openProp, onOpenChange }: Props) {
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (o: boolean) => { setOpenState(o); onOpenChange?.(o); };
   const [t, setT] = useState<TagTemplate>(loadTagTemplate);
   const [qrs, setQrs] = useState<Record<string, string>>({});
   const [sel, setSel] = useState<Sel>(null);
@@ -59,13 +67,15 @@ export function TagPrintDialog({ items, trigger }: Props) {
   const qr = qrs[sample.sku];
 
   function print() {
-    const { html, css } = renderTags(items.map((item) => ({ item, qr: qrs[item.sku] })), t);
+    const list = expandCopies(items, copies);
+    const { html, css } = renderTags(list.map((item) => ({ item, qr: qrs[item.sku] })), t);
     openPrintPreview({
-      title: items.length === 1 ? `Tag ${items[0].sku}` : `${items.length} tags`,
+      title: list.length === 1 ? `Tag ${items[0].sku}` : `${list.length} tags`,
       fileName: items.length === 1 ? `Tag-${items[0].sku}` : `Tags-${items.length}`,
       pageMm: { width: TAG_MM.width, height: TAG_MM.height }, marginMm: 0, hidePageNumbers: true, html, css,
     });
     setOpen(false);
+    onPrinted?.();
   }
 
   const Flap = ({ side }: { side: Side }) => {
@@ -112,7 +122,7 @@ export function TagPrintDialog({ items, trigger }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSel(null); }}>
-      <DialogTrigger asChild>{trigger ?? <Button className="w-full"><Printer className="mr-1 h-4 w-4" /> Print tag</Button>}</DialogTrigger>
+      {trigger !== null && <DialogTrigger asChild>{trigger ?? <Button className="w-full"><Printer className="mr-1 h-4 w-4" /> Print tag</Button>}</DialogTrigger>}
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader><DialogTitle>Design & print tag · DYMO 30373{items.length > 1 ? ` · ${items.length} items` : ""}</DialogTitle></DialogHeader>
 
@@ -204,7 +214,7 @@ export function TagPrintDialog({ items, trigger }: Props) {
         <p className="text-xs text-muted-foreground">In the print window choose your DYMO printer, paper “30373 Barbell”, scale 100%, no margins. Your design is remembered on this device.</p>
         <div className="flex justify-between gap-2">
           <Button variant="ghost" onClick={() => { saveTagTemplate(DEFAULT_TAG); setT(DEFAULT_TAG); setSel(null); }}><RotateCcw className="mr-1 h-4 w-4" /> Reset to default</Button>
-          <Button onClick={print} disabled={!items.length}><Printer className="mr-1 h-4 w-4" /> Print {items.length > 1 ? `${items.length} tags` : "tag"}</Button>
+          <Button onClick={print} disabled={!items.length}><Printer className="mr-1 h-4 w-4" /> {items.length ? `Print ${totalCopies(items, copies)} tag${totalCopies(items, copies) > 1 ? "s" : ""}` : "Design saved"}</Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -111,3 +111,15 @@ export function renderTags(items: { item: TagItem; qr?: string }[], t: TagTempla
   `;
   return { html, css };
 }
+
+/** Repeat each item by its copy count (1–50, default 1), keeping order. */
+export function expandCopies<T extends { sku: string }>(items: T[], copies?: Record<string, number>): T[] {
+  return items.flatMap((it) => Array(clampCopies(copies?.[it.sku])).fill(it));
+}
+export function totalCopies(items: { sku: string }[], copies?: Record<string, number>) {
+  return items.reduce((s, it) => s + clampCopies(copies?.[it.sku]), 0);
+}
+export function clampCopies(n: number | undefined) {
+  const v = Math.floor(Number(n ?? 1));
+  return Number.isFinite(v) ? Math.min(50, Math.max(1, v)) : 1;
+}

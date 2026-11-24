@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Package, Users, FileText, Receipt, Settings, ClipboardCheck, FileUp, ShieldCheck,
-  TrendingUp, Wrench, Truck, ShoppingCart, Undo2, ClipboardList, Hammer, Factory, Layers, BarChart3, Scale, WalletCards,
+  TrendingUp, Wrench, Truck, ShoppingCart, Undo2, ClipboardList, Hammer, Factory, Layers, BarChart3, Scale, WalletCards, Tag, Palette,
 } from "lucide-react";
 import type { AppPermission } from "@/lib/permissions";
 
@@ -34,6 +34,8 @@ export const NAV_SECTIONS: NavSection[] = [
   ] },
   { label: "Stock", items: [
     { to: "/inventory", label: "Inventory", icon: Package, permission: "inventory_view" },
+    { to: "/tags", label: "Print Tags", icon: Tag, permission: "inventory_view" },
+    { to: "/tags?design=1", label: "Tag Designer", icon: Palette, permission: "inventory_view" },
     { to: "/inventory-adjustments", label: "Weight Adjustments", icon: Scale, permission: "inventory_view", badge: "adjustments" },
     { to: "/purchases", label: "Purchases", icon: ShoppingCart, permission: "purchase_manage" },
     { to: "/suppliers", label: "Suppliers", icon: Truck, permission: "supplier_manage" },

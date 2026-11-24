@@ -449,6 +449,38 @@ export type Database = {
           },
         ]
       }
+      inventory_tag_prints: {
+        Row: {
+          copies: number
+          id: string
+          item_id: string
+          printed_at: string
+          printed_by: string
+        }
+        Insert: {
+          copies?: number
+          id?: string
+          item_id: string
+          printed_at?: string
+          printed_by?: string
+        }
+        Update: {
+          copies?: number
+          id?: string
+          item_id?: string
+          printed_at?: string
+          printed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_tag_prints_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_weight_adjustments: {
         Row: {
           ai_reviewed_at: string | null

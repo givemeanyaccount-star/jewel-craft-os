@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import RoleManagement from "./pages/RoleManagement";
+import TagPrinting from "./pages/TagPrinting";
 import Inventory from "./pages/Inventory";
 import ItemDetail from "./pages/ItemDetail";
 import ScanQR from "./pages/ScanQR";
@@ -63,6 +64,7 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><Dashboard /></ProtectedRoute>} />
             <Route path="/inventory" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><Inventory /></ProtectedRoute>} />
+            <Route path="/tags" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><TagPrinting /></ProtectedRoute>} />
             <Route path="/inventory/:id" element={<ProtectedRoute roles={[...ALL_ROLES_R]}><ItemDetail /></ProtectedRoute>} />
             <Route path="/scan" element={<ProtectedRoute roles={[...SALES]}><ScanQR /></ProtectedRoute>} />
             <Route path="/customers" element={<ProtectedRoute roles={[...SALES]}><Customers /></ProtectedRoute>} />
